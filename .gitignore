@@ -1,0 +1,29 @@
+# Node / Next
+node_modules/
+.next/
+out/
+pnpm-lock.yaml
+yarn.lock
+npm-debug.log*
+.env*
+.env.local
+.vercel/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.env.*
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Data temporales
+*.csv
+*.parquet
+*.tmp
