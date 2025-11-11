@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html, body {
+  min-height: 100%;
+  background-color: #f8fafc; /* gris claro */
+  color: #0a0a0a;            /* texto oscuro */
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.dark body {
+  background-color: #0b0b0b;
+  color: #e5e7eb; /* gris claro */
+}
+
+.card {
+  @apply bg-white border border-gray-200 rounded-2xl shadow-sm dark:bg-neutral-800 dark:border-neutral-700;
+}
+
+.table-header {
+  @apply bg-gray-100 text-gray-700 dark:bg-neutral-700 dark:text-neutral-100;
+}
