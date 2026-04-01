@@ -1121,27 +1121,27 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {pagedTurnRows.map((t) => (
-                  <tr key={t.symbol} className="border-t hover:bg-gray-50">
+                {pagedTurnRows.map((tr) => (
+                  <tr key={tr.symbol} className="border-t hover:bg-gray-50">
                     <td className="px-2 py-1">
                       <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
-                        <img src={logoSrc(t.symbol)} alt={t.symbol} className="w-full h-full object-cover" />
+                        <img src={logoSrc(tr.symbol)} alt={tr.symbol} className="w-full h-full object-cover" />
                       </div>
                     </td>
-                    <td className="px-3 py-2 font-semibold">{t.symbol}</td>
-                    <td className="px-3 py-2">{t.name ?? "—"}</td>
-                    <td className="px-3 py-2">{t.asset_type ?? "—"}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{t.rebound_from_low != null ? (t.rebound_from_low * 100).toFixed(0) + "%" : "—"}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{t.mom_1m != null ? (t.mom_1m * 100).toFixed(1) + "%" : "—"}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{t.mom_3m != null ? (t.mom_3m * 100).toFixed(1) + "%" : "—"}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{t.vol_surge != null ? t.vol_surge.toFixed(2) + "×" : "—"}</td>
+                    <td className="px-3 py-2 font-semibold">{tr.symbol}</td>
+                    <td className="px-3 py-2">{tr.name ?? "—"}</td>
+                    <td className="px-3 py-2">{tr.asset_type ?? "—"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{tr.rebound_from_low != null ? (tr.rebound_from_low * 100).toFixed(0) + "%" : "—"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{tr.mom_1m != null ? (tr.mom_1m * 100).toFixed(1) + "%" : "—"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{tr.mom_3m != null ? (tr.mom_3m * 100).toFixed(1) + "%" : "—"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{tr.vol_surge != null ? tr.vol_surge.toFixed(2) + "×" : "—"}</td>
                     <td className="px-3 py-2">
                       <button
                         onClick={() =>
-                          openFromSymbol(t.symbol, t.name, t.asset_type, t.racional_url, {
-                            mom_1m: t.mom_1m,
-                            mom_3m: t.mom_3m,
-                            liq_score: t.liq_score,
+                          openFromSymbol(tr.symbol, tr.name, tr.asset_type, tr.racional_url, {
+                            mom_1m: tr.mom_1m,
+                            mom_3m: tr.mom_3m,
+                            liq_score: tr.liq_score,
                           })
                         }
                         className="px-3 py-1 rounded-lg bg-black text-white text-xs"
