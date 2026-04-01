@@ -12,6 +12,8 @@ def get_connection():
     db_url = os.getenv("DATABASE_URL")
     if not db_url:
         raise RuntimeError("Falta DATABASE_URL en el archivo .env")
+    # psycopg2 doesn't support sslmode=no-verify; replace with sslmode=require
+    db_url = db_url.replace("sslmode=no-verify", "sslmode=require")
     conn = psycopg2.connect(db_url)
     conn.autocommit = True
     return conn
