@@ -67,6 +67,80 @@ def quick_status():
     conn.close()
 
 
+def add_asset(symbol: str, name: str | None, asset_type: str):
+    """Inserts an asset manually and fetches its full price history."""
+    import yfinance as yf
+    import pandas as pd
+    import math
+    import numpy as np
+
+    symbol = symbol.strip().upper()
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO assets (symbol, name, asset_type, is_active)
+        VALUES (%s, %s, %s, TRUE)
+        ON CONFLICT (symbol) DO UPDATE
+            SET name = COALESCE(EXCLUDED.name, assets.name),
+                asset_type = EXCLUDED.asset_type,
+                is_active = TRUE,
+                updated_at = now()
+        """,
+        (symbol, name, asset_type),
+    )
+    conn.commit()
+    print(f"  ✅ Asset '{symbol}' upserted in assets table.")
+
+    # Fetch full history from yfinance
+    print(f"  ⬇️  Fetching price history for {symbol}...")
+    hist = yf.Ticker(symbol).history(start="2021-01-01", interval="1d", auto_adjust=True)
+    if hist is None or hist.empty:
+        print(f"  ⚠️  No price data found for {symbol} on Yahoo Finance.")
+        cur.close()
+        conn.close()
+        return
+
+    hist = hist.reset_index()
+    hist.columns = [c.lower() for c in hist.columns]
+    if "date" not in hist.columns:
+        hist = hist.rename(columns={hist.columns[0]: "date"})
+    hist = hist.dropna(subset=["open", "high", "low", "close"])
+    if "volume" not in hist.columns:
+        hist["volume"] = None
+
+    def safe(v):
+        if isinstance(v, (float, np.floating)):
+            return float(v) if math.isfinite(float(v)) else None
+        return v
+
+    rows = [
+        (
+            symbol,
+            str(pd.to_datetime(r["date"]).date()),
+            safe(r["open"]), safe(r["high"]), safe(r["low"]), safe(r["close"]),
+            int(r["volume"]) if pd.notna(r.get("volume")) else None,
+        )
+        for _, r in hist.iterrows()
+    ]
+
+    args_str = ",".join(
+        cur.mogrify("(%s,%s,%s,%s,%s,%s,%s)", row).decode() for row in rows
+    )
+    cur.execute(f"""
+        INSERT INTO prices_daily (symbol, date, open, high, low, close, volume)
+        VALUES {args_str}
+        ON CONFLICT (symbol, date) DO UPDATE SET
+            open = EXCLUDED.open, high = EXCLUDED.high,
+            low = EXCLUDED.low, close = EXCLUDED.close,
+            volume = EXCLUDED.volume;
+    """)
+    conn.commit()
+    print(f"  ✅ Inserted {len(rows)} price rows for {symbol}.")
+    cur.close()
+    conn.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description="Orquestador ETL Stocks Analyzer")
     parser.add_argument("--seed", action="store_true", help="Cargar activos desde Google Sheets (Racional)")
@@ -75,6 +149,9 @@ def main():
     parser.add_argument("--scores", action="store_true", help="Recalcular scores diarios/avanzados")
     parser.add_argument("--status", action="store_true", help="Ver estado actual de la base de datos")
     parser.add_argument("--views", action="store_true", help="Aplicar/actualizar vistas SQL (02_views.sql)")
+    parser.add_argument("--add-asset", metavar="SYMBOL", help="Añadir activo manualmente y descargar su historial")
+    parser.add_argument("--name", metavar="NAME", help="Nombre del activo (opcional, usar con --add-asset)")
+    parser.add_argument("--type", metavar="TYPE", default="EQUITY", choices=["EQUITY", "ETF", "FUND", "OTHER"], help="Tipo de activo (default: EQUITY)")
 
     args = parser.parse_args()
 
@@ -102,6 +179,9 @@ def main():
         apply_sql_file("sql/02_views.sql")
         apply_sql_file("sql/04_turnaround_explosives.sql")
         print("🏁 Vistas actualizadas.")
+
+    elif args.add_asset:
+        add_asset(args.add_asset, args.name, args.type)
 
     else:
         parser.print_help()
