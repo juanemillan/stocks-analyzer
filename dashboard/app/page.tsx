@@ -426,6 +426,18 @@ export default function Dashboard() {
   }
 
   // ---------- Effects ----------
+  // Tab persistence via URL hash — read on mount, write on change
+  useEffect(() => {
+    const hash = window.location.hash.slice(1) as ViewMode;
+    const valid: ViewMode[] = ["overview", "ranking", "turnarounds", "compounders", "portfolio"];
+    if (valid.includes(hash)) setViewMode(hash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    window.location.hash = viewMode;
+  }, [viewMode]);
+
   // inicial
   useEffect(() => {
     loadRanking();
@@ -615,35 +627,35 @@ export default function Dashboard() {
       {/* Header */}
       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-          <div className="flex items-center gap-2">
-            <div className="inline-flex rounded-xl overflow-hidden border">
+          <div className="flex items-center gap-2 overflow-x-auto">
+            <div className="inline-flex rounded-xl overflow-hidden border flex-none">
               <button
                 onClick={() => setViewMode("overview")}
-                className={`px-3 py-1 text-sm ${viewMode === "overview" ? "bg-black text-white" : "bg-white hover:bg-gray-100"}`}
+                className={`px-2 sm:px-3 py-1 text-xs sm:text-sm whitespace-nowrap ${viewMode === "overview" ? "bg-black text-white" : "bg-white hover:bg-gray-100"}`}
               >
                 {t("tabOverview", lang)}
               </button>
               <button
                 onClick={() => setViewMode("ranking")}
-                className={`px-3 py-1 text-sm ${viewMode === "ranking" ? "bg-black text-white" : "bg-white hover:bg-gray-100"}`}
+                className={`px-2 sm:px-3 py-1 text-xs sm:text-sm whitespace-nowrap ${viewMode === "ranking" ? "bg-black text-white" : "bg-white hover:bg-gray-100"}`}
               >
                 Ranking
               </button>
               <button
                 onClick={() => setViewMode("turnarounds")}
-                className={`px-3 py-1 text-sm ${viewMode === "turnarounds" ? "bg-black text-white" : "bg-white hover:bg-gray-100"}`}
+                className={`px-2 sm:px-3 py-1 text-xs sm:text-sm whitespace-nowrap ${viewMode === "turnarounds" ? "bg-black text-white" : "bg-white hover:bg-gray-100"}`}
               >
                 Turnarounds
               </button>
               <button
                 onClick={() => setViewMode("compounders")}
-                className={`px-3 py-1 text-sm ${viewMode === "compounders" ? "bg-black text-white" : "bg-white hover:bg-gray-100"}`}
+                className={`px-2 sm:px-3 py-1 text-xs sm:text-sm whitespace-nowrap ${viewMode === "compounders" ? "bg-black text-white" : "bg-white hover:bg-gray-100"}`}
               >
                 Compounders
               </button>
               <button
                 onClick={() => setViewMode("portfolio")}
-                className={`px-3 py-1 text-sm ${viewMode === "portfolio" ? "bg-black text-white" : "bg-white hover:bg-gray-100"}`}
+                className={`px-2 sm:px-3 py-1 text-xs sm:text-sm whitespace-nowrap ${viewMode === "portfolio" ? "bg-black text-white" : "bg-white hover:bg-gray-100"}`}
               >
                 {t("tabPortfolio", lang)}
               </button>
@@ -698,7 +710,7 @@ export default function Dashboard() {
         <section className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Chart */}
           <div className="md:col-span-2 bg-white border rounded-2xl p-4">
-            <div className="flex items-baseline justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
               <div className="flex items-center gap-3">
                 {selected && (
                   <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
@@ -720,7 +732,7 @@ export default function Dashboard() {
                 </h2>
               </div>
               {/* botones rango */}
-              <div className="flex gap-1">
+              <div className="flex gap-1 flex-wrap">
                 {RANGE_OPTIONS.map((r) => (
                   <button
                     key={r.key}
@@ -1025,8 +1037,9 @@ export default function Dashboard() {
               </select>
             </section>
 
-            <section className="bg-white border rounded-2xl overflow-hidden shadow-sm">
-              <table className="w-full text-left text-sm">
+            <section className="bg-white border rounded-2xl shadow-sm">
+              <div className="overflow-x-auto">
+              <table className="min-w-[900px] w-full text-left text-sm">
                 <thead className="bg-gray-100 text-gray-700">
                   <tr>
                     <th className="px-2 py-2 w-10"></th>
@@ -1081,6 +1094,7 @@ export default function Dashboard() {
                   )}
                 </tbody>
               </table>
+              </div>
             </section>
 
             <PaginationBar lang={lang}
@@ -1105,8 +1119,9 @@ export default function Dashboard() {
               <option value={100}>{`100 / ${t("perPage", lang)}`}</option>
             </select>
           </div>
-          <section className="bg-white border rounded-2xl overflow-hidden shadow-sm">
-            <table className="w-full text-left text-sm">
+          <section className="bg-white border rounded-2xl shadow-sm">
+            <div className="overflow-x-auto">
+            <table className="min-w-[700px] w-full text-left text-sm">
               <thead className="bg-gray-100 text-gray-700">
                 <tr>
                   <th className="px-2 py-2 w-10"></th>
@@ -1160,6 +1175,7 @@ export default function Dashboard() {
                 )}
               </tbody>
             </table>
+            </div>
           </section>
           <PaginationBar lang={lang}
             page={turnPage} total={totalTurnPages}
@@ -1229,8 +1245,9 @@ export default function Dashboard() {
             </div>
 
             {/* Tabla */}
-            <section className="bg-white border rounded-2xl overflow-hidden shadow-sm">
-              <table className="w-full text-left text-sm">
+            <section className="bg-white border rounded-2xl shadow-sm">
+              <div className="overflow-x-auto">
+              <table className="min-w-[640px] w-full text-left text-sm">
                 <thead className="bg-gray-100 text-gray-700">
                   <tr>
                     <th className="px-2 py-2 w-10"></th>
@@ -1286,6 +1303,7 @@ export default function Dashboard() {
                   )}
                 </tbody>
               </table>
+              </div>
             </section>
             <PaginationBar lang={lang}
               page={cmpPage} total={totalCmpPages}
