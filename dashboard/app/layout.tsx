@@ -18,10 +18,10 @@ export const metadata = { title: "Racional Dashboard" };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body>
+      <body suppressHydrationWarning={true}>
         <ThemeProvider
-          attribute="class"   // usa clase 'dark' en html
-          defaultTheme="light"// arranca claro (puedes usar 'system')
+          attribute="class"
+          defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >

@@ -17,7 +17,7 @@ export default function ThemeToggle() {
       className="px-3 py-1 rounded-xl text-sm border bg-white dark:bg-neutral-800 dark:text-white hover:bg-neutral-50 dark:hover:bg-neutral-700"
       title={`Cambiar a ${current === "dark" ? "claro" : "oscuro"}`}
     >
-      {current === "dark" ? "🌞 Claro" : "🌙 Oscuro"}
+      {current === "dark" ? "🌞" : "🌙"}
     </button>
   );
 }

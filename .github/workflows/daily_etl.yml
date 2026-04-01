@@ -1,0 +1,41 @@
+name: Daily ETL
+
+on:
+  schedule:
+    # Runs at 22:00 UTC Mon–Fri (after US market close)
+    - cron: "0 22 * * 1-5"
+  workflow_dispatch: # allow manual trigger from GitHub UI
+
+jobs:
+  etl:
+    name: Fetch prices & recompute scores
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Update prices (incremental)
+        working-directory: data_pipeline
+        run: python main.py --update
+
+      - name: Recompute scores
+        working-directory: data_pipeline
+        run: python main.py --scores
+
+      - name: Pipeline status
+        working-directory: data_pipeline
+        run: python main.py --status

@@ -27,3 +27,5 @@ Thumbs.db
 *.csv
 *.parquet
 *.tmp
+*.backup
+fetch_log.txt
