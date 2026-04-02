@@ -60,3 +60,41 @@ html, body {
 .dark .bg-red-50   { background-color: rgba(127,29,29,0.3) !important; }
 .dark .text-red-800  { color: #fca5a5 !important; }
 .dark .border-red-300 { border-color: #991b1b !important; }
+
+/* ===== Smooth dark/light mode transitions =====
+   Overlay approach: a fixed pseudo-element briefly covers the screen
+   while colors change instantly underneath, then fades out.
+   This avoids triggering per-element repaints on large tables.
+===== */
+html.theme-transitioning::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background-color: var(--theme-overlay-color, #f8fafc);
+  animation: theme-fade-out 280ms ease-out forwards;
+}
+
+@keyframes theme-fade-out {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Tab content fade-in when switching tabs */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.18s ease-out both;
+}
+
+/* Avatar dropdown slide-down */
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeInDown {
+  animation: fadeInDown 0.15s ease-out both;
+}

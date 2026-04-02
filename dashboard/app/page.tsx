@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { getRanking, getTurnarounds, getCompounders, getPrices, getLatestPrices } from "./actions";
 import ThemeToggle from "@/components/ThemeToggle";
 import { createClient } from "@/lib/supabase/client";
@@ -191,6 +191,10 @@ const LABELS = {
   lgVolTitle:        { es: "Vol surge",        en: "Vol surge" },
   lgVolDesc:         { es: "Ratio entre el volumen reciente y el volumen promedio hist\u00f3rico. > 2\u00d7 indica actividad inusual.",
                        en: "Ratio of recent volume vs. historical average. > 2\u00d7 signals unusual activity." },
+  editProfile:       { es: "Editar perfil",       en: "Edit profile" },
+  editDisplayName:   { es: "Nombre para mostrar", en: "Display name" },
+  editSave:          { es: "Guardar",             en: "Save" },
+  editCancel:        { es: "Cancelar",            en: "Cancel" },
 } as const;
 
 function t(key: keyof typeof LABELS, lang: Lang): string {
@@ -198,16 +202,74 @@ function t(key: keyof typeof LABELS, lang: Lang): string {
 }
 
 function LangToggle({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
+  const esRef = useRef<HTMLButtonElement>(null);
+  const enRef = useRef<HTMLButtonElement>(null);
+  const [pill, setPill] = useState<{ left: number; width: number; ready: boolean }>({ left: 0, width: 0, ready: false });
+
+  useEffect(() => {
+    const btn = lang === "es" ? esRef.current : enRef.current;
+    if (btn) setPill({ left: btn.offsetLeft, width: btn.offsetWidth, ready: true });
+  }, [lang]);
+
   return (
-    <div className="inline-flex rounded-xl overflow-hidden border text-sm">
-      <button onClick={() => setLang("es")}
-        className={`px-2 py-1 ${lang === "es" ? "bg-black text-white" : "bg-white hover:bg-gray-100"}`}>
+    <div className="relative inline-flex rounded-xl overflow-hidden border dark:border-neutral-700 text-sm bg-white dark:bg-neutral-900">
+      {pill.ready && (
+        <span
+          className="absolute top-0 bottom-0 bg-black dark:bg-white rounded-xl transition-all duration-200 ease-in-out pointer-events-none"
+          style={{ left: pill.left, width: pill.width }}
+        />
+      )}
+      <button ref={esRef} onClick={() => setLang("es")}
+        className={`relative z-10 px-2 py-1 transition-colors duration-150 ${lang === "es" ? "text-white dark:text-black font-medium" : "text-gray-600 hover:text-gray-900 dark:text-gray-400"}` }>
         ES
       </button>
-      <button onClick={() => setLang("en")}
-        className={`px-2 py-1 ${lang === "en" ? "bg-black text-white" : "bg-white hover:bg-gray-100"}`}>
+      <button ref={enRef} onClick={() => setLang("en")}
+        className={`relative z-10 px-2 py-1 transition-colors duration-150 ${lang === "en" ? "text-white dark:text-black font-medium" : "text-gray-600 hover:text-gray-900 dark:text-gray-400"}`}>
         EN
       </button>
+    </div>
+  );
+}
+
+// =================== Tab Bar ===================
+type TabDef = { key: ViewMode; label: (lang: Lang) => string };
+const TAB_DEFS: TabDef[] = [
+  { key: "overview",    label: (lang) => t("tabOverview", lang) },
+  { key: "ranking",     label: () => "Ranking" },
+  { key: "turnarounds", label: () => "Turnarounds" },
+  { key: "compounders", label: () => "Compounders" },
+  { key: "portfolio",   label: (lang) => t("tabPortfolio", lang) },
+];
+
+function SlidingTabBar({ viewMode, setViewMode, lang }: { viewMode: ViewMode; setViewMode: (v: ViewMode) => void; lang: Lang }) {
+  const btnRefs = useRef<Partial<Record<ViewMode, HTMLButtonElement | null>>>({});
+  const [pill, setPill] = useState<{ left: number; width: number; ready: boolean }>({ left: 0, width: 0, ready: false });
+
+  useEffect(() => {
+    const btn = btnRefs.current[viewMode];
+    if (btn) setPill({ left: btn.offsetLeft, width: btn.offsetWidth, ready: true });
+  }, [viewMode]);
+
+  return (
+    <div className="relative inline-flex rounded-xl overflow-hidden border dark:border-neutral-700 flex-none bg-white dark:bg-neutral-900">
+      {pill.ready && (
+        <span
+          className="absolute top-0 bottom-0 bg-black dark:bg-white rounded-xl transition-all duration-200 ease-in-out pointer-events-none"
+          style={{ left: pill.left, width: pill.width }}
+        />
+      )}
+      {TAB_DEFS.map(({ key, label }) => (
+        <button
+          key={key}
+          ref={(el) => { btnRefs.current[key] = el; }}
+          onClick={() => setViewMode(key)}
+          className={`relative z-10 px-2 sm:px-3 py-1 text-xs sm:text-sm whitespace-nowrap transition-colors duration-150 ${
+            viewMode === key ? "text-white dark:text-black font-medium" : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+          }`}
+        >
+          {label(lang)}
+        </button>
+      ))}
     </div>
   );
 }
@@ -227,10 +289,10 @@ function bucketDisplay(b: string, lang: Lang): string {
   return key ? LABELS[key][lang] : b;
 }
 function bucketColor(b: string): string {
-  if (b === "Alta Convicci\u00f3n") return "bg-green-100 text-green-700";
-  if (b === "Vigilancia")         return "bg-amber-100 text-amber-700";
-  if (b === "Descartar")          return "bg-red-100 text-red-700";
-  return "bg-gray-100 text-gray-600";
+  if (b === "Alta Convicci\u00f3n") return "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300";
+  if (b === "Vigilancia")         return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
+  if (b === "Descartar")          return "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300";
+  return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
 }
 
 // =================== Componente ===================
@@ -238,7 +300,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [viewMode, setViewMode] = useState<ViewMode>("ranking");
+  const [viewMode, setViewMode] = useState<ViewMode | null>(null);
 
   // Ranking
   const [rows, setRows] = useState<RankRow[]>([]);
@@ -287,6 +349,14 @@ export default function Dashboard() {
   const [rangeKey, setRangeKey] = useState<string>("3M");
   const [lang, setLang] = useState<Lang>("es");
   const [showLegend, setShowLegend] = useState(false);
+
+  // Avatar dropdown + edit profile
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [userDisplayName, setUserDisplayName] = useState<string | null>(null);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   // ---------- Loaders ----------
   async function loadRanking() {
@@ -345,6 +415,7 @@ export default function Dashboard() {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
       setUserEmail(data.user?.email ?? null);
+      setUserDisplayName(data.user?.user_metadata?.full_name ?? null);
     });
   }, []);
 
@@ -425,24 +496,42 @@ export default function Dashboard() {
     window.location.href = "/login";
   }
 
+  async function saveDisplayName() {
+    if (!editName.trim()) return;
+    setEditSaving(true);
+    const supabase = createClient();
+    const { data } = await supabase.auth.updateUser({ data: { full_name: editName.trim() } });
+    if (data.user) setUserDisplayName(editName.trim());
+    setEditSaving(false);
+    setShowEditProfile(false);
+  }
+
+  // Close user menu on outside click
+  useEffect(() => {
+    if (!showUserMenu) return;
+    function handle(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [showUserMenu]);
+
   // ---------- Effects ----------
-  // Tab persistence via URL hash — read on mount, write on change
+  // Tab persistence via URL hash — read on mount (always set, default ranking), write on change
   useEffect(() => {
     const hash = window.location.hash.slice(1) as ViewMode;
     const valid: ViewMode[] = ["overview", "ranking", "turnarounds", "compounders", "portfolio"];
-    if (valid.includes(hash)) setViewMode(hash);
+    setViewMode(valid.includes(hash) ? hash : "overview");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    window.location.hash = viewMode;
+    if (viewMode) window.location.hash = viewMode;
   }, [viewMode]);
 
-  // inicial
-  useEffect(() => {
-    loadRanking();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+
 
   // recarga precios al cambiar símbolo o rango
   useEffect(() => {
@@ -565,8 +654,9 @@ export default function Dashboard() {
   }
 
   // =================== UI ===================
+  if (!viewMode) return null;
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
+    <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-50">
       {/* Legend Modal */}
       {showLegend && (
         <div
@@ -575,7 +665,7 @@ export default function Dashboard() {
         >
           {/* outer shell: clips border-radius, no overflow */}
           <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden"
+            className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* sticky header */}
@@ -624,61 +714,49 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-          <div className="flex items-center gap-2 overflow-x-auto">
-            <div className="inline-flex rounded-xl overflow-hidden border flex-none">
-              <button
-                onClick={() => setViewMode("overview")}
-                className={`px-2 sm:px-3 py-1 text-xs sm:text-sm whitespace-nowrap ${viewMode === "overview" ? "bg-black text-white" : "bg-white hover:bg-gray-100"}`}
-              >
-                {t("tabOverview", lang)}
-              </button>
-              <button
-                onClick={() => setViewMode("ranking")}
-                className={`px-2 sm:px-3 py-1 text-xs sm:text-sm whitespace-nowrap ${viewMode === "ranking" ? "bg-black text-white" : "bg-white hover:bg-gray-100"}`}
-              >
-                Ranking
-              </button>
-              <button
-                onClick={() => setViewMode("turnarounds")}
-                className={`px-2 sm:px-3 py-1 text-xs sm:text-sm whitespace-nowrap ${viewMode === "turnarounds" ? "bg-black text-white" : "bg-white hover:bg-gray-100"}`}
-              >
-                Turnarounds
-              </button>
-              <button
-                onClick={() => setViewMode("compounders")}
-                className={`px-2 sm:px-3 py-1 text-xs sm:text-sm whitespace-nowrap ${viewMode === "compounders" ? "bg-black text-white" : "bg-white hover:bg-gray-100"}`}
-              >
-                Compounders
-              </button>
-              <button
-                onClick={() => setViewMode("portfolio")}
-                className={`px-2 sm:px-3 py-1 text-xs sm:text-sm whitespace-nowrap ${viewMode === "portfolio" ? "bg-black text-white" : "bg-white hover:bg-gray-100"}`}
-              >
-                {t("tabPortfolio", lang)}
-              </button>
+      {/* Edit Profile Modal */}
+      {showEditProfile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowEditProfile(false)}>
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 pt-5 pb-3">
+              <h2 className="font-bold text-base">{t("editProfile", lang)}</h2>
+              <button onClick={() => setShowEditProfile(false)} className="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {userEmail && (
-              <div className="flex items-center gap-1 text-xs text-gray-500">
-                <span className="hidden sm:inline">{userEmail}</span>
-                <button
-                  onClick={signOut}
-                  title={t("portLogout", lang)}
-                  className="px-2 py-1 rounded-lg border text-xs hover:bg-gray-100"
-                >
-                  {t("portLogout", lang)}
+            <div className="px-6 pb-6 flex flex-col gap-3">
+              <div className="text-xs text-gray-500">{userEmail}</div>
+              <input
+                type="text"
+                placeholder={t("editDisplayName", lang)}
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && saveDisplayName()}
+                className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black"
+              />
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setShowEditProfile(false)} className="flex-1 rounded-xl py-2 border text-sm hover:bg-gray-50">
+                  {t("editCancel", lang)}
+                </button>
+                <button onClick={saveDisplayName} disabled={editSaving} className="flex-1 rounded-xl py-2 bg-black text-white text-sm hover:opacity-90 disabled:opacity-50">
+                  {editSaving ? "…" : t("editSave", lang)}
                 </button>
               </div>
-            )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <header className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/85 backdrop-blur border-b dark:border-gray-800">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div className="flex items-center gap-2 overflow-x-auto">
+            <SlidingTabBar viewMode={viewMode} setViewMode={setViewMode} lang={lang} />
+          </div>
+          <div className="flex items-center gap-2">
             <LangToggle lang={lang} setLang={setLang} />
             <button
               onClick={() => setShowLegend(true)}
               title={t("legendTitle", lang)}
-              className="w-8 h-8 rounded-full border text-sm font-bold hover:bg-gray-100 flex items-center justify-center"
+              className="w-8 h-8 rounded-lg border dark:border-neutral-600 text-sm font-bold hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors duration-200 flex items-center justify-center"
             >
               ?
             </button>
@@ -694,6 +772,39 @@ export default function Dashboard() {
             >
               {loading ? t("loadingBtn", lang) : t("reloadBtn", lang)}
             </button>
+            {userEmail && (
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setShowUserMenu((v) => !v)}
+                  className="w-8 h-8 rounded-full bg-black text-white dark:bg-white dark:text-black flex items-center justify-center text-sm font-bold hover:opacity-75 transition-opacity flex-none"
+                  aria-label="User menu"
+                >
+                  {(userDisplayName || userEmail).charAt(0).toUpperCase()}
+                </button>
+                {showUserMenu && (
+                  <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-neutral-900 border dark:border-neutral-700 rounded-2xl shadow-xl z-50 overflow-hidden animate-fadeInDown">
+                    <div className="px-4 py-3 border-b dark:border-neutral-700">
+                      {userDisplayName && <div className="font-semibold text-sm truncate">{userDisplayName}</div>}
+                      <div className="text-xs text-gray-500 truncate">{userEmail}</div>
+                    </div>
+                    <div className="py-1">
+                      <button
+                        onClick={() => { setShowUserMenu(false); setEditName(userDisplayName ?? ""); setShowEditProfile(true); }}
+                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors flex items-center gap-2"
+                      >
+                        <span>✏️</span> {t("editProfile", lang)}
+                      </button>
+                      <button
+                        onClick={signOut}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      >
+                        {t("portLogout", lang)}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -737,8 +848,8 @@ export default function Dashboard() {
                   <button
                     key={r.key}
                     onClick={() => setRangeKey(r.key)}
-                    className={`px-2 py-1 text-xs rounded-lg border ${
-                      rangeKey === r.key ? "bg-black text-white" : "bg-white hover:bg-gray-100"
+                    className={`px-2 py-1 text-xs rounded-lg border transition-colors duration-200 ${
+                      rangeKey === r.key ? "bg-black text-white dark:bg-white dark:text-black" : "bg-white hover:bg-gray-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-gray-300 dark:border-neutral-600"
                     }`}
                   >
                     {r.key}
@@ -843,7 +954,7 @@ export default function Dashboard() {
 
         {/* Overview */}
         {viewMode === "overview" && (
-          <>
+          <div className="animate-fadeIn">
             <div className="mb-4">
               <h2 className="text-lg font-bold">{t("tabOverview", lang)}</h2>
               <p className="text-sm text-gray-500">
@@ -854,8 +965,8 @@ export default function Dashboard() {
 
               {/* Top Ranking */}
               <div className="bg-white border rounded-2xl overflow-hidden shadow-sm">
-                <div className="flex items-center justify-between px-4 py-3 border-b bg-blue-50">
-                  <span className="font-semibold text-blue-900">{t("topRanking", lang)}</span>
+                <div className="flex items-center justify-between px-4 py-3 border-b bg-blue-50 dark:bg-blue-950/40">
+                  <span className="font-semibold text-blue-900 dark:text-blue-300">{t("topRanking", lang)}</span>
                   <button onClick={() => setViewMode("ranking")} className="text-xs text-blue-600 hover:underline">
                     {t("seeAll", lang)}
                   </button>
@@ -889,8 +1000,8 @@ export default function Dashboard() {
 
               {/* Top Turnarounds */}
               <div className="bg-white border rounded-2xl overflow-hidden shadow-sm">
-                <div className="flex items-center justify-between px-4 py-3 border-b bg-amber-50">
-                  <span className="font-semibold text-amber-900">{t("topTurnarounds", lang)}</span>
+                <div className="flex items-center justify-between px-4 py-3 border-b bg-amber-50 dark:bg-amber-950/40">
+                  <span className="font-semibold text-amber-900 dark:text-amber-300">{t("topTurnarounds", lang)}</span>
                   <button onClick={() => setViewMode("turnarounds")} className="text-xs text-amber-600 hover:underline">
                     {t("seeAll", lang)}
                   </button>
@@ -925,8 +1036,8 @@ export default function Dashboard() {
 
               {/* Top Compounders */}
               <div className="bg-white border rounded-2xl overflow-hidden shadow-sm">
-                <div className="flex items-center justify-between px-4 py-3 border-b bg-green-50">
-                  <span className="font-semibold text-green-900">{t("topCompounders", lang)}</span>
+                <div className="flex items-center justify-between px-4 py-3 border-b bg-green-50 dark:bg-green-950/40">
+                  <span className="font-semibold text-green-900 dark:text-green-300">{t("topCompounders", lang)}</span>
                   <button onClick={() => setViewMode("compounders")} className="text-xs text-green-600 hover:underline">
                     {t("seeAll", lang)}
                   </button>
@@ -963,12 +1074,12 @@ export default function Dashboard() {
               </div>
 
             </div>
-          </>
+          </div>
         )}
 
         {/* Ranking */}
         {viewMode === "ranking" && (
-          <>
+          <div className="animate-fadeIn">
             <section className="mb-4 grid grid-cols-1 md:grid-cols-5 gap-3">
               <input
                 placeholder={t("searchPlaceholder", lang)}
@@ -1037,12 +1148,11 @@ export default function Dashboard() {
               </select>
             </section>
 
-            <section className="bg-white border rounded-2xl shadow-sm">
+            <section className="bg-white border rounded-2xl shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
-              <table className="min-w-[900px] w-full text-left text-sm">
+              <table className="min-w-[860px] w-full text-left text-sm">
                 <thead className="bg-gray-100 text-gray-700">
                   <tr>
-                    <th className="px-2 py-2 w-10"></th>
                     <th className="px-3 py-2">{t("symbol", lang)}</th>
                     <th className="px-3 py-2">{t("name", lang)}</th>
                     <th className="px-3 py-2">{t("type", lang)}</th>
@@ -1053,22 +1163,19 @@ export default function Dashboard() {
                     <th className="px-3 py-2 text-right">Mom 1y</th>
                     <th className="px-3 py-2 text-right">RS vs SPY</th>
                     <th className="px-3 py-2 text-right">{t("liquidity", lang)}</th>
-                    <th className="px-3 py-2">{t("action", lang)}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pagedRanking.map((r) => (
-                    <tr key={r.symbol} className="border-t hover:bg-gray-50">
-                      <td className="px-2 py-1">
-                        <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
-                          <img
-                            src={logoSrc(r.symbol)}
-                            alt={r.symbol}
-                            className="w-full h-full object-cover"
-                          />
+                    <tr key={r.symbol} className="border-t hover:bg-gray-50 cursor-pointer" onClick={() => handleOpen(r)}>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
+                            <img src={logoSrc(r.symbol)} alt={r.symbol} className="w-full h-full object-cover" />
+                          </div>
+                          <span className="font-semibold">{r.symbol}</span>
                         </div>
                       </td>
-                      <td className="px-3 py-2 font-semibold">{r.symbol}</td>
                       <td className="px-3 py-2">{r.name ?? "—"}</td>
                       <td className="px-3 py-2">{r.asset_type ?? "—"}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{r.final_score?.toFixed(3) ?? "—"}</td>
@@ -1078,16 +1185,11 @@ export default function Dashboard() {
                       <td className="px-3 py-2 text-right tabular-nums">{r.mom_1y != null ? (r.mom_1y * 100).toFixed(2) + "%" : "—"}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{r.rs_spy != null ? (r.rs_spy * 100).toFixed(2) + "%" : "—"}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{r.liq_score?.toFixed(2) ?? "—"}</td>
-                      <td className="px-3 py-2">
-                        <button onClick={() => handleOpen(r)} className="px-3 py-1 rounded-lg bg-black text-white text-xs">
-                          {t("view", lang)}
-                        </button>
-                      </td>
                     </tr>
                   ))}
                   {pagedRanking.length === 0 && (
                     <tr>
-                      <td colSpan={12} className="px-3 py-6 text-center text-gray-500">
+                      <td colSpan={10} className="px-3 py-6 text-center text-gray-500">
                         {t("noResults", lang)}
                       </td>
                     </tr>
@@ -1102,11 +1204,11 @@ export default function Dashboard() {
               onPrev={() => setPage((p) => Math.max(0, p - 1))}
               onNext={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
             />
-          </>
+          </div>
         )}
 
         {/* Turnarounds */}
-        {viewMode === "turnarounds" && (<>
+        {viewMode === "turnarounds" && (<div className="animate-fadeIn">
           <div className="mb-3 flex items-center justify-between text-sm">
             <span className="text-gray-500">{turnRows.length} {t("candidates", lang)}</span>
             <select
@@ -1119,12 +1221,11 @@ export default function Dashboard() {
               <option value={100}>{`100 / ${t("perPage", lang)}`}</option>
             </select>
           </div>
-          <section className="bg-white border rounded-2xl shadow-sm">
+          <section className="bg-white border rounded-2xl shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-            <table className="min-w-[700px] w-full text-left text-sm">
+            <table className="min-w-[620px] w-full text-left text-sm">
               <thead className="bg-gray-100 text-gray-700">
                 <tr>
-                  <th className="px-2 py-2 w-10"></th>
                   <th className="px-3 py-2">{t("symbol", lang)}</th>
                   <th className="px-3 py-2">{t("name", lang)}</th>
                   <th className="px-3 py-2">{t("type", lang)}</th>
@@ -1132,43 +1233,30 @@ export default function Dashboard() {
                   <th className="px-3 py-2 text-right">Mom 1m</th>
                   <th className="px-3 py-2 text-right">Mom 3m</th>
                   <th className="px-3 py-2 text-right">Vol surge</th>
-                  <th className="px-3 py-2">{t("action", lang)}</th>
                 </tr>
               </thead>
               <tbody>
                 {pagedTurnRows.map((tr) => (
-                  <tr key={tr.symbol} className="border-t hover:bg-gray-50">
-                    <td className="px-2 py-1">
-                      <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
-                        <img src={logoSrc(tr.symbol)} alt={tr.symbol} className="w-full h-full object-cover" />
+                  <tr key={tr.symbol} className="border-t hover:bg-gray-50 cursor-pointer" onClick={() => openFromSymbol(tr.symbol, tr.name, tr.asset_type, tr.racional_url, { mom_1m: tr.mom_1m, mom_3m: tr.mom_3m, liq_score: tr.liq_score })}>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
+                          <img src={logoSrc(tr.symbol)} alt={tr.symbol} className="w-full h-full object-cover" />
+                        </div>
+                        <span className="font-semibold">{tr.symbol}</span>
                       </div>
                     </td>
-                    <td className="px-3 py-2 font-semibold">{tr.symbol}</td>
                     <td className="px-3 py-2">{tr.name ?? "—"}</td>
                     <td className="px-3 py-2">{tr.asset_type ?? "—"}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{tr.rebound_from_low != null ? (tr.rebound_from_low * 100).toFixed(0) + "%" : "—"}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{tr.mom_1m != null ? (tr.mom_1m * 100).toFixed(1) + "%" : "—"}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{tr.mom_3m != null ? (tr.mom_3m * 100).toFixed(1) + "%" : "—"}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{tr.vol_surge != null ? tr.vol_surge.toFixed(2) + "×" : "—"}</td>
-                    <td className="px-3 py-2">
-                      <button
-                        onClick={() =>
-                          openFromSymbol(tr.symbol, tr.name, tr.asset_type, tr.racional_url, {
-                            mom_1m: tr.mom_1m,
-                            mom_3m: tr.mom_3m,
-                            liq_score: tr.liq_score,
-                          })
-                        }
-                        className="px-3 py-1 rounded-lg bg-black text-white text-xs"
-                      >
-                        {t("view", lang)}
-                      </button>
-                    </td>
                   </tr>
                 ))}
                 {pagedTurnRows.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-3 py-6 text-center text-gray-500">
+                    <td colSpan={7} className="px-3 py-6 text-center text-gray-500">
                       {t("noCandidates", lang)}
                     </td>
                   </tr>
@@ -1182,11 +1270,11 @@ export default function Dashboard() {
             onPrev={() => setTurnPage((p) => Math.max(0, p - 1))}
             onNext={() => setTurnPage((p) => Math.min(totalTurnPages - 1, p + 1))}
           />
-        </>)}
+        </div>)}
 
         {/* Compounders */}
         {viewMode === "compounders" && (
-          <>
+          <div className="animate-fadeIn">
             {/* Controles */}
             <section className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-3">
               <div className="flex items-center gap-2">
@@ -1245,19 +1333,17 @@ export default function Dashboard() {
             </div>
 
             {/* Tabla */}
-            <section className="bg-white border rounded-2xl shadow-sm">
+            <section className="bg-white border rounded-2xl shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
-              <table className="min-w-[640px] w-full text-left text-sm">
+              <table className="min-w-[560px] w-full text-left text-sm">
                 <thead className="bg-gray-100 text-gray-700">
                   <tr>
-                    <th className="px-2 py-2 w-10"></th>
                     <th className="px-3 py-2">{t("symbol", lang)}</th>
                     <th className="px-3 py-2">{t("name", lang)}</th>
                     <th className="px-3 py-2 text-right">CAGR</th>
                     <th className="px-3 py-2 text-right">{t("posMonthsCol", lang)}</th>
                     <th className="px-3 py-2 text-right">Max DD</th>
                     <th className="px-3 py-2 text-right">{t("days", lang)}</th>
-                    <th className="px-3 py-2">{t("action", lang)}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1265,13 +1351,15 @@ export default function Dashboard() {
                     const cagr =
                       cmpHorizon === "1Y" ? r.cagr_1y : cmpHorizon === "3Y" ? r.cagr_3y : r.cagr_5y;
                     return (
-                      <tr key={r.symbol} className="border-t hover:bg-gray-50">
-                        <td className="px-2 py-1">
-                          <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
-                            <img src={logoSrc(r.symbol)} alt={r.symbol} className="w-full h-full object-cover" />
+                      <tr key={r.symbol} className="border-t hover:bg-gray-50 cursor-pointer" onClick={() => openFromSymbol(r.symbol, r.name, r.asset_type, r.racional_url)}>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
+                              <img src={logoSrc(r.symbol)} alt={r.symbol} className="w-full h-full object-cover" />
+                            </div>
+                            <span className="font-semibold">{r.symbol}</span>
                           </div>
                         </td>
-                        <td className="px-3 py-2 font-semibold">{r.symbol}</td>
                         <td className="px-3 py-2">{r.name ?? "—"}</td>
                         <td className="px-3 py-2 text-right tabular-nums">
                           {cagr != null ? (cagr * 100).toFixed(1) + "%" : "—"}
@@ -1283,20 +1371,12 @@ export default function Dashboard() {
                           {r.max_drawdown != null ? (r.max_drawdown * 100).toFixed(0) + "%" : "—"}
                         </td>
                         <td className="px-3 py-2 text-right tabular-nums">{r.days_covered ?? "—"}</td>
-                        <td className="px-3 py-2">
-                          <button
-                            onClick={() => openFromSymbol(r.symbol, r.name, r.asset_type, r.racional_url)}
-                            className="px-3 py-1 rounded-lg bg-black text-white text-xs"
-                          >
-                            {t("view", lang)}
-                          </button>
-                        </td>
                       </tr>
                     );
                   })}
                   {pagedCompounders.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-3 py-6 text-center text-gray-500">
+                      <td colSpan={6} className="px-3 py-6 text-center text-gray-500">
                         {t("noResults", lang)}
                       </td>
                     </tr>
@@ -1310,12 +1390,12 @@ export default function Dashboard() {
               onPrev={() => setCmpPage((p) => Math.max(0, p - 1))}
               onNext={() => setCmpPage((p) => Math.min(totalCmpPages - 1, p + 1))}
             />
-          </>
+          </div>
         )}
 
         {/* ======= Portfolio tab ======= */}
         {viewMode === "portfolio" && (
-          <>
+          <div className="animate-fadeIn">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold">{t("tabPortfolio", lang)}</h2>
               <button
@@ -1531,7 +1611,7 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
-          </>
+          </div>
         )}
       </main>
 
