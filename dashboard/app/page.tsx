@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { getRanking, getTurnarounds, getCompounders, getPrices, getLatestPrices } from "./actions";
+import { getRanking, getTurnarounds, getCompounders, getPrices, getLatestPrices, getFinnhubData, getAccumulationZone } from "./actions";
 import ThemeToggle from "@/components/ThemeToggle";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -12,6 +12,9 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 
 // =================== Constantes ===================
@@ -27,7 +30,7 @@ const RANGE_OPTIONS: Array<{ key: string; days: number }> = [
   { key: "5Y", days: 365 * 5 },
 ];
 
-type ViewMode = "overview" | "ranking" | "turnarounds" | "compounders" | "portfolio";
+type ViewMode = "overview" | "ranking" | "turnarounds" | "accumulation" | "compounders" | "portfolio";
 
 // =================== Tipos ===================
 type RankRow = {
@@ -63,6 +66,22 @@ type TurnRow = {
   date: string;
   close: number | null;
   rebound_from_low: number | null;
+  mom_1m: number | null;
+  mom_3m: number | null;
+  vol_surge: number | null;
+  liq_score: number | null;
+};
+
+type AccumRow = {
+  symbol: string;
+  name: string | null;
+  asset_type: string | null;
+  racional_url: string | null;
+  date: string;
+  close: number | null;
+  pct_above_52w_low: number | null;
+  pct_from_52w_high: number | null;
+  mom_1w: number | null;
   mom_1m: number | null;
   mom_3m: number | null;
   vol_surge: number | null;
@@ -194,7 +213,50 @@ const LABELS = {
   editProfile:       { es: "Editar perfil",       en: "Edit profile" },
   editDisplayName:   { es: "Nombre para mostrar", en: "Display name" },
   editSave:          { es: "Guardar",             en: "Save" },
-  editCancel:        { es: "Cancelar",            en: "Cancel" },
+  editCancel:           { es: "Cancelar",            en: "Cancel" },
+  viewInTradingView:    { es: "Ver en TradingView",  en: "View in TradingView" },
+  analystConsensus:     { es: "Consenso analistas",  en: "Analyst consensus" },
+  latestNews:           { es: "Últimas noticias",    en: "Latest news" },
+  strongBuy:            { es: "Compra fuerte",       en: "Strong Buy" },
+  strongSell:           { es: "Venta fuerte",        en: "Strong Sell" },
+  marketCap:            { es: "Cap. mercado",        en: "Market cap" },
+  peRatio:              { es: "P/E",                 en: "P/E" },
+  ebitda:               { es: "EBITDA",              en: "EBITDA" },
+  divYield:             { es: "Div. yield",          en: "Div. yield" },
+  prevClose:            { es: "Cierre ayer",         en: "Prev. close" },
+  dayHigh:              { es: "Máx. ayer",           en: "Day high" },
+  dayLow:               { es: "Mín. ayer",           en: "Day low" },
+  dayOpen:              { es: "Apertura",             en: "Open" },
+  priceChange:          { es: "Variación",            en: "Change" },
+  week52High:           { es: "Máx. 52s",            en: "52w high" },
+  week52Low:            { es: "Mín. 52s",             en: "52w low" },
+  eps:                  { es: "EPS (TTM)",            en: "EPS (TTM)" },
+  revenueGrowth:        { es: "Crec. ingresos",       en: "Revenue growth" },
+  fundamentals:         { es: "Fundamentales",        en: "Fundamentals" },
+  companyDescription:   { es: "Descripción",          en: "About" },
+  momentum:             { es: "Momentum",             en: "Momentum" },
+  technicals:           { es: "Técnicos",             en: "Technicals" },
+  infoHowItWorks:       { es: "¿Cómo funciona?",      en: "How it works" },
+  infoOverviewText: {
+    es: "Panel de análisis cuantitativo. Cada activo recibe un score que combina momentum (velocidad de subida/bajada del precio), liquidez (volumen de operaciones) y tendencia técnica (medias móviles). Los tres módulos muestran los mejores candidatos de cada estrategia. Haz clic en cualquier activo para ver su gráfico y señales detalladas.",
+    en: "Quantitative analysis dashboard. Each asset gets a score combining momentum (price movement speed), liquidity (trading volume) and technical trend (moving averages). The three modules show top candidates from each strategy. Click any asset to view its chart and detailed signals.",
+  },
+  infoRankingText: {
+    es: "Activos ordenados por score compuesto (0–1). Alta Convicción (≥ 0.7): momentum fuerte, alta liquidez y tendencia alcista — candidatos de mayor probabilidad. Vigilancia (0.4–0.7): señales mixtas, seguir de cerca. Descartar (< 0.4): sin catalizadores claros. Filtra por bucket, tipo y score mínimo; haz clic en cualquier fila para ver el gráfico.",
+    en: "Assets ranked by composite score (0–1). High Conviction (≥ 0.7): strong momentum, high liquidity and uptrend — highest-probability candidates. Watch (0.4–0.7): mixed signals, monitor closely. Discard (< 0.4): no clear catalysts. Filter by bucket, type and minimum score; click any row to view the chart.",
+  },
+  infoTurnaroundsText: {
+    es: "Candidatos a recuperación: activos que han rebotado desde su mínimo de 52 semanas con aumento inusual de volumen. Son apuestas contrarias — mayor riesgo que el Ranking, pero mayor potencial si la recuperación se confirma. Un buen candidato tiene rebote > 20% desde el piso y vol surge > 2×. Úsalos como señal de alerta temprana, no como certeza.",
+    en: "Recovery candidates: assets bouncing from 52-week lows with unusual volume surge. These are contrarian bets — higher risk than Ranking, but greater upside if recovery confirms. A good candidate has rebound > 20% from the floor and vol surge > 2×. Use as an early warning signal, not a certainty.",
+  },
+  infoCompoundersText: {
+    es: "Activos con crecimiento compuesto históricamente sostenido. CAGR: retorno anual del precio en el horizonte elegido (1Y/3Y/5Y). % Meses positivos: consistencia del crecimiento — por encima del 60% significa que sube la mayoría de los meses. Max Drawdown: la peor caída desde pico a valle — menos negativo es mejor. Un compounder ideal tiene CAGR > 15%, meses positivos > 60% y drawdown máximo mejor que −30%.",
+    en: "Assets with historically sustained compound growth. CAGR: annualized price return over the chosen horizon (1Y/3Y/5Y). % Positive months: growth consistency — above 60% means it rises most months. Max Drawdown: worst peak-to-trough drop — less negative is better. An ideal compounder has CAGR > 15%, positive months > 60% and max drawdown better than −30%.",
+  },
+  infoPortfolioText: {
+    es: "Rastrea tus posiciones personales. Añade símbolo, número de acciones y costo promedio de compra para ver el P&L (ganancia/pérdida no realizada) calculado con el último precio de cierre disponible. Haz clic en cualquier símbolo para ver su gráfico.",
+    en: "Track your personal positions. Add symbol, number of shares and average purchase cost to see unrealized P&L calculated using the last available closing price. Click any symbol to view its chart.",
+  },
 } as const;
 
 function t(key: keyof typeof LABELS, lang: Lang): string {
@@ -234,11 +296,12 @@ function LangToggle({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void 
 // =================== Tab Bar ===================
 type TabDef = { key: ViewMode; label: (lang: Lang) => string };
 const TAB_DEFS: TabDef[] = [
-  { key: "overview",    label: (lang) => t("tabOverview", lang) },
-  { key: "ranking",     label: () => "Ranking" },
-  { key: "turnarounds", label: () => "Turnarounds" },
-  { key: "compounders", label: () => "Compounders" },
-  { key: "portfolio",   label: (lang) => t("tabPortfolio", lang) },
+  { key: "overview",     label: (lang) => t("tabOverview", lang) },
+  { key: "ranking",      label: () => "Ranking" },
+  { key: "turnarounds",  label: () => "Turnarounds" },
+  { key: "accumulation", label: (lang) => lang === "es" ? "Zona Acumulación" : "Accumulation" },
+  { key: "compounders",  label: () => "Compounders" },
+  { key: "portfolio",    label: (lang) => t("tabPortfolio", lang) },
 ];
 
 function SlidingTabBar({ viewMode, setViewMode, lang }: { viewMode: ViewMode; setViewMode: (v: ViewMode) => void; lang: Lang }) {
@@ -314,6 +377,10 @@ export default function Dashboard() {
   // Turnarounds
   const [turnRows, setTurnRows] = useState<TurnRow[]>([]);
 
+  // Accumulation Zone
+  const [accumRows, setAccumRows] = useState<AccumRow[]>([]);
+  const [accumPage, setAccumPage] = useState<number>(0);
+
   // Compounders
   const [compoundRows, setCompoundRows] = useState<CompoundRow[]>([]);
   const [cmpHorizon, setCmpHorizon] = useState<"1Y" | "3Y" | "5Y">("1Y");
@@ -347,14 +414,45 @@ export default function Dashboard() {
   const [prices, setPrices] = useState<PriceRow[]>([]);
   const [pricesLoading, setPricesLoading] = useState(false);
   const [rangeKey, setRangeKey] = useState<string>("3M");
+
+  // Finnhub
+  const [finnhubData, setFinnhubData] = useState<{
+    news: { headline: string; url: string; source: string; datetime: number }[];
+    recommendation: { buy: number; hold: number; sell: number; strongBuy: number; strongSell: number; period: string } | null;
+    quote: { c: number; h: number; l: number; o: number; pc: number; dp: number } | null;
+    metrics: {
+      marketCapitalization: number | null;
+      peBasicExclExtraTTM: number | null;
+      ebitdaAnnual: number | null;
+      dividendYieldIndicatedAnnual: number | null;
+      revenueGrowthTTMYoy: number | null;
+      epsBasicExclExtraItemsTTM: number | null;
+      '52WeekHigh': number | null;
+      '52WeekLow': number | null;
+    } | null;
+  } | null>(null);
+  const [finnhubLoading, setFinnhubLoading] = useState(false);
   const [lang, setLang] = useState<Lang>("es");
   const [showLegend, setShowLegend] = useState(false);
+
+  useEffect(() => {
+    if (!selected?.symbol) { setFinnhubData(null); return; }
+    setFinnhubLoading(true);
+    getFinnhubData(selected.symbol)
+      .then(setFinnhubData)
+      .catch(() => setFinnhubData(null))
+      .finally(() => setFinnhubLoading(false));
+  }, [selected?.symbol]);
 
   // Avatar dropdown + edit profile
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [userDisplayName, setUserDisplayName] = useState<string | null>(null);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [editName, setEditName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editAgeRange, setEditAgeRange] = useState("");
+  const [editExperience, setEditExperience] = useState("");
+  const [editRiskTolerance, setEditRiskTolerance] = useState("");
   const [editSaving, setEditSaving] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -378,6 +476,18 @@ export default function Dashboard() {
     setError(null);
     try {
       setTurnRows((await getTurnarounds()) as TurnRow[]);
+    } catch (e: any) {
+      setError(e.message || String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadAccumulation() {
+    setLoading(true);
+    setError(null);
+    try {
+      setAccumRows((await getAccumulationZone()) as AccumRow[]);
     } catch (e: any) {
       setError(e.message || String(e));
     } finally {
@@ -414,8 +524,12 @@ export default function Dashboard() {
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
+      const meta = data.user?.user_metadata ?? {};
       setUserEmail(data.user?.email ?? null);
-      setUserDisplayName(data.user?.user_metadata?.full_name ?? null);
+      const fn = meta.first_name ?? "";
+      const ln = meta.last_name ?? "";
+      const fullName = meta.full_name ?? (fn || ln ? `${fn} ${ln}`.trim() : null);
+      setUserDisplayName(fullName);
     });
   }, []);
 
@@ -497,11 +611,20 @@ export default function Dashboard() {
   }
 
   async function saveDisplayName() {
-    if (!editName.trim()) return;
     setEditSaving(true);
     const supabase = createClient();
-    const { data } = await supabase.auth.updateUser({ data: { full_name: editName.trim() } });
-    if (data.user) setUserDisplayName(editName.trim());
+    const fullName = `${editName.trim()} ${editLastName.trim()}`.trim() || editName.trim();
+    const { data } = await supabase.auth.updateUser({
+      data: {
+        first_name: editName.trim(),
+        last_name: editLastName.trim(),
+        full_name: fullName,
+        age_range: editAgeRange,
+        experience: editExperience,
+        risk_tolerance: editRiskTolerance,
+      },
+    });
+    if (data.user) setUserDisplayName(fullName || null);
     setEditSaving(false);
     setShowEditProfile(false);
   }
@@ -522,7 +645,7 @@ export default function Dashboard() {
   // Tab persistence via URL hash — read on mount (always set, default ranking), write on change
   useEffect(() => {
     const hash = window.location.hash.slice(1) as ViewMode;
-    const valid: ViewMode[] = ["overview", "ranking", "turnarounds", "compounders", "portfolio"];
+    const valid: ViewMode[] = ["overview", "ranking", "turnarounds", "accumulation", "compounders", "portfolio"];
     setViewMode(valid.includes(hash) ? hash : "overview");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -546,6 +669,7 @@ export default function Dashboard() {
     if (viewMode === "overview") { loadRanking(); loadTurnarounds(); loadCompounders(cmpHorizon); }
     if (viewMode === "ranking") loadRanking();
     if (viewMode === "turnarounds") loadTurnarounds();
+    if (viewMode === "accumulation") loadAccumulation();
     if (viewMode === "compounders") loadCompounders(cmpHorizon);
     if (viewMode === "portfolio") loadHoldings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -582,7 +706,7 @@ export default function Dashboard() {
   }, [rows, q, bucket, atype, minScore, sortKey, sortDir, viewMode]);
 
   // Reset todas las páginas al cambiar de pestaña
-  useEffect(() => { setPage(0); setTurnPage(0); setCmpPage(0); }, [viewMode]);
+  useEffect(() => { setPage(0); setTurnPage(0); setAccumPage(0); setCmpPage(0); }, [viewMode]);
   // Reset página ranking al cambiar filtros
   useEffect(() => { setPage(0); }, [q, bucket, atype, minScore, sortKey, sortDir]);
   // Reset página compounders al cambiar filtros
@@ -593,6 +717,9 @@ export default function Dashboard() {
 
   const totalTurnPages = Math.max(1, Math.ceil(turnRows.length / pageSize));
   const pagedTurnRows = turnRows.slice(turnPage * pageSize, (turnPage + 1) * pageSize);
+
+  const totalAccumPages = Math.max(1, Math.ceil(accumRows.length / pageSize));
+  const pagedAccumRows = accumRows.slice(accumPage * pageSize, (accumPage + 1) * pageSize);
 
   const filteredCompounders = useMemo(() => {
     if (viewMode !== "compounders") return compoundRows;
@@ -714,6 +841,99 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Add Holding Modal — hoisted to top level so fixed overlay covers full viewport */}
+      {showAddHolding && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={closeAddModal}
+        >
+          <div
+            className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 pt-5 pb-3">
+              <h2 className="font-bold text-base">{t("portAddHolding", lang)}</h2>
+              <button onClick={closeAddModal} className="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+            </div>
+            <div className="px-6 pb-6 flex flex-col gap-3">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder={`${t("portSymbol", lang)} — search…`}
+                  value={symbolSearch}
+                  onChange={(e) => {
+                    const v = e.target.value.toUpperCase();
+                    setSymbolSearch(v);
+                    setNewSymbol(v);
+                    setSymDropOpen(true);
+                  }}
+                  onFocus={() => setSymDropOpen(true)}
+                  onBlur={() => setTimeout(() => setSymDropOpen(false), 150)}
+                  className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black uppercase"
+                />
+                {symDropOpen && symbolSearch.length > 0 &&
+                  rows.filter((r) => {
+                    const q = symbolSearch.toLowerCase();
+                    return r.symbol.toLowerCase().includes(q) || (r.name ?? "").toLowerCase().includes(q);
+                  }).length > 0 && (
+                  <ul className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                    {rows
+                      .filter((r) => {
+                        const q = symbolSearch.toLowerCase();
+                        return r.symbol.toLowerCase().includes(q) || (r.name ?? "").toLowerCase().includes(q);
+                      })
+                      .slice(0, 8)
+                      .map((r) => (
+                        <li
+                          key={r.symbol}
+                          onMouseDown={() => {
+                            setNewSymbol(r.symbol);
+                            setSymbolSearch(r.symbol);
+                            setSymDropOpen(false);
+                          }}
+                          className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-100 first:rounded-t-xl last:rounded-b-xl"
+                        >
+                          <span className="font-mono font-semibold w-16 shrink-0 text-xs">{r.symbol}</span>
+                          <span className="text-gray-500 truncate text-xs">{r.name}</span>
+                        </li>
+                      ))}
+                  </ul>
+                )}
+              </div>
+              <input
+                type="number"
+                placeholder={t("portShares", lang)}
+                min="0"
+                step="any"
+                value={newShares}
+                onChange={(e) => setNewShares(e.target.value)}
+                className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black"
+              />
+              <input
+                type="number"
+                placeholder={`${t("portAvgCost", lang)} (optional)`}
+                min="0"
+                step="any"
+                value={newAvgCost}
+                onChange={(e) => setNewAvgCost(e.target.value)}
+                className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black"
+              />
+              {holdingError && (
+                <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{holdingError}</p>
+              )}
+              <div className="flex gap-2 pt-1">
+                <button onClick={closeAddModal} className="flex-1 rounded-xl py-2 border text-sm hover:bg-gray-50">
+                  {t("portCancel", lang)}
+                </button>
+                <button onClick={addHolding} className="flex-1 rounded-xl py-2 bg-black text-white text-sm hover:opacity-90">
+                  {t("portSave", lang)}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit Profile Modal */}
       {showEditProfile && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowEditProfile(false)}>
@@ -722,16 +942,47 @@ export default function Dashboard() {
               <h2 className="font-bold text-base">{t("editProfile", lang)}</h2>
               <button onClick={() => setShowEditProfile(false)} className="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
             </div>
-            <div className="px-6 pb-6 flex flex-col gap-3">
-              <div className="text-xs text-gray-500">{userEmail}</div>
-              <input
-                type="text"
-                placeholder={t("editDisplayName", lang)}
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && saveDisplayName()}
-                className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black"
-              />
+            <div className="px-6 pb-6 flex flex-col gap-3 overflow-y-auto max-h-[70vh]">
+              <div className="text-xs text-gray-500 pb-1 border-b">{userEmail}</div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  placeholder={lang === "es" ? "Nombre" : "First name"}
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black"
+                />
+                <input
+                  type="text"
+                  placeholder={lang === "es" ? "Apellido" : "Last name"}
+                  value={editLastName}
+                  onChange={(e) => setEditLastName(e.target.value)}
+                  className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black"
+                />
+              </div>
+              <select value={editAgeRange} onChange={(e) => setEditAgeRange(e.target.value)}
+                className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black">
+                <option value="">{lang === "es" ? "Rango de edad" : "Age range"}</option>
+                <option value="18-25">18 – 25</option>
+                <option value="26-35">26 – 35</option>
+                <option value="36-45">36 – 45</option>
+                <option value="46-55">46 – 55</option>
+                <option value="55+">55+</option>
+              </select>
+              <select value={editExperience} onChange={(e) => setEditExperience(e.target.value)}
+                className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black">
+                <option value="">{lang === "es" ? "Experiencia inversora" : "Investment experience"}</option>
+                <option value="beginner">{lang === "es" ? "Principiante" : "Beginner"}</option>
+                <option value="intermediate">{lang === "es" ? "Intermedio" : "Intermediate"}</option>
+                <option value="advanced">{lang === "es" ? "Avanzado" : "Advanced"}</option>
+              </select>
+              <select value={editRiskTolerance} onChange={(e) => setEditRiskTolerance(e.target.value)}
+                className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black">
+                <option value="">{lang === "es" ? "Tolerancia al riesgo" : "Risk tolerance"}</option>
+                <option value="conservative">{lang === "es" ? "Conservador" : "Conservative"}</option>
+                <option value="moderate">{lang === "es" ? "Moderado" : "Moderate"}</option>
+                <option value="aggressive">{lang === "es" ? "Agresivo" : "Aggressive"}</option>
+              </select>
               <div className="flex gap-2 pt-1">
                 <button onClick={() => setShowEditProfile(false)} className="flex-1 rounded-xl py-2 border text-sm hover:bg-gray-50">
                   {t("editCancel", lang)}
@@ -768,9 +1019,17 @@ export default function Dashboard() {
                 else if (viewMode === "turnarounds") loadTurnarounds();
                 else loadCompounders(cmpHorizon);
               }}
-              className="rounded-xl px-4 py-2 bg-black text-white text-sm shadow hover:opacity-90"
+              title={t("reloadBtn", lang)}
+              className="w-8 h-8 flex items-center justify-center rounded-lg border dark:border-neutral-600 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors duration-200"
             >
-              {loading ? t("loadingBtn", lang) : t("reloadBtn", lang)}
+              <svg
+                width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+                className={loading ? "animate-spin" : ""}
+              >
+                <path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                <path d="M21 3v5h-5" />
+              </svg>
             </button>
             {userEmail && (
               <div className="relative" ref={userMenuRef}>
@@ -789,7 +1048,19 @@ export default function Dashboard() {
                     </div>
                     <div className="py-1">
                       <button
-                        onClick={() => { setShowUserMenu(false); setEditName(userDisplayName ?? ""); setShowEditProfile(true); }}
+                        onClick={() => {
+          setShowUserMenu(false);
+          const supabase = createClient();
+          supabase.auth.getUser().then(({ data }) => {
+            const meta = data.user?.user_metadata ?? {};
+            setEditName(meta.first_name ?? "");
+            setEditLastName(meta.last_name ?? "");
+            setEditAgeRange(meta.age_range ?? "");
+            setEditExperience(meta.experience ?? "");
+            setEditRiskTolerance(meta.risk_tolerance ?? "");
+            setShowEditProfile(true);
+          });
+        }}
                         className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors flex items-center gap-2"
                       >
                         <span>✏️</span> {t("editProfile", lang)}
@@ -818,53 +1089,63 @@ export default function Dashboard() {
         )}
 
         {/* Panel superior: gráfico + señales */}
-        <section className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Chart */}
-          <div className="md:col-span-2 bg-white border rounded-2xl p-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
-              <div className="flex items-center gap-3">
-                {selected && (
-                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
-                    <img
-                      src={logoSrc(selected.symbol)}
-                      alt={`${selected.name ?? selected.symbol} logo`}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
-                <h2 className="text-lg font-semibold">
-                  {selected ? (
-                    <>
-                      {selected.symbol} — {selected.name}
-                    </>
-                  ) : (
-                    t("selectSymbol", lang)
-                  )}
-                </h2>
-              </div>
-              {/* botones rango */}
-              <div className="flex gap-1 flex-wrap">
-                {RANGE_OPTIONS.map((r) => (
-                  <button
-                    key={r.key}
-                    onClick={() => setRangeKey(r.key)}
-                    className={`px-2 py-1 text-xs rounded-lg border transition-colors duration-200 ${
-                      rangeKey === r.key ? "bg-black text-white dark:bg-white dark:text-black" : "bg-white hover:bg-gray-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-gray-300 dark:border-neutral-600"
-                    }`}
-                  >
-                    {r.key}
-                  </button>
-                ))}
-              </div>
-            </div>
+        <section className="mb-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-            <div className="h-64 mt-10 flex items-center justify-center p-4">
-              {!selected ? (
-                <div className="text-gray-500">{t("pickSymbol", lang)}</div>
-              ) : pricesLoading ? (
-                <div className="text-gray-500">{t("loadingPrices", lang)}</div>
-              ) : prices.length ? (
-                <div className="w-full h-full flex items-center justify-center">
+          {/* ── LEFT: chart + fundamentals strip ── */}
+          <div className="lg:col-span-2 flex flex-col gap-4">
+
+            {/* Chart card */}
+            <div className="bg-white border rounded-2xl p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
+                <div className="flex items-center gap-3">
+                  {selected && (
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
+                      <img
+                        src={logoSrc(selected.symbol)}
+                        alt={`${selected.name ?? selected.symbol} logo`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <h2 className="text-lg font-semibold leading-tight">
+                      {selected ? (
+                        <>{selected.symbol} — {selected.name}</>
+                      ) : (
+                        t("selectSymbol", lang)
+                      )}
+                    </h2>
+                    {selected && finnhubData?.quote && (
+                      <div className="flex items-baseline gap-2 mt-0.5">
+                        <span className="text-xl font-bold">{finnhubData.quote.c.toFixed(2)}</span>
+                        <span className={`text-sm font-medium ${finnhubData.quote.dp >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                          {finnhubData.quote.dp >= 0 ? "+" : ""}{finnhubData.quote.dp.toFixed(2)}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {/* range buttons */}
+                <div className="flex gap-1 flex-wrap">
+                  {RANGE_OPTIONS.map((r) => (
+                    <button
+                      key={r.key}
+                      onClick={() => setRangeKey(r.key)}
+                      className={`px-2 py-1 text-xs rounded-lg border transition-colors duration-200 ${
+                        rangeKey === r.key ? "bg-black text-white dark:bg-white dark:text-black" : "bg-white hover:bg-gray-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-gray-300 dark:border-neutral-600"
+                      }`}
+                    >
+                      {r.key}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-3 h-52 md:h-64">
+                {!selected ? (
+                  <div className="h-full flex items-center justify-center text-gray-500">{t("pickSymbol", lang)}</div>
+                ) : pricesLoading ? (
+                  <div className="h-full flex items-center justify-center text-gray-500">{t("loadingPrices", lang)}</div>
+                ) : prices.length ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={prices} margin={{ top: 0, right: 32, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
@@ -877,75 +1158,218 @@ export default function Dashboard() {
                       <Line type="monotone" dataKey="close" dot={false} strokeWidth={2} stroke="#2563eb" />
                     </LineChart>
                   </ResponsiveContainer>
-                </div>
-              ) : (
-                <div className="text-gray-500">{t("noPriceData", lang)}</div>
-              )}
+                ) : (
+                  <div className="h-full flex items-center justify-center text-gray-500">{t("noPriceData", lang)}</div>
+                )}
+              </div>
             </div>
+
+            {/* Fundamentals + (Consensus & About) — 2-column inner grid */}
+            {selected && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                {/* LEFT: Fundamentals */}
+                <div className="bg-white border rounded-2xl p-4 dark:bg-neutral-900 dark:border-neutral-700">
+                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t("fundamentals", lang)}</div>
+                  {finnhubLoading ? (
+                    <div className="text-xs text-gray-400 animate-pulse">Loading…</div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                      {finnhubData?.quote && (<>
+                        <FundStat label={t("prevClose", lang)} value={finnhubData.quote.pc.toFixed(2)} />
+                        <FundStat label={t("dayOpen", lang)} value={finnhubData.quote.o.toFixed(2)} />
+                        <FundStat label={t("dayHigh", lang)} value={finnhubData.quote.h.toFixed(2)} highlight="up" />
+                        <FundStat label={t("dayLow", lang)} value={finnhubData.quote.l.toFixed(2)} highlight="down" />
+                      </>)}
+                      {finnhubData?.metrics && (<>
+                        <FundStat label={t("week52High", lang)} value={finnhubData.metrics["52WeekHigh"] != null ? String(finnhubData.metrics["52WeekHigh"]!.toFixed(2)) : "—"} />
+                        <FundStat label={t("week52Low", lang)} value={finnhubData.metrics["52WeekLow"] != null ? String(finnhubData.metrics["52WeekLow"]!.toFixed(2)) : "—"} />
+                        <FundStat label={t("marketCap", lang)} value={finnhubData.metrics.marketCapitalization != null ? fmtBig(finnhubData.metrics.marketCapitalization) : "—"} />
+                        <FundStat label={t("peRatio", lang)} value={finnhubData.metrics.peBasicExclExtraTTM != null ? finnhubData.metrics.peBasicExclExtraTTM.toFixed(1) : "—"} />
+                        <FundStat label={t("ebitda", lang)} value={finnhubData.metrics.ebitdaAnnual != null ? fmtBig(finnhubData.metrics.ebitdaAnnual) : "—"} />
+                        <FundStat label={t("eps", lang)} value={finnhubData.metrics.epsBasicExclExtraItemsTTM != null ? finnhubData.metrics.epsBasicExclExtraItemsTTM.toFixed(2) : "—"} />
+                        <FundStat label={t("divYield", lang)} value={finnhubData.metrics.dividendYieldIndicatedAnnual != null ? finnhubData.metrics.dividendYieldIndicatedAnnual.toFixed(2) + "%" : "—"} />
+                        <FundStat label={t("revenueGrowth", lang)} value={finnhubData.metrics.revenueGrowthTTMYoy != null ? finnhubData.metrics.revenueGrowthTTMYoy.toFixed(1) + "%" : "—"} />
+                      </>)}
+                    </div>
+                  )}
+                </div>
+
+                {/* RIGHT: Analyst Consensus + About stacked */}
+                <div className="flex flex-col gap-4">
+
+                  {/* Analyst Consensus */}
+                  <div className="bg-white border rounded-2xl p-4 dark:bg-neutral-900 dark:border-neutral-700">
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t("analystConsensus", lang)}</div>
+                    {finnhubLoading ? (
+                      <div className="text-xs text-gray-400 animate-pulse">Loading…</div>
+                    ) : finnhubData?.recommendation ? (
+                      (() => {
+                        const r = finnhubData.recommendation;
+                        const slices = [
+                          { name: t("strongBuy", lang),  value: r.strongBuy,  color: "#10b981" },
+                          { name: "Buy",                  value: r.buy,        color: "#4ade80" },
+                          { name: "Hold",                 value: r.hold,       color: "#fde047" },
+                          { name: "Sell",                 value: r.sell,       color: "#f87171" },
+                          { name: t("strongSell", lang),  value: r.strongSell, color: "#ef4444" },
+                        ].filter((s) => s.value > 0);
+                        const total = slices.reduce((sum, s) => sum + s.value, 0) || 1;
+                        return (
+                          <div className="flex items-center gap-3 w-fit">
+                            <div className="flex-none" style={{ width: 120, height: 120 }}>
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                  <Pie
+                                    data={slices}
+                                    cx="50%" cy="50%"
+                                    innerRadius={35} outerRadius={54}
+                                    dataKey="value"
+                                    paddingAngle={2}
+                                  >
+                                    {slices.map((entry, i) => (
+                                      <Cell key={i} fill={entry.color} />
+                                    ))}
+                                  </Pie>
+                                  <Tooltip
+                                    contentStyle={{ fontSize: "12px", borderRadius: "8px", padding: "4px 10px" }}
+                                    formatter={(v: any, name: any) => [`${v} (${((v / total) * 100).toFixed(0)}%)`, name]}
+                                  />
+                                </PieChart>
+                              </ResponsiveContainer>
+                            </div>
+                            <div className="flex flex-col gap-1.5 text-xs">
+                              {slices.map((s, i) => (
+                                <div key={i} className="flex items-center gap-2">
+                                  <div className="w-2.5 h-2.5 rounded-full flex-none" style={{ backgroundColor: s.color }} />
+                                  <span className="text-gray-600 w-28">{s.name}</span>
+                                  <span className="font-semibold tabular-nums w-5 text-right">{s.value}</span>
+                                  <span className="text-gray-400 w-8 text-right tabular-nums">{((s.value / total) * 100).toFixed(0)}%</span>
+                                </div>
+                              ))}
+                              <div className="text-gray-400 mt-1 text-xs">{r.period}</div>
+                            </div>
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      <div className="text-xs text-gray-400">—</div>
+                    )}
+                  </div>
+
+                  {/* About / Description */}
+                  {selected.description ? (
+                    <div className="bg-white border rounded-2xl p-4 dark:bg-neutral-900 dark:border-neutral-700">
+                      <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t("companyDescription", lang)}</div>
+                      <DescriptionBlock text={selected.description} lang={lang} />
+                    </div>
+                  ) : (
+                    <div className="bg-white border rounded-2xl p-4 dark:bg-neutral-900 dark:border-neutral-700">
+                      <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t("companyDescription", lang)}</div>
+                      <div className="text-xs text-gray-400">—</div>
+                    </div>
+                  )}
+
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Señales */}
-          <div className="bg-white border rounded-2xl p-4">
-            <h3 className="font-semibold mb-2">{t("signals", lang)}</h3>
-            {selected ? (
-              <>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
-                    <img
-                      src={logoSrc(selected.symbol)}
-                      alt={`${selected.name ?? selected.symbol} logo`}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-semibold truncate">
-                      {selected.symbol} — {selected.name ?? "—"}
+          {/* ── RIGHT: signals panel ── */}
+          <div className="flex flex-col gap-4">
+
+            {/* Company header + links */}
+            <div className="bg-white border rounded-2xl p-4">
+              {selected ? (
+                <>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-11 h-11 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
+                      <img src={logoSrc(selected.symbol)} alt={selected.symbol} className="w-full h-full object-cover" />
                     </div>
-                    {selected.website && (
-                      <a
-                        href={selected.website.startsWith("http") ? selected.website : `https://${selected.website}`}
-                        target="_blank"
-                        className="text-xs text-blue-600 hover:underline break-all"
-                      >
-                        {selected.website}
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm truncate">{selected.symbol} — {selected.name ?? "—"}</div>
+                      {(selected.sector || selected.industry) && (
+                        <div className="text-xs text-gray-500 truncate">{[selected.sector, selected.industry].filter(Boolean).join(" · ")}</div>
+                      )}
+                      {selected.website && (
+                        <a href={selected.website.startsWith("http") ? selected.website : `https://${selected.website}`} target="_blank" className="text-xs text-blue-600 hover:underline">
+                          {selected.website.replace(/^https?:\/\//, "")}
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <a href={`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(selected.symbol)}`} target="_blank" rel="noopener noreferrer"
+                      className="px-3 py-1 rounded-lg bg-white border text-xs hover:bg-gray-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:border-neutral-600">
+                      {t("viewInTradingView", lang)}
+                    </a>
+                    {selected.racional_url && (
+                      <a href={selected.racional_url} target="_blank" rel="noopener noreferrer"
+                        className="px-3 py-1 rounded-lg bg-white border text-xs hover:bg-gray-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:border-neutral-600">
+                        {t("viewInRacional", lang)}
                       </a>
                     )}
-                    {(selected.sector || selected.industry) && (
-                      <div className="text-xs text-gray-500">
-                        {[selected.sector, selected.industry].filter(Boolean).join(" · ")}
-                      </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm text-gray-500">—</div>
+              )}
+            </div>
+
+            {/* Momentum & technicals */}
+            {selected && (
+              <div className="bg-white border rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("momentum", lang)}</div>
+                  <div className="flex items-center gap-2">
+                    {selected.bucket && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        selected.bucket === "Alta Convicción" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
+                        : selected.bucket === "Vigilancia" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300"
+                        : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
+                      }`}>{bucketDisplay(selected.bucket, lang)}</span>
+                    )}
+                    {selected.final_score != null && (
+                      <span className="text-xs font-bold tabular-nums">{selected.final_score.toFixed(3)}</span>
                     )}
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                  <MomStat label="Mom 1w" value={selected.mom_1w} />
+                  <MomStat label="Mom 1m" value={selected.mom_1m} />
+                  <MomStat label="Mom 3m" value={selected.mom_3m} />
+                  <MomStat label="Mom 6m" value={selected.mom_6m} />
+                  <MomStat label="Mom 1y" value={selected.mom_1y} />
+                  <MomStat label="RS vs SPY" value={selected.rs_spy} />
+                  <div className="col-span-2 border-t mt-1 pt-2 grid grid-cols-2 gap-x-4 gap-y-2">
+                    <div><span className="text-gray-500">{t("liquidity", lang)}: </span><span className="font-medium">{selected.liq_score?.toFixed(2) ?? "—"}</span></div>
+                    <div><span className="text-gray-500">{t("trend", lang)}: </span><span className="font-medium">{selected.tech_trend?.toFixed(2) ?? "—"}</span></div>
+                  </div>
+                </div>
+              </div>
+            )}
 
-                <ul className="text-sm space-y-1 mb-3">
-                  <li><span className="text-gray-600">Bucket:</span> {selected.bucket ?? "—"}</li>
-                  <li><span className="text-gray-600">Score:</span> {selected.final_score?.toFixed(3) ?? "—"}</li>
-                  <li><span className="text-gray-600">Mom 1w:</span> {selected.mom_1w!=null ? (selected.mom_1w*100).toFixed(2)+"%" : "—"}</li>
-                  <li><span className="text-gray-600">Mom 1m:</span> {selected.mom_1m!=null ? (selected.mom_1m*100).toFixed(2)+"%" : "—"}</li>
-                  <li><span className="text-gray-600">Mom 3m:</span> {selected.mom_3m!=null ? (selected.mom_3m*100).toFixed(2)+"%" : "—"}</li>
-                  <li><span className="text-gray-600">Mom 6m:</span> {selected.mom_6m!=null ? (selected.mom_6m*100).toFixed(2)+"%" : "—"}</li>
-                  <li><span className="text-gray-600">Mom 1y:</span> {selected.mom_1y!=null ? (selected.mom_1y*100).toFixed(2)+"%" : "—"}</li>
-                  <li><span className="text-gray-600">RS vs SPY:</span> {selected.rs_spy!=null ? (selected.rs_spy*100).toFixed(2)+"%" : "—"}</li>
-                  <li><span className="text-gray-600">{t("liquidity", lang)}:</span> {selected.liq_score?.toFixed(2) ?? "\u2014"}</li>
-                  <li><span className="text-gray-600">{t("trend", lang)}:</span> {selected.tech_trend?.toFixed(2) ?? "\u2014"}</li>
-                  {selected.racional_url && (
-                    <li className="pt-2">
-                      <a
-                        href={selected.racional_url}
-                        target="_blank"
-                        className="px-3 py-1 rounded-lg bg-white border text-xs hover:bg-gray-100"
-                      >
-                        {t("viewInRacional", lang)}
-                      </a>
-                    </li>
-                  )}
-                </ul>
-
-                {selected.description && <DescriptionBlock text={selected.description} lang={lang} />}
-              </>
-            ) : (
-              <div className="text-sm text-gray-500">—</div>
+            {/* Latest news */}
+            {selected && (
+              <div className="bg-white border rounded-2xl p-4">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t("latestNews", lang)}</div>
+                {finnhubLoading ? (
+                  <div className="text-xs text-gray-400 animate-pulse">Loading…</div>
+                ) : finnhubData?.news && finnhubData.news.length > 0 ? (
+                  <ul className="space-y-3">
+                    {finnhubData.news.map((item, i) => (
+                      <li key={i} className="border-b last:border-0 pb-2 last:pb-0">
+                        <a href={item.url} target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline line-clamp-2 leading-snug dark:text-blue-400">
+                          {item.headline}
+                        </a>
+                        <div className="text-xs text-gray-400 mt-0.5">{item.source} · {new Date(item.datetime * 1000).toLocaleDateString()}</div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="text-xs text-gray-400">—</div>
+                )}
+              </div>
             )}
           </div>
         </section>
@@ -955,6 +1379,7 @@ export default function Dashboard() {
         {/* Overview */}
         {viewMode === "overview" && (
           <div className="animate-fadeIn">
+            <InfoBox text={t("infoOverviewText", lang)} label={t("infoHowItWorks", lang)} />
             <div className="mb-4">
               <h2 className="text-lg font-bold">{t("tabOverview", lang)}</h2>
               <p className="text-sm text-gray-500">
@@ -1080,6 +1505,7 @@ export default function Dashboard() {
         {/* Ranking */}
         {viewMode === "ranking" && (
           <div className="animate-fadeIn">
+            <InfoBox text={t("infoRankingText", lang)} label={t("infoHowItWorks", lang)} />
             <section className="mb-4 grid grid-cols-1 md:grid-cols-5 gap-3">
               <input
                 placeholder={t("searchPlaceholder", lang)}
@@ -1209,6 +1635,7 @@ export default function Dashboard() {
 
         {/* Turnarounds */}
         {viewMode === "turnarounds" && (<div className="animate-fadeIn">
+          <InfoBox text={t("infoTurnaroundsText", lang)} label={t("infoHowItWorks", lang)} />
           <div className="mb-3 flex items-center justify-between text-sm">
             <span className="text-gray-500">{turnRows.length} {t("candidates", lang)}</span>
             <select
@@ -1272,9 +1699,95 @@ export default function Dashboard() {
           />
         </div>)}
 
+        {/* Accumulation Zone */}
+        {viewMode === "accumulation" && (<div className="animate-fadeIn">
+          <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 dark:bg-amber-900/20 dark:border-amber-700/40 dark:text-amber-300">
+            {lang === "es"
+              ? "Candidatos en zona de acumulación: caídas ≥40% desde máximos, aún cerca del mínimo 52s (0–50% sobre él), con primeros signos de vida (momentum y volumen)."
+              : "Accumulation zone candidates: fallen ≥40% from highs, still near 52w low (0–50% above it), with first signs of life (momentum & volume surge)."}
+          </div>
+          <div className="mb-3 flex items-center justify-between text-sm">
+            <span className="text-gray-500">{accumRows.length} {t("candidates", lang)}</span>
+            <select
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setAccumPage(0); }}
+              className="border rounded-lg px-2 py-1"
+            >
+              <option value={25}>{`25 / ${t("perPage", lang)}`}</option>
+              <option value={50}>{`50 / ${t("perPage", lang)}`}</option>
+              <option value={100}>{`100 / ${t("perPage", lang)}`}</option>
+            </select>
+          </div>
+          <section className="bg-white border rounded-2xl shadow-sm overflow-hidden dark:bg-neutral-900 dark:border-neutral-700">
+            <div className="overflow-x-auto">
+            <table className="min-w-[700px] w-full text-left text-sm">
+              <thead className="bg-gray-100 text-gray-700 dark:bg-neutral-800 dark:text-gray-300">
+                <tr>
+                  <th className="px-3 py-2">{t("symbol", lang)}</th>
+                  <th className="px-3 py-2">{t("name", lang)}</th>
+                  <th className="px-3 py-2">{t("type", lang)}</th>
+                  <th className="px-3 py-2 text-right">{lang === "es" ? "% sobre mín 52s" : "% above 52w low"}</th>
+                  <th className="px-3 py-2 text-right">{lang === "es" ? "Caída desde máx" : "From 52w high"}</th>
+                  <th className="px-3 py-2 text-right">Mom 1w</th>
+                  <th className="px-3 py-2 text-right">Mom 1m</th>
+                  <th className="px-3 py-2 text-right">Vol surge</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedAccumRows.map((ar) => (
+                  <tr key={ar.symbol} className="border-t hover:bg-gray-50 dark:hover:bg-neutral-800 cursor-pointer"
+                    onClick={() => openFromSymbol(ar.symbol, ar.name, ar.asset_type, ar.racional_url, { mom_1m: ar.mom_1m, mom_3m: ar.mom_3m, liq_score: ar.liq_score })}>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
+                          <img src={logoSrc(ar.symbol)} alt={ar.symbol} className="w-full h-full object-cover" />
+                        </div>
+                        <span className="font-semibold">{ar.symbol}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400 max-w-[180px] truncate">{ar.name ?? "—"}</td>
+                    <td className="px-3 py-2">{ar.asset_type ?? "—"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-amber-600 dark:text-amber-400">
+                      {ar.pct_above_52w_low != null ? "+" + (ar.pct_above_52w_low * 100).toFixed(1) + "%" : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-red-500 dark:text-red-400">
+                      {ar.pct_from_52w_high != null ? (ar.pct_from_52w_high * 100).toFixed(1) + "%" : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {ar.mom_1w != null
+                        ? <span className={ar.mom_1w >= 0 ? "text-green-600" : "text-red-500"}>{(ar.mom_1w * 100).toFixed(1)}%</span>
+                        : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {ar.mom_1m != null
+                        ? <span className={ar.mom_1m >= 0 ? "text-green-600" : "text-red-500"}>{(ar.mom_1m * 100).toFixed(1)}%</span>
+                        : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums">{ar.vol_surge != null ? ar.vol_surge.toFixed(2) + "×" : "—"}</td>
+                  </tr>
+                ))}
+                {pagedAccumRows.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="px-3 py-6 text-center text-gray-500">
+                      {t("noCandidates", lang)}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            </div>
+          </section>
+          <PaginationBar lang={lang}
+            page={accumPage} total={totalAccumPages}
+            onPrev={() => setAccumPage((p) => Math.max(0, p - 1))}
+            onNext={() => setAccumPage((p) => Math.min(totalAccumPages - 1, p + 1))}
+          />
+        </div>)}
+
         {/* Compounders */}
         {viewMode === "compounders" && (
           <div className="animate-fadeIn">
+            <InfoBox text={t("infoCompoundersText", lang)} label={t("infoHowItWorks", lang)} />
             {/* Controles */}
             <section className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-3">
               <div className="flex items-center gap-2">
@@ -1396,6 +1909,7 @@ export default function Dashboard() {
         {/* ======= Portfolio tab ======= */}
         {viewMode === "portfolio" && (
           <div className="animate-fadeIn">
+            <InfoBox text={t("infoPortfolioText", lang)} label={t("infoHowItWorks", lang)} />
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold">{t("tabPortfolio", lang)}</h2>
               <button
@@ -1512,105 +2026,6 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Add Holding Modal */}
-            {showAddHolding && (
-              <div
-                className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-                onClick={closeAddModal}
-              >
-                <div
-                  className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="flex items-center justify-between px-6 pt-5 pb-3">
-                    <h2 className="font-bold text-base">{t("portAddHolding", lang)}</h2>
-                    <button onClick={closeAddModal} className="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
-                  </div>
-                  <div className="px-6 pb-6 flex flex-col gap-3">
-                    {/* Symbol search combobox */}
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder={`${t("portSymbol", lang)} — search…`}
-                        value={symbolSearch}
-                        onChange={(e) => {
-                          const v = e.target.value.toUpperCase();
-                          setSymbolSearch(v);
-                          setNewSymbol(v);
-                          setSymDropOpen(true);
-                        }}
-                        onFocus={() => setSymDropOpen(true)}
-                        onBlur={() => setTimeout(() => setSymDropOpen(false), 150)}
-                        className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black uppercase"
-                      />
-                      {symDropOpen && symbolSearch.length > 0 &&
-                        rows.filter((r) => {
-                          const q = symbolSearch.toLowerCase();
-                          return r.symbol.toLowerCase().includes(q) || (r.name ?? "").toLowerCase().includes(q);
-                        }).length > 0 && (
-                        <ul className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                          {rows
-                            .filter((r) => {
-                              const q = symbolSearch.toLowerCase();
-                              return r.symbol.toLowerCase().includes(q) || (r.name ?? "").toLowerCase().includes(q);
-                            })
-                            .slice(0, 8)
-                            .map((r) => (
-                              <li
-                                key={r.symbol}
-                                onMouseDown={() => {
-                                  setNewSymbol(r.symbol);
-                                  setSymbolSearch(r.symbol);
-                                  setSymDropOpen(false);
-                                }}
-                                className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-100 first:rounded-t-xl last:rounded-b-xl"
-                              >
-                                <span className="font-mono font-semibold w-16 shrink-0 text-xs">{r.symbol}</span>
-                                <span className="text-gray-500 truncate text-xs">{r.name}</span>
-                              </li>
-                            ))}
-                        </ul>
-                      )}
-                    </div>
-                    <input
-                      type="number"
-                      placeholder={t("portShares", lang)}
-                      min="0"
-                      step="any"
-                      value={newShares}
-                      onChange={(e) => setNewShares(e.target.value)}
-                      className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black"
-                    />
-                    <input
-                      type="number"
-                      placeholder={`${t("portAvgCost", lang)} (optional)`}
-                      min="0"
-                      step="any"
-                      value={newAvgCost}
-                      onChange={(e) => setNewAvgCost(e.target.value)}
-                      className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black"
-                    />
-                    {holdingError && (
-                      <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{holdingError}</p>
-                    )}
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        onClick={closeAddModal}
-                        className="flex-1 rounded-xl py-2 border text-sm hover:bg-gray-50"
-                      >
-                        {t("portCancel", lang)}
-                      </button>
-                      <button
-                        onClick={addHolding}
-                        className="flex-1 rounded-xl py-2 bg-black text-white text-sm hover:opacity-90"
-                      >
-                        {t("portSave", lang)}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </main>
@@ -1618,6 +2033,30 @@ export default function Dashboard() {
       <footer className="max-w-6xl mx-auto px-4 py-10 text-xs text-gray-500">
         {t("footer", lang)}
       </footer>
+    </div>
+  );
+}
+
+// ====== InfoBox ======
+function InfoBox({ text, label }: { text: string; label: string }) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div className="mb-4">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
+        </svg>
+        <span>{label}</span>
+        <span className={`transition-transform duration-200 inline-block ${open ? "rotate-180" : ""}`}>▾</span>
+      </button>
+      {open && (
+        <div className="mt-2 px-4 py-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded-xl text-sm text-gray-700 dark:text-gray-300 leading-relaxed animate-fadeIn">
+          {text}
+        </div>
+      )}
     </div>
   );
 }
@@ -1649,7 +2088,7 @@ function PaginationBar({
 // ====== Descripción ver más/menos ======
 function DescriptionBlock({ text, lang }: { text: string; lang: Lang }) {
   const [expanded, setExpanded] = React.useState(false);
-  const MAX = 420;
+  const MAX = 280;
   const short = text.length > MAX ? text.slice(0, MAX) + "\u2026" : text;
   return (
     <div className="text-sm text-gray-700">
@@ -1664,4 +2103,36 @@ function DescriptionBlock({ text, lang }: { text: string; lang: Lang }) {
       )}
     </div>
   );
+}
+
+// ====== Fundamental stat cell ======
+function FundStat({ label, value, highlight }: { label: string; value: string; highlight?: "up" | "down" }) {
+  return (
+    <div>
+      <div className="text-xs text-gray-500 leading-none">{label}</div>
+      <div className={`text-sm font-semibold tabular-nums mt-0.5 ${highlight === "up" ? "text-emerald-600" : highlight === "down" ? "text-red-500" : ""}`}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+// ====== Momentum stat cell ======
+function MomStat({ label, value }: { label: string; value: number | null | undefined }) {
+  const formatted = value != null ? (value * 100).toFixed(2) + "%" : "—";
+  const color = value == null ? "" : value > 0 ? "text-emerald-600" : value < 0 ? "text-red-500" : "text-gray-500";
+  return (
+    <div>
+      <span className="text-gray-500">{label}: </span>
+      <span className={`font-medium tabular-nums ${color}`}>{formatted}</span>
+    </div>
+  );
+}
+
+// ====== Format big numbers (M / B) ======
+function fmtBig(n: number): string {
+  if (Math.abs(n) >= 1e9) return (n / 1e9).toFixed(2) + "B";
+  if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(2) + "M";
+  if (Math.abs(n) >= 1e3) return (n / 1e3).toFixed(1) + "K";
+  return n.toFixed(2);
 }

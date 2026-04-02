@@ -57,3 +57,87 @@ export async function getPrices(symbol: string, days: number) {
     );
     return rows.map(parseRow);
 }
+
+export async function getAccumulationZone() {
+    const { rows } = await pool.query('SELECT * FROM v_accumulation_zone');
+    return rows.map(parseRow);
+}
+
+// ===== Finnhub =====
+type FinnhubNewsItem = {
+    headline: string;
+    url: string;
+    source: string;
+    datetime: number;
+};
+type FinnhubRec = {
+    buy: number;
+    hold: number;
+    sell: number;
+    strongBuy: number;
+    strongSell: number;
+    period: string;
+};
+type FinnhubQuote = {
+    c: number;   // current price
+    h: number;   // high of day
+    l: number;   // low of day
+    o: number;   // open
+    pc: number;  // previous close
+    dp: number;  // % change
+};
+type FinnhubMetrics = {
+    marketCapitalization: number | null;
+    peBasicExclExtraTTM: number | null;
+    ebitdaAnnual: number | null;
+    dividendYieldIndicatedAnnual: number | null;
+    revenueGrowthTTMYoy: number | null;
+    epsBasicExclExtraItemsTTM: number | null;
+    '52WeekHigh': number | null;
+    '52WeekLow': number | null;
+};
+
+export async function getFinnhubData(symbol: string): Promise<{
+    news: FinnhubNewsItem[];
+    recommendation: FinnhubRec | null;
+    quote: FinnhubQuote | null;
+    metrics: FinnhubMetrics | null;
+}> {
+    const key = process.env.FINNHUB_API_KEY;
+    if (!key) return { news: [], recommendation: null, quote: null, metrics: null };
+
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - 7);
+    const fromStr = from.toISOString().slice(0, 10);
+    const toStr = to.toISOString().slice(0, 10);
+
+    const [newsRes, recRes, quoteRes, metricRes] = await Promise.all([
+        fetch(
+            `https://finnhub.io/api/v1/company-news?symbol=${encodeURIComponent(symbol)}&from=${fromStr}&to=${toStr}&token=${key}`,
+            { next: { revalidate: 300 } }
+        ),
+        fetch(
+            `https://finnhub.io/api/v1/stock/recommendation?symbol=${encodeURIComponent(symbol)}&token=${key}`,
+            { next: { revalidate: 300 } }
+        ),
+        fetch(
+            `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${key}`,
+            { next: { revalidate: 60 } }
+        ),
+        fetch(
+            `https://finnhub.io/api/v1/stock/metric?symbol=${encodeURIComponent(symbol)}&metric=all&token=${key}`,
+            { next: { revalidate: 3600 } }
+        ),
+    ]);
+
+    const news: FinnhubNewsItem[] = newsRes.ok ? (await newsRes.json()).slice(0, 5) : [];
+    const recData = recRes.ok ? await recRes.json() : [];
+    const recommendation: FinnhubRec | null = Array.isArray(recData) && recData.length > 0 ? recData[0] : null;
+    const quoteData = quoteRes.ok ? await quoteRes.json() : null;
+    const quote: FinnhubQuote | null = quoteData && quoteData.c ? quoteData : null;
+    const metricData = metricRes.ok ? await metricRes.json() : null;
+    const metrics: FinnhubMetrics | null = metricData?.metric ?? null;
+
+    return { news, recommendation, quote, metrics };
+}

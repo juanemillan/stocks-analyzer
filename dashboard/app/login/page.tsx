@@ -38,6 +38,19 @@ function validatePassword(password: string): string | null {
   return null;
 }
 
+function BulliaLogo() {
+  return (
+    <div className="w-14 h-14 rounded-2xl bg-gray-900 dark:bg-gray-100 flex items-center justify-center mx-auto mb-4 shadow-lg">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="19" width="7" height="9" rx="2" className="fill-white dark:fill-gray-900"/>
+        <rect x="11.5" y="12" width="7" height="16" rx="2" className="fill-white dark:fill-gray-900"/>
+        <rect x="21" y="4" width="7" height="24" rx="2" className="fill-white dark:fill-gray-900"/>
+        <polyline points="5.5,17 15,10 25,2" stroke="white" className="dark:stroke-gray-900" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+      </svg>
+    </div>
+  );
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -45,22 +58,15 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  // Set background image only after mount so we know the real theme
-  const bgStyle = mounted
-    ? {
-        backgroundImage: `url('/images/${
-          resolvedTheme === "dark" ? "dark-mode" : "light-mode"
-        }.png')`,
-        backgroundSize: "cover" as const,
-        backgroundPosition: "center" as const,
-        backgroundRepeat: "no-repeat" as const,
-      }
-    : {};
-
   const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [ageRange, setAgeRange] = useState("");
+  const [experience, setExperience] = useState("");
+  const [riskTolerance, setRiskTolerance] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -114,7 +120,17 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+            full_name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+            age_range: ageRange || undefined,
+            experience: experience || undefined,
+            risk_tolerance: riskTolerance || undefined,
+          },
+        },
       });
       if (error) {
         setError(error.message);
@@ -128,14 +144,41 @@ export default function LoginPage() {
 
   return (
     <div
-      className="login-bg min-h-screen flex items-center justify-center p-4"
-      style={bgStyle}
+      className="login-bg min-h-screen flex items-center justify-center p-4 relative"
     >
+      {/* Cross-fade background images on theme change */}
+      {mounted && (
+        <>
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: "url('/images/light-mode.png')",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              opacity: resolvedTheme === "dark" ? 0 : 1,
+              transition: "opacity 0.5s ease",
+            }}
+            aria-hidden
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: "url('/images/dark-mode.png')",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              opacity: resolvedTheme === "dark" ? 1 : 0,
+              transition: "opacity 0.5s ease",
+            }}
+            aria-hidden
+          />
+        </>
+      )}  
       {/* subtle darkening overlay so the card stays readable over any photo */}
       <div className="absolute inset-0 bg-black/10 dark:bg-black/50" aria-hidden />
       <div className="relative w-full max-w-sm bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-2xl shadow-xl p-8">
         {/* Logo / title */}
         <div className="mb-6 text-center">
+          <BulliaLogo />
           <h1 className="text-2xl font-bold tracking-tight">BULLIA</h1>
           <p className="text-sm text-gray-500 mt-1">
             {mode === "login" ? "Sign in to your account"
@@ -190,6 +233,51 @@ export default function LoginPage() {
                 Forgot your password?
               </button>
             </div>
+          )}
+
+          {/* Extra fields for signup only */}
+          {mode === "signup" && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  placeholder="First name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                />
+                <input
+                  type="text"
+                  placeholder="Last name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                />
+              </div>
+              <select value={ageRange} onChange={(e) => setAgeRange(e.target.value)}
+                className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+                <option value="">Age range (optional)</option>
+                <option value="18-25">18 – 25</option>
+                <option value="26-35">26 – 35</option>
+                <option value="36-45">36 – 45</option>
+                <option value="46-55">46 – 55</option>
+                <option value="55+">55+</option>
+              </select>
+              <select value={experience} onChange={(e) => setExperience(e.target.value)}
+                className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+                <option value="">Investment experience (optional)</option>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+              <select value={riskTolerance} onChange={(e) => setRiskTolerance(e.target.value)}
+                className="rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:bg-gray-800 dark:border-gray-700 dark:text-white">
+                <option value="">Risk tolerance (optional)</option>
+                <option value="conservative">Conservative</option>
+                <option value="moderate">Moderate</option>
+                <option value="aggressive">Aggressive</option>
+              </select>
+            </>
           )}
 
           {/* Live password rules checklist — only during signup */}

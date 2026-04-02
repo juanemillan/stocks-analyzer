@@ -1,12 +1,19 @@
 import argparse
 import sys
 import io
+import os
+
+# Always resolve paths relative to this file's directory
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 from etl.seed_assets import seed_assets
 from etl.fetch_prices import main as fetch_prices_main
 from etl.update_prices_incremental import main as update_prices_main
 from etl.scores import compute_scores
+from etl.enrich_assets import enrich_assets
+from etl.enrich_from_racional import enrich_from_racional
 from utils import get_connection
 
 
@@ -152,6 +159,10 @@ def main():
     parser.add_argument("--add-asset", metavar="SYMBOL", help="Añadir activo manualmente y descargar su historial")
     parser.add_argument("--name", metavar="NAME", help="Nombre del activo (opcional, usar con --add-asset)")
     parser.add_argument("--type", metavar="TYPE", default="EQUITY", choices=["EQUITY", "ETF", "FUND", "OTHER"], help="Tipo de activo (default: EQUITY)")
+    parser.add_argument("--enrich", action="store_true", help="Enriquecer activos con metadata (descripción, sector, web…)")
+    parser.add_argument("--enrich-racional", action="store_true", help="Scrape descripciones desde Racional (Playwright)")
+    parser.add_argument("--symbol", metavar="SYMBOL", help="Símbolo concreto (usar con --enrich)")
+    parser.add_argument("--missing-only", action="store_true", help="Solo enriquecer activos sin descripción (usar con --enrich)")
 
     args = parser.parse_args()
 
@@ -178,10 +189,33 @@ def main():
         print("🗂️  Aplicando vistas SQL...")
         apply_sql_file("sql/02_views.sql")
         apply_sql_file("sql/04_turnaround_explosives.sql")
+        apply_sql_file("sql/06_accumulation_zone.sql")
         print("🏁 Vistas actualizadas.")
 
     elif args.add_asset:
         add_asset(args.add_asset, args.name, args.type)
+
+    elif args.enrich:
+        print("📚 Enriqueciendo metadata de activos (yfinance)...")
+        apply_sql_file("sql/05_enrich_assets.sql")   # ensure columns exist
+        enrich_assets(
+            symbol_filter=getattr(args, "symbol", None),
+            missing_only=getattr(args, "missing_only", False),
+        )
+        print("🗂️  Actualizando vista v_assets_rank...")
+        apply_sql_file("sql/02_views.sql")
+        print("🏁 Hecho.")
+
+    elif args.enrich_racional:
+        print("🌐 Scrapeando descripciones desde Racional (Playwright)...")
+        apply_sql_file("sql/05_enrich_assets.sql")   # ensure columns exist
+        enrich_from_racional(
+            symbol_filter=getattr(args, "symbol", None),
+            missing_only=getattr(args, "missing_only", False),
+        )
+        print("🗂️  Actualizando vista v_assets_rank...")
+        apply_sql_file("sql/02_views.sql")
+        print("🏁 Hecho.")
 
     else:
         parser.print_help()
