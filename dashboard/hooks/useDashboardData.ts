@@ -7,6 +7,7 @@ import {
   getAccumulationZone,
   getFinnhubData,
 } from "@/app/actions";
+import { cacheGet, cacheSet } from "@/lib/dailyCache";
 import { RANGE_OPTIONS } from "@/lib/stockUtils";
 import type {
   ViewMode,
@@ -54,6 +55,7 @@ export function useDashboardData() {
 
   // Selected + detail
   const [selected, setSelected] = useState<RankRow | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [prices, setPrices] = useState<PriceRow[]>([]);
   const [pricesLoading, setPricesLoading] = useState(false);
   const [rangeKey, setRangeKey] = useState<string>("3M");
@@ -63,12 +65,18 @@ export function useDashboardData() {
   const [finnhubLoading, setFinnhubLoading] = useState(false);
 
   // ---------- Loaders ----------
-  async function loadRanking() {
+  async function loadRanking(force = false) {
+    const KEY = "bullia_ranking";
+    if (!force) {
+      const cached = cacheGet<RankRow[]>(KEY);
+      if (cached) { setRows(cached); if (!selected && cached.length) setSelected(cached[0]); return; }
+    }
     setLoading(true);
     setError(null);
     try {
       const list = (await getRanking()) as RankRow[];
       setRows(list);
+      cacheSet(KEY, list);
       if (!selected && list.length) setSelected(list[0]);
     } catch (e: any) {
       setError(e.message || String(e));
@@ -77,11 +85,18 @@ export function useDashboardData() {
     }
   }
 
-  async function loadTurnarounds() {
+  async function loadTurnarounds(force = false) {
+    const KEY = "bullia_turnarounds";
+    if (!force) {
+      const cached = cacheGet<TurnRow[]>(KEY);
+      if (cached) { setTurnRows(cached); return; }
+    }
     setLoading(true);
     setError(null);
     try {
-      setTurnRows((await getTurnarounds()) as TurnRow[]);
+      const list = (await getTurnarounds()) as TurnRow[];
+      setTurnRows(list);
+      cacheSet(KEY, list);
     } catch (e: any) {
       setError(e.message || String(e));
     } finally {
@@ -89,11 +104,18 @@ export function useDashboardData() {
     }
   }
 
-  async function loadAccumulation() {
+  async function loadAccumulation(force = false) {
+    const KEY = "bullia_accumulation";
+    if (!force) {
+      const cached = cacheGet<AccumRow[]>(KEY);
+      if (cached) { setAccumRows(cached); return; }
+    }
     setLoading(true);
     setError(null);
     try {
-      setAccumRows((await getAccumulationZone()) as AccumRow[]);
+      const list = (await getAccumulationZone()) as AccumRow[];
+      setAccumRows(list);
+      cacheSet(KEY, list);
     } catch (e: any) {
       setError(e.message || String(e));
     } finally {
@@ -101,11 +123,18 @@ export function useDashboardData() {
     }
   }
 
-  async function loadCompounders(h: "1Y" | "3Y" | "5Y") {
+  async function loadCompounders(h: "1Y" | "3Y" | "5Y", force = false) {
+    const KEY = `bullia_compounders_${h}`;
+    if (!force) {
+      const cached = cacheGet<CompoundRow[]>(KEY);
+      if (cached) { setCompoundRows(cached); return; }
+    }
     setLoading(true);
     setError(null);
     try {
-      setCompoundRows((await getCompounders(h)) as CompoundRow[]);
+      const list = (await getCompounders(h)) as CompoundRow[];
+      setCompoundRows(list);
+      cacheSet(KEY, list);
     } catch (e: any) {
       setError(e.message || String(e));
     } finally {
@@ -210,7 +239,6 @@ export function useDashboardData() {
   const pagedAccumRows = accumRows.slice(accumPage * pageSize, (accumPage + 1) * pageSize);
 
   const filteredCompounders = useMemo(() => {
-    if (viewMode !== "compounders") return compoundRows;
     const getCAGR = (r: CompoundRow) =>
       cmpHorizon === "1Y" ? r.cagr_1y : cmpHorizon === "3Y" ? r.cagr_3y : r.cagr_5y;
     return compoundRows
@@ -228,7 +256,7 @@ export function useDashboardData() {
         const bC = getCAGR(b) ?? -Infinity;
         return bC - aC;
       });
-  }, [compoundRows, cmpHorizon, cagrMin, posMonthsMin, maxDDMax, viewMode]);
+  }, [compoundRows, cmpHorizon, cagrMin, posMonthsMin, maxDDMax]);
 
   const totalCmpPages = Math.max(1, Math.ceil(filteredCompounders.length / pageSize));
   const pagedCompounders = filteredCompounders.slice(cmpPage * pageSize, (cmpPage + 1) * pageSize);
@@ -236,7 +264,11 @@ export function useDashboardData() {
   // ---------- Handlers ----------
   function handleOpen(row: RankRow) {
     setSelected(row);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setDetailOpen(true);
+  }
+
+  function closeDetail() {
+    setDetailOpen(false);
   }
 
   function openFromSymbol(
@@ -286,6 +318,7 @@ export function useDashboardData() {
     finnhubData, finnhubLoading,
     loading, error,
     handleOpen, openFromSymbol,
-    loadRanking, loadTurnarounds, loadCompounders,
+    detailOpen, closeDetail,
+    loadRanking, loadTurnarounds, loadAccumulation, loadCompounders,
   };
 }

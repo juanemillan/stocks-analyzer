@@ -44,16 +44,16 @@ export function OverviewTab({
 
         {/* Top Ranking */}
         <div className="bg-white border rounded-2xl overflow-hidden shadow-sm">
-          <div className="flex items-center justify-between px-4 py-3 border-b bg-blue-50 dark:bg-blue-950/40">
-            <span className="font-semibold text-blue-900 dark:text-blue-300">{t("topRanking", lang)}</span>
-            <button onClick={() => setViewMode("ranking")} className="text-xs text-blue-600 hover:underline">
+          <div className="flex items-center justify-between px-4 py-3 border-b bg-emerald-50 dark:bg-emerald-950/40">
+            <span className="font-semibold text-emerald-900 dark:text-emerald-300">{t("topRanking", lang)}</span>
+            <button onClick={() => setViewMode("ranking")} className="text-xs text-emerald-600 hover:underline">
               {t("seeAll", lang)}
             </button>
           </div>
           <div className="divide-y">
             {rows.slice(0, 5).map((r) => (
               <button key={r.symbol} onClick={() => onOpen(r)}
-                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-left">
+                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors duration-150 text-left">
                 <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
                   <img src={logoSrc(r.symbol)} alt={r.symbol} className="w-full h-full object-cover" />
                 </div>
@@ -89,7 +89,7 @@ export function OverviewTab({
             {turnRows.slice(0, 5).map((r) => (
               <button key={r.symbol}
                 onClick={() => onOpenFromSymbol(r.symbol, r.name, r.asset_type, r.racional_url, { mom_1m: r.mom_1m, mom_3m: r.mom_3m, liq_score: r.liq_score })}
-                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-left">
+                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors duration-150 text-left">
                 <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
                   <img src={logoSrc(r.symbol)} alt={r.symbol} className="w-full h-full object-cover" />
                 </div>
@@ -98,7 +98,7 @@ export function OverviewTab({
                   <div className="text-xs text-gray-500 truncate">{r.name ?? "\u2014"}</div>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="text-sm font-mono tabular-nums text-green-700">
+                  <div className="text-sm font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
                     {r.rebound_from_low != null ? "\u2191" + (r.rebound_from_low * 100).toFixed(0) + "%" : "\u2014"}
                   </div>
                   <div className="text-xs text-gray-500">
@@ -115,9 +115,9 @@ export function OverviewTab({
 
         {/* Top Compounders */}
         <div className="bg-white border rounded-2xl overflow-hidden shadow-sm">
-          <div className="flex items-center justify-between px-4 py-3 border-b bg-green-50 dark:bg-green-950/40">
-            <span className="font-semibold text-green-900 dark:text-green-300">{t("topCompounders", lang)}</span>
-            <button onClick={() => setViewMode("compounders")} className="text-xs text-green-600 hover:underline">
+          <div className="flex items-center justify-between px-4 py-3 border-b bg-emerald-50 dark:bg-emerald-950/40">
+            <span className="font-semibold text-emerald-900 dark:text-emerald-300">{t("topCompounders", lang)}</span>
+            <button onClick={() => setViewMode("compounders")} className="text-xs text-emerald-600 hover:underline">
               {t("seeAll", lang)}
             </button>
           </div>
@@ -127,7 +127,7 @@ export function OverviewTab({
               return (
                 <button key={r.symbol}
                   onClick={() => onOpenFromSymbol(r.symbol, r.name, r.asset_type, r.racional_url)}
-                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-left">
+                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors duration-150 text-left">
                   <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
                     <img src={logoSrc(r.symbol)} alt={r.symbol} className="w-full h-full object-cover" />
                   </div>
@@ -136,7 +136,7 @@ export function OverviewTab({
                     <div className="text-xs text-gray-500 truncate">{r.name ?? "\u2014"}</div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="text-sm font-mono tabular-nums text-green-700">
+                  <div className="text-sm font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
                       {cagr != null ? (cagr * 100).toFixed(1) + "% CAGR" : "\u2014"}
                     </div>
                     <div className="text-xs text-gray-500">

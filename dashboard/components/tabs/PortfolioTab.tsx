@@ -36,22 +36,30 @@ export function PortfolioTab({
         <h2 className="text-lg font-bold">{t("tabPortfolio", lang)}</h2>
         <button
           onClick={onShowAddHolding}
-          className="rounded-xl px-4 py-2 bg-black text-white text-sm hover:opacity-90"
+          className="rounded-xl px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm transition-colors duration-150"
         >
           {t("portAddHolding", lang)}
         </button>
       </div>
 
       {holdingsLoading ? (
-        <div className="text-gray-500 text-sm py-8 text-center">{t("portLoading", lang)}</div>
+        <div className="space-y-2 py-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-10 rounded-xl bg-gray-100 dark:bg-neutral-800 animate-pulse" />
+          ))}
+        </div>
       ) : holdings.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="text-4xl mb-3">📋</div>
+          <svg className="w-14 h-14 mb-4 text-gray-300 dark:text-neutral-600" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="8" y="16" width="48" height="36" rx="4" stroke="currentColor" strokeWidth="3" />
+            <path d="M8 26h48" stroke="currentColor" strokeWidth="3" />
+            <path d="M20 38h8M20 44h16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+          </svg>
           <p className="font-semibold text-gray-700">{t("portEmptyTitle", lang)}</p>
           <p className="text-sm text-gray-500 mt-1 max-w-xs">{t("portEmptyDesc", lang)}</p>
           <button
             onClick={onShowAddHolding}
-            className="mt-4 rounded-xl px-5 py-2 bg-black text-white text-sm hover:opacity-90"
+            className="mt-4 rounded-xl px-5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm transition-colors duration-150"
           >
             {t("portAddHolding", lang)}
           </button>
@@ -90,7 +98,7 @@ export function PortfolioTab({
                     ? ((lp.price - h.avg_cost) / h.avg_cost) * 100
                     : null;
                 return (
-                  <tr key={h.id} className="hover:bg-gray-50">
+                  <tr key={h.id} className="hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors duration-150">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
@@ -115,7 +123,7 @@ export function PortfolioTab({
                     </td>
                     <td className="px-4 py-3 tabular-nums">
                       {pnl != null ? (
-                        <span className={pnl >= 0 ? "text-green-600" : "text-red-500"}>
+                        <span className={pnl >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}>
                           {pnl >= 0 ? "+" : ""}{pnl.toFixed(2)}
                           {pnlPct != null && (
                             <span className="ml-1 text-xs opacity-70">

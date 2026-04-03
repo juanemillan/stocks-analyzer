@@ -27,6 +27,7 @@ interface RankingTabProps {
   pageSize: number;
   setPageSize: (v: number) => void;
   lang: Lang;
+  selectedSymbol?: string | null;
   onOpen: (row: RankRow) => void;
 }
 
@@ -44,6 +45,7 @@ export function RankingTab({
   page, setPage,
   pageSize, setPageSize,
   lang,
+  selectedSymbol,
   onOpen,
 }: RankingTabProps) {
   return (
@@ -54,9 +56,10 @@ export function RankingTab({
           placeholder={t("searchPlaceholder", lang)}
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          className="border rounded-xl px-3 py-2 text-sm md:col-span-2"
+          className="border rounded-xl px-3 py-2 text-sm md:col-span-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         />
-        <select value={bucket} onChange={(e) => setBucket(e.target.value)} className="border rounded-xl px-3 py-2 text-sm">
+        <div className="grid grid-cols-2 gap-3 md:contents">
+        <select value={bucket} onChange={(e) => setBucket(e.target.value)} className="border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
           <option value="">{t("bucketAll", lang)}</option>
           {BUCKETS.map((b) => (
             <option key={b} value={b}>
@@ -64,7 +67,7 @@ export function RankingTab({
             </option>
           ))}
         </select>
-        <select value={atype} onChange={(e) => setAtype(e.target.value)} className="border rounded-xl px-3 py-2 text-sm">
+        <select value={atype} onChange={(e) => setAtype(e.target.value)} className="border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
           <option value="">{t("typeAll", lang)}</option>
           {TYPES.map((tp) => (
             <option key={tp} value={tp}>
@@ -72,6 +75,7 @@ export function RankingTab({
             </option>
           ))}
         </select>
+        </div>
         <div className="flex items-center gap-3">
           <label className="text-sm w-20">{t("minScore", lang)}</label>
           <input
@@ -87,12 +91,12 @@ export function RankingTab({
         </div>
       </section>
 
-      <section className="mb-3 flex items-center gap-2 text-sm">
+      <section className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-2 text-sm">
         <span className="text-gray-600">{t("sortBy", lang)}</span>
         <select
           value={String(sortKey)}
           onChange={(e) => setSortKey(e.target.value as keyof RankRow)}
-          className="border rounded-lg px-2 py-1"
+          className="border rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         >
           <option value="final_score">Score</option>
           <option value="mom_1m">Mom 1m</option>
@@ -101,7 +105,7 @@ export function RankingTab({
           <option value="rs_spy">RS vs SPY</option>
           <option value="liq_score">{t("liquidity", lang)}</option>
         </select>
-        <select value={sortDir} onChange={(e) => setSortDir(e.target.value as "asc" | "desc")} className="border rounded-lg px-2 py-1">
+        <select value={sortDir} onChange={(e) => setSortDir(e.target.value as "asc" | "desc")} className="border rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-emerald-500">
           <option value="desc">Desc</option>
           <option value="asc">Asc</option>
         </select>
@@ -109,7 +113,7 @@ export function RankingTab({
         <select
           value={pageSize}
           onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}
-          className="border rounded-lg px-2 py-1"
+          className="border rounded-lg px-2 pr-5 py-1 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         >
           <option value={25}>{`25 / ${t("perPage", lang)}`}</option>
           <option value={50}>{`50 / ${t("perPage", lang)}`}</option>
@@ -136,7 +140,7 @@ export function RankingTab({
             </thead>
             <tbody>
               {pagedRanking.map((r) => (
-                <tr key={r.symbol} className="border-t hover:bg-gray-50 cursor-pointer" onClick={() => onOpen(r)}>
+                <tr key={r.symbol} className={`border-t transition-colors duration-150 cursor-pointer ${r.symbol === selectedSymbol ? "bg-emerald-50 dark:bg-emerald-900/10 border-l-2 border-l-emerald-500" : "hover:bg-gray-50 dark:hover:bg-neutral-800"}`} onClick={() => onOpen(r)}>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
@@ -147,12 +151,26 @@ export function RankingTab({
                   </td>
                   <td className="px-3 py-2">{r.name ?? "—"}</td>
                   <td className="px-3 py-2">{r.asset_type ?? "—"}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{r.final_score?.toFixed(3) ?? "—"}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{r.mom_1m != null ? (r.mom_1m * 100).toFixed(2) + "%" : "—"}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{r.mom_3m != null ? (r.mom_3m * 100).toFixed(2) + "%" : "—"}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{r.mom_6m != null ? (r.mom_6m * 100).toFixed(2) + "%" : "—"}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{r.mom_1y != null ? (r.mom_1y * 100).toFixed(2) + "%" : "—"}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{r.rs_spy != null ? (r.rs_spy * 100).toFixed(2) + "%" : "—"}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {r.final_score != null
+                      ? <span className={r.final_score >= 0.7 ? "text-emerald-600 dark:text-emerald-400 font-semibold" : r.final_score < 0.35 ? "text-red-500 dark:text-red-400" : "text-gray-700 dark:text-gray-300"}>{r.final_score.toFixed(3)}</span>
+                      : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {r.mom_1m != null ? <span className={r.mom_1m >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}>{(r.mom_1m * 100).toFixed(2)}%</span> : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {r.mom_3m != null ? <span className={r.mom_3m >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}>{(r.mom_3m * 100).toFixed(2)}%</span> : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {r.mom_6m != null ? <span className={r.mom_6m >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}>{(r.mom_6m * 100).toFixed(2)}%</span> : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {r.mom_1y != null ? <span className={r.mom_1y >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}>{(r.mom_1y * 100).toFixed(2)}%</span> : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {r.rs_spy != null ? <span className={r.rs_spy >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}>{(r.rs_spy * 100).toFixed(2)}%</span> : "—"}
+                  </td>
                   <td className="px-3 py-2 text-right tabular-nums">{r.liq_score?.toFixed(2) ?? "—"}</td>
                 </tr>
               ))}

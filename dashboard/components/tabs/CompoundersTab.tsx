@@ -96,7 +96,7 @@ export function CompoundersTab({
         <select
           value={pageSize}
           onChange={(e) => { setPageSize(Number(e.target.value)); setCmpPage(0); }}
-          className="border rounded-lg px-2 py-1"
+          className="border rounded-lg px-2 pr-5 py-1"
         >
           <option value={25}>{`25 / ${t("perPage", lang)}`}</option>
           <option value={50}>{`50 / ${t("perPage", lang)}`}</option>

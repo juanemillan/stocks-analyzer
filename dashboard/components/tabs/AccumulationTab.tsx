@@ -45,7 +45,7 @@ export function AccumulationTab({
         <select
           value={pageSize}
           onChange={(e) => { setPageSize(Number(e.target.value)); setAccumPage(0); }}
-          className="border rounded-lg px-2 py-1"
+          className="border rounded-lg px-2 pr-5 py-1 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         >
           <option value={25}>{`25 / ${t("perPage", lang)}`}</option>
           <option value={50}>{`50 / ${t("perPage", lang)}`}</option>
@@ -71,7 +71,7 @@ export function AccumulationTab({
               {pagedAccumRows.map((ar) => (
                 <tr
                   key={ar.symbol}
-                  className="border-t hover:bg-gray-50 dark:hover:bg-neutral-800 cursor-pointer"
+                  className="border-t hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors duration-150 cursor-pointer"
                   onClick={() => onOpenFromSymbol(ar.symbol, ar.name, ar.asset_type, ar.racional_url, { mom_1m: ar.mom_1m, mom_3m: ar.mom_3m, liq_score: ar.liq_score })}
                 >
                   <td className="px-3 py-2">
@@ -92,12 +92,12 @@ export function AccumulationTab({
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">
                     {ar.mom_1w != null
-                      ? <span className={ar.mom_1w >= 0 ? "text-green-600" : "text-red-500"}>{(ar.mom_1w * 100).toFixed(1)}%</span>
+                      ? <span className={ar.mom_1w >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}>{(ar.mom_1w * 100).toFixed(1)}%</span>
                       : "—"}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">
                     {ar.mom_1m != null
-                      ? <span className={ar.mom_1m >= 0 ? "text-green-600" : "text-red-500"}>{(ar.mom_1m * 100).toFixed(1)}%</span>
+                      ? <span className={ar.mom_1m >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}>{(ar.mom_1m * 100).toFixed(1)}%</span>
                       : "—"}
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">{ar.vol_surge != null ? ar.vol_surge.toFixed(2) + "×" : "—"}</td>

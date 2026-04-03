@@ -2,11 +2,12 @@
 
 import React, { useState } from "react";
 import { t } from "./i18n";
-import type { Lang } from "./types";
+import type { Lang, ViewMode } from "./types";
 import ThemeToggle from "@/components/ThemeToggle";
 import { BulliaLogo } from "@/components/BulliaLogo";
 import { LangToggle } from "@/components/LangToggle";
 import { SlidingTabBar } from "@/components/SlidingTabBar";
+import { BottomNavBar } from "@/components/BottomNavBar";
 import { LegendModal } from "@/components/modals/LegendModal";
 import { AddHoldingModal } from "@/components/modals/AddHoldingModal";
 import { EditProfileModal } from "@/components/modals/EditProfileModal";
@@ -17,6 +18,7 @@ import { TurnaroundsTab } from "@/components/tabs/TurnaroundsTab";
 import { AccumulationTab } from "@/components/tabs/AccumulationTab";
 import { CompoundersTab } from "@/components/tabs/CompoundersTab";
 import { PortfolioTab } from "@/components/tabs/PortfolioTab";
+import { ProfileTab } from "@/components/tabs/ProfileTab";
 import { createClient } from "@/lib/supabase/client";
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
@@ -31,16 +33,49 @@ export default function Dashboard() {
 
   const [lang, setLang] = useState<Lang>("es");
   const [showLegend, setShowLegend] = useState(false);
+  const prevViewMode = React.useRef<ViewMode>("overview");
 
   const data = useDashboardData();
   const portfolio = usePortfolio();
   const auth = useAuth();
+
+  // Track previous view so profile back-button knows where to go
+  useEffect(() => {
+    if (data.viewMode && data.viewMode !== "profile") prevViewMode.current = data.viewMode;
+  }, [data.viewMode]);
 
   // Load portfolio when portfolio tab is active
   useEffect(() => {
     if (data.viewMode === "portfolio") portfolio.loadHoldings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.viewMode]);
+
+  // Pre-populate profile edit fields when navigating to profile view
+  useEffect(() => {
+    if (data.viewMode === "profile") {
+      const supabase = createClient();
+      supabase.auth.getUser().then(({ data: d }) => {
+        const meta = d.user?.user_metadata ?? {};
+        auth.setEditName(meta.first_name ?? "");
+        auth.setEditLastName(meta.last_name ?? "");
+        auth.setEditAgeRange(meta.age_range ?? "");
+        auth.setEditExperience(meta.experience ?? "");
+        auth.setEditRiskTolerance(meta.risk_tolerance ?? "");
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.viewMode]);
+
+  const handleReload = () => {
+    const vm = data.viewMode;
+    if (vm === "overview" || vm === "profile") {
+      data.loadRanking(true); data.loadTurnarounds(true); data.loadCompounders(data.cmpHorizon, true);
+    } else if (vm === "ranking") data.loadRanking(true);
+    else if (vm === "turnarounds") data.loadTurnarounds(true);
+    else if (vm === "accumulation") data.loadAccumulation(true);
+    else if (vm === "compounders") data.loadCompounders(data.cmpHorizon, true);
+    else data.loadRanking(true);
+  };
 
   if (!data.viewMode) return null;
 
@@ -86,80 +121,106 @@ export default function Dashboard() {
         lang={lang}
       />
 
+      <StockDetailPanel
+        open={data.detailOpen}
+        onClose={data.closeDetail}
+        selected={data.selected}
+        finnhubData={data.finnhubData}
+        finnhubLoading={data.finnhubLoading}
+        prices={data.prices}
+        pricesLoading={data.pricesLoading}
+        rangeKey={data.rangeKey}
+        setRangeKey={data.setRangeKey}
+        lang={lang}
+      />
+
       {/* Header */}
       <header className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/85 backdrop-blur border-b dark:border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-row justify-between gap-2 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2 overflow-x-auto">
             <div className="flex items-center gap-2 flex-none mr-1">
               <BulliaLogo dark={mounted && resolvedTheme === "dark"} />
               <span className="font-semibold text-2xl hidden sm:block">BULLIA</span>
             </div>
-            <SlidingTabBar viewMode={data.viewMode} setViewMode={data.setViewMode} lang={lang} />
+            {/* Tab bar: hidden on mobile (uses BottomNavBar) — visible on desktop */}
+            <div className="hidden md:block">
+              <SlidingTabBar viewMode={data.viewMode} setViewMode={data.setViewMode} lang={lang} />
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <LangToggle lang={lang} setLang={setLang} />
-            <button
-              onClick={() => setShowLegend(true)}
-              title={t("legendTitle", lang)}
-              className="w-8 h-8 rounded-lg border dark:border-neutral-600 text-sm font-bold hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors duration-200 flex items-center justify-center"
-            >
-              ?
-            </button>
-            <ThemeToggle />
-            <button
-              onClick={() => {
-                const vm = data.viewMode;
-                if (vm === "overview") { data.loadRanking(); data.loadTurnarounds(); data.loadCompounders(data.cmpHorizon); }
-                else if (vm === "ranking") data.loadRanking();
-                else if (vm === "turnarounds") data.loadTurnarounds();
-                else data.loadCompounders(data.cmpHorizon);
-              }}
-              title={t("reloadBtn", lang)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg border dark:border-neutral-600 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors duration-200"
-            >
-              <svg
-                width="16" height="16" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
-                className={data.loading ? "animate-spin" : ""}
+            {/* All controls — desktop only */}
+            <div className="hidden md:flex items-center gap-2">
+              <LangToggle lang={lang} setLang={setLang} />
+              <ThemeToggle />
+              <button
+                onClick={handleReload}
+                title={t("reloadBtn", lang)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border dark:border-neutral-600 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors duration-200"
               >
-                <path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                <path d="M21 3v5h-5" />
-              </svg>
-            </button>
+                <svg
+                  width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+                  className={data.loading ? "animate-spin" : ""}
+                >
+                  <path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                  <path d="M21 3v5h-5" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setShowLegend(true)}
+                title={t("legendTitle", lang)}
+                className="w-8 h-8 rounded-lg border dark:border-neutral-600 text-sm font-bold hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors duration-200 flex items-center justify-center"
+              >
+                ?
+              </button>
+            </div>
+            {/* Profile avatar — mobile: navigate to profile view | desktop: dropdown */}
             {auth.userEmail && (
-              <div className="relative" ref={auth.userMenuRef}>
+              <div className="relative md:block" ref={auth.userMenuRef}>
                 <button
-                  onClick={() => auth.setShowUserMenu((v) => !v)}
-                  className="w-8 h-8 rounded-full bg-black text-white dark:bg-white dark:text-black flex items-center justify-center text-sm font-bold hover:opacity-75 transition-opacity flex-none"
-                  aria-label="User menu"
+                  onClick={() => {
+                    if (window.innerWidth < 768) {
+                      if (data.viewMode === "profile") {
+                        data.setViewMode(prevViewMode.current);
+                      } else {
+                        data.setViewMode("profile");
+                      }
+                    } else {
+                      auth.setShowUserMenu((v) => !v);
+                    }
+                  }}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-none transition-all duration-150 ${
+                    data.viewMode === "profile"
+                      ? "bg-emerald-500 text-white ring-2 ring-emerald-300"
+                      : "bg-black text-white dark:bg-white dark:text-black hover:opacity-75"
+                  }`}
+                  aria-label="Profile"
                 >
                   {(auth.userDisplayName || auth.userEmail).charAt(0).toUpperCase()}
                 </button>
                 {auth.showUserMenu && (
                   <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-neutral-900 border dark:border-neutral-700 rounded-2xl shadow-xl z-50 overflow-hidden animate-fadeInDown">
                     <div className="px-4 py-3 border-b dark:border-neutral-700">
-                      {auth.userDisplayName && <div className="font-semibold text-sm truncate">{auth.userDisplayName}</div>}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">{t("profileLabel", lang)}</span>
+                        <button
+                          onClick={() => {
+                            auth.setShowUserMenu(false);
+                            auth.setShowEditProfile(true);
+                          }}
+                          title={t("editProfile", lang)}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-neutral-800 transition-colors duration-150"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                          </svg>
+                        </button>
+                      </div>
+                      {auth.userDisplayName && <div className="font-semibold text-sm truncate mt-1">{auth.userDisplayName}</div>}
                       <div className="text-xs text-gray-500 truncate">{auth.userEmail}</div>
                     </div>
                     <div className="py-1">
-                      <button
-                        onClick={() => {
-                          auth.setShowUserMenu(false);
-                          const supabase = createClient();
-                          supabase.auth.getUser().then(({ data: d }) => {
-                            const meta = d.user?.user_metadata ?? {};
-                            auth.setEditName(meta.first_name ?? "");
-                            auth.setEditLastName(meta.last_name ?? "");
-                            auth.setEditAgeRange(meta.age_range ?? "");
-                            auth.setEditExperience(meta.experience ?? "");
-                            auth.setEditRiskTolerance(meta.risk_tolerance ?? "");
-                            auth.setShowEditProfile(true);
-                          });
-                        }}
-                        className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors flex items-center gap-2"
-                      >
-                        <span>✏️</span> {t("editProfile", lang)}
-                      </button>
                       <button
                         onClick={auth.signOut}
                         className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
@@ -176,23 +237,12 @@ export default function Dashboard() {
       </header>
 
       {/* Main */}
-      <main className="max-w-6xl mx-auto px-4 py-6">
+      <main className="max-w-6xl mx-auto px-4 py-6 pb-[106px] md:pb-6" style={{ paddingBottom: "calc(106px + env(safe-area-inset-bottom))" }}>
         {data.error && (
           <div className="mb-4 rounded-xl border border-red-300 bg-red-50 text-red-800 px-4 py-3 text-sm">
             Error: {data.error}
           </div>
         )}
-
-        <StockDetailPanel
-          selected={data.selected}
-          finnhubData={data.finnhubData}
-          finnhubLoading={data.finnhubLoading}
-          prices={data.prices}
-          pricesLoading={data.pricesLoading}
-          rangeKey={data.rangeKey}
-          setRangeKey={data.setRangeKey}
-          lang={lang}
-        />
 
         {/* ======= Tab content ======= */}
         {data.viewMode === "overview" && (
@@ -223,6 +273,7 @@ export default function Dashboard() {
             page={data.page} setPage={data.setPage}
             pageSize={data.pageSize} setPageSize={data.setPageSize}
             lang={lang}
+            selectedSymbol={data.selected?.symbol}
             onOpen={data.handleOpen}
           />
         )}
@@ -281,7 +332,38 @@ export default function Dashboard() {
             onOpenFromSymbol={data.openFromSymbol}
           />
         )}
+
+        {data.viewMode === "profile" && (
+          <ProfileTab
+            lang={lang}
+            setLang={setLang}
+            userEmail={auth.userEmail}
+            userDisplayName={auth.userDisplayName}
+            editName={auth.editName}
+            setEditName={auth.setEditName}
+            editLastName={auth.editLastName}
+            setEditLastName={auth.setEditLastName}
+            editAgeRange={auth.editAgeRange}
+            setEditAgeRange={auth.setEditAgeRange}
+            editExperience={auth.editExperience}
+            setEditExperience={auth.setEditExperience}
+            editRiskTolerance={auth.editRiskTolerance}
+            setEditRiskTolerance={auth.setEditRiskTolerance}
+            editSaving={auth.editSaving}
+            onSave={auth.saveDisplayName}
+            onSignOut={auth.signOut}
+            onShowLegend={() => setShowLegend(true)}
+            onReload={handleReload}
+            loading={data.loading}
+          />
+        )}
       </main>
+
+      <BottomNavBar
+        viewMode={data.viewMode}
+        setViewMode={data.setViewMode}
+        lang={lang}
+      />
 
       <footer className="max-w-6xl mx-auto px-4 py-10 text-xs text-gray-500">
         {t("footer", lang)}

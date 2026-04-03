@@ -42,7 +42,7 @@ export function TurnaroundsTab({
         <select
           value={pageSize}
           onChange={(e) => { setPageSize(Number(e.target.value)); setTurnPage(0); }}
-          className="border rounded-lg px-2 py-1"
+          className="border rounded-lg px-2 pr-5 py-1 focus:outline-none focus:ring-2 focus:ring-emerald-500"
         >
           <option value={25}>{`25 / ${t("perPage", lang)}`}</option>
           <option value={50}>{`50 / ${t("perPage", lang)}`}</option>
@@ -67,7 +67,7 @@ export function TurnaroundsTab({
               {pagedTurnRows.map((tr) => (
                 <tr
                   key={tr.symbol}
-                  className="border-t hover:bg-gray-50 cursor-pointer"
+                  className="border-t hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors duration-150 cursor-pointer"
                   onClick={() => onOpenFromSymbol(tr.symbol, tr.name, tr.asset_type, tr.racional_url, { mom_1m: tr.mom_1m, mom_3m: tr.mom_3m, liq_score: tr.liq_score })}
                 >
                   <td className="px-3 py-2">
@@ -80,9 +80,13 @@ export function TurnaroundsTab({
                   </td>
                   <td className="px-3 py-2">{tr.name ?? "—"}</td>
                   <td className="px-3 py-2">{tr.asset_type ?? "—"}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{tr.rebound_from_low != null ? (tr.rebound_from_low * 100).toFixed(0) + "%" : "—"}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{tr.mom_1m != null ? (tr.mom_1m * 100).toFixed(1) + "%" : "—"}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{tr.mom_3m != null ? (tr.mom_3m * 100).toFixed(1) + "%" : "—"}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-emerald-600 dark:text-emerald-400">{tr.rebound_from_low != null ? "+" + (tr.rebound_from_low * 100).toFixed(0) + "%" : "—"}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {tr.mom_1m != null ? <span className={tr.mom_1m >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}>{(tr.mom_1m * 100).toFixed(1)}%</span> : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {tr.mom_3m != null ? <span className={tr.mom_3m >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}>{(tr.mom_3m * 100).toFixed(1)}%</span> : "—"}
+                  </td>
                   <td className="px-3 py-2 text-right tabular-nums">{tr.vol_surge != null ? tr.vol_surge.toFixed(2) + "×" : "—"}</td>
                 </tr>
               ))}

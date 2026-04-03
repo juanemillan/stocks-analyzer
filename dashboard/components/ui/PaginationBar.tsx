@@ -20,7 +20,7 @@ export function PaginationBar({
       <button
         onClick={onPrev}
         disabled={page === 0}
-        className="px-3 py-1 rounded-lg border disabled:opacity-40 hover:bg-gray-50"
+        className="px-3 py-1 rounded-lg border border-gray-200 dark:border-neutral-700 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors duration-150"
       >
         {t("prev", lang)}
       </button>
@@ -30,7 +30,7 @@ export function PaginationBar({
       <button
         onClick={onNext}
         disabled={page >= total - 1}
-        className="px-3 py-1 rounded-lg border disabled:opacity-40 hover:bg-gray-50"
+        className="px-3 py-1 rounded-lg border border-gray-200 dark:border-neutral-700 disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors duration-150"
       >
         {t("next", lang)}
       </button>
