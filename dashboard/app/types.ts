@@ -23,6 +23,8 @@ export type RankRow = {
   rs_spy: number | null;
   tech_trend: number | null;
   liq_score: number | null;
+  prev_score?: number | null;
+  score_delta?: number | null;
 };
 
 export type TurnRow = {

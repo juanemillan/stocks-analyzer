@@ -25,6 +25,7 @@ import { useEffect } from "react";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { usePortfolio } from "@/hooks/usePortfolio";
 import { useAuth } from "@/hooks/useAuth";
+import { useWatchlist } from "@/hooks/useWatchlist";
 
 export default function Dashboard() {
   const { resolvedTheme } = useTheme();
@@ -38,6 +39,7 @@ export default function Dashboard() {
   const data = useDashboardData();
   const portfolio = usePortfolio();
   const auth = useAuth();
+  const { watchlist, toggle: toggleWatchlist } = useWatchlist();
 
   // Track previous view so profile back-button knows where to go
   useEffect(() => {
@@ -275,6 +277,8 @@ export default function Dashboard() {
             lang={lang}
             selectedSymbol={data.selected?.symbol}
             onOpen={data.handleOpen}
+            watchlist={watchlist}
+            onToggleWatchlist={toggleWatchlist}
           />
         )}
 

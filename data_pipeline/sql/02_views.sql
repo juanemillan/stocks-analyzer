@@ -26,9 +26,18 @@ select
   s.mom_1y,
   s.rs_spy,
   s.tech_trend,
-  s.liq_score
+  s.liq_score,
+  sp.final_score                        as prev_score,
+  s.final_score - sp.final_score        as score_delta
 from assets a
 join scores_daily s on s.symbol = a.symbol
+left join scores_daily sp
+  on  sp.symbol = a.symbol
+  and sp.date   = (
+    select max(date) from scores_daily
+    where symbol = a.symbol
+      and date < (select max(date) from scores_daily)
+  )
 where a.is_active = true
   and s.date = (select max(date) from scores_daily)
 order by s.final_score desc nulls last;

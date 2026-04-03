@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { t } from "@/app/i18n";
 import type { Lang, RankRow } from "@/app/types";
 import { InfoBox } from "@/components/ui/InfoBox";
@@ -29,6 +30,14 @@ interface RankingTabProps {
   lang: Lang;
   selectedSymbol?: string | null;
   onOpen: (row: RankRow) => void;
+  watchlist: Set<string>;
+  onToggleWatchlist: (symbol: string) => void;
+}
+
+function ScoreDelta({ delta }: { delta?: number | null }) {
+  if (delta == null || Math.abs(delta) < 0.001) return <span className="text-gray-400 text-xs ml-1">→</span>;
+  if (delta > 0) return <span className="text-emerald-500 text-xs ml-1">▲ +{delta.toFixed(3)}</span>;
+  return <span className="text-red-400 text-xs ml-1">▼ {delta.toFixed(3)}</span>;
 }
 
 export function RankingTab({
@@ -47,7 +56,14 @@ export function RankingTab({
   lang,
   selectedSymbol,
   onOpen,
+  watchlist,
+  onToggleWatchlist,
 }: RankingTabProps) {
+  const [starredOnly, setStarredOnly] = useState(false);
+  const displayRows = starredOnly
+    ? filteredRanking.filter((r) => watchlist.has(r.symbol))
+    : pagedRanking;
+  const showPagination = !starredOnly;
   return (
     <div className="animate-fadeIn">
       <InfoBox text={t("infoRankingText", lang)} label={t("infoHowItWorks", lang)} />
@@ -109,7 +125,20 @@ export function RankingTab({
           <option value="desc">Desc</option>
           <option value="asc">Asc</option>
         </select>
-        <span className="ml-auto text-gray-500">{filteredRanking.length} {t("results", lang)}</span>
+        <button
+          onClick={() => setStarredOnly((v) => !v)}
+          className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-sm transition-colors ${
+            starredOnly
+              ? "bg-amber-50 border-amber-400 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400"
+              : "border-gray-300 text-gray-500 hover:border-amber-400 hover:text-amber-500"
+          }`}
+        >
+          <span>{starredOnly ? "★" : "☆"}</span>
+          <span>Starred{starredOnly && watchlist.size > 0 ? ` (${displayRows.length})` : ""}</span>
+        </button>
+        <span className="ml-auto text-gray-500">
+          {starredOnly ? displayRows.length : filteredRanking.length} {t("results", lang)}
+        </span>
         <select
           value={pageSize}
           onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}
@@ -126,6 +155,7 @@ export function RankingTab({
           <table className="min-w-[860px] w-full text-left text-sm">
             <thead className="bg-gray-100 text-gray-700">
               <tr>
+                <th className="w-8 px-2 py-2"></th>
                 <th className="px-3 py-2">{t("symbol", lang)}</th>
                 <th className="px-3 py-2">{t("name", lang)}</th>
                 <th className="px-3 py-2">{t("type", lang)}</th>
@@ -139,8 +169,19 @@ export function RankingTab({
               </tr>
             </thead>
             <tbody>
-              {pagedRanking.map((r) => (
+              {displayRows.map((r) => (
                 <tr key={r.symbol} className={`border-t transition-colors duration-150 cursor-pointer ${r.symbol === selectedSymbol ? "bg-emerald-50 dark:bg-emerald-900/10 border-l-2 border-l-emerald-500" : "hover:bg-gray-50 dark:hover:bg-neutral-800"}`} onClick={() => onOpen(r)}>
+                  <td className="w-8 px-2 py-2 text-center">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onToggleWatchlist(r.symbol); }}
+                      className="text-base leading-none transition-colors hover:scale-110"
+                      title={watchlist.has(r.symbol) ? "Remove from watchlist" : "Add to watchlist"}
+                    >
+                      {watchlist.has(r.symbol)
+                        ? <span className="text-amber-400">★</span>
+                        : <span className="text-gray-300 hover:text-amber-400">☆</span>}
+                    </button>
+                  </td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
@@ -155,6 +196,7 @@ export function RankingTab({
                     {r.final_score != null
                       ? <span className={r.final_score >= 0.7 ? "text-emerald-600 dark:text-emerald-400 font-semibold" : r.final_score < 0.35 ? "text-red-500 dark:text-red-400" : "text-gray-700 dark:text-gray-300"}>{r.final_score.toFixed(3)}</span>
                       : "—"}
+                    <ScoreDelta delta={r.score_delta} />
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">
                     {r.mom_1m != null ? <span className={r.mom_1m >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}>{(r.mom_1m * 100).toFixed(2)}%</span> : "—"}
@@ -174,10 +216,10 @@ export function RankingTab({
                   <td className="px-3 py-2 text-right tabular-nums">{r.liq_score?.toFixed(2) ?? "—"}</td>
                 </tr>
               ))}
-              {pagedRanking.length === 0 && (
+              {displayRows.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-3 py-6 text-center text-gray-500">
-                    {t("noResults", lang)}
+                  <td colSpan={11} className="px-3 py-6 text-center text-gray-500">
+                    {starredOnly ? "No starred symbols match current filters." : t("noResults", lang)}
                   </td>
                 </tr>
               )}
@@ -186,13 +228,15 @@ export function RankingTab({
         </div>
       </section>
 
-      <PaginationBar
-        lang={lang}
-        page={page}
-        total={totalPages}
-        onPrev={() => setPage((p) => Math.max(0, p - 1))}
-        onNext={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-      />
+      {showPagination && (
+        <PaginationBar
+          lang={lang}
+          page={page}
+          total={totalPages}
+          onPrev={() => setPage((p) => Math.max(0, p - 1))}
+          onNext={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+        />
+      )}
     </div>
   );
 }
