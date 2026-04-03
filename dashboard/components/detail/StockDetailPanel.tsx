@@ -19,6 +19,7 @@ import { DescriptionBlock } from "@/components/ui/DescriptionBlock";
 import { logoSrc, bucketDisplay, fmtBig, RANGE_OPTIONS } from "@/lib/stockUtils";
 import { t } from "@/app/i18n";
 import type { RankRow, PriceRow, Lang, FinnhubData } from "@/app/types";
+import { useStockNote } from "@/hooks/useStockNote";
 
 type Props = {
   open: boolean;
@@ -58,6 +59,8 @@ export function StockDetailPanel({
     document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [open]);
+
+  const { note, setNote, save, saving, saved, loaded } = useStockNote(selected?.symbol ?? null);
 
   if (!open || !selected) return null;
 
@@ -338,6 +341,34 @@ export function StockDetailPanel({
                   </ul>
                 ) : (
                   <div className="text-xs text-gray-400">—</div>
+                )}
+              </div>
+
+              {/* Notes */}
+              <div className="bg-white border rounded-2xl p-4 dark:bg-neutral-900 dark:border-neutral-700">
+                <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">My Notes</div>
+                {!loaded ? (
+                  <div className="text-xs text-gray-400 animate-pulse">Loading…</div>
+                ) : (
+                  <>
+                    <textarea
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      placeholder="Write your thoughts on this stock…"
+                      rows={4}
+                      className="w-full text-sm rounded-xl border px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-neutral-800 dark:border-neutral-600 dark:text-gray-200 dark:placeholder-gray-500"
+                    />
+                    <div className="flex items-center justify-end gap-2 mt-2">
+                      {saved && <span className="text-xs text-emerald-600 dark:text-emerald-400">Saved ✓</span>}
+                      <button
+                        onClick={save}
+                        disabled={saving}
+                        className="px-3 py-1 text-xs rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+                      >
+                        {saving ? "Saving…" : "Save note"}
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
 
