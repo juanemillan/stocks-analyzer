@@ -46,7 +46,7 @@ export function AddHoldingModal({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-scaleIn"
+        className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-sm animate-scaleIn"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 pt-5 pb-3">

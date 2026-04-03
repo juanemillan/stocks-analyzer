@@ -103,23 +103,57 @@ export function CorrelationPanel({ data }: CorrelationPanelProps) {
       </div>
 
       {/* ── Top row: Score + Action Steps side-by-side on desktop ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
 
-        {/* Diversity Score card */}
-        <div className="flex items-center gap-4 rounded-2xl border bg-white dark:bg-neutral-900 px-5 py-4">
-          <div className={`w-14 h-14 rounded-full ring-4 ${grade.ring} flex flex-col items-center justify-center flex-none`}>
-            <span className={`text-xl font-bold tabular-nums leading-none ${grade.color}`}>{score}</span>
-            <span className="text-[9px] text-gray-400 mt-0.5">/ 100</span>
-          </div>
-          <div>
-            <span className={`text-sm font-bold ${grade.color}`}>{grade.label} Diversification</span>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">{grade.text}</p>
+        <div className="grid gap-4">
+
+            {/* Diversity Score card */}
+            <div className="flex items-center gap-4 rounded-2xl border bg-white dark:bg-neutral-900 px-5 py-4">
+                <div className={`w-14 h-14 rounded-full ring-4 ${grade.ring} flex flex-col items-center justify-center flex-none`}>
+                    <span className={`text-xl font-bold tabular-nums leading-none ${grade.color}`}>{score}</span>
+                    <span className="text-[9px] text-gray-400 mt-0.5">/ 100</span>
+                </div>
+                <div>
+                    <span className={`text-sm font-bold ${grade.color}`}>{grade.label} Diversification</span>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">{grade.text}</p>
+                    {hasWarnings && (
+                    <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                        {groups.length} high-correlation {groups.length === 1 ? "cluster" : "clusters"} detected across {groups.reduce((s, g) => s + g.symbols.length, 0)} positions.
+                    </p>
+                    )}
+                </div>
+            </div>
+
+            {/* ── Cluster Warnings (full width) ── */}
             {hasWarnings && (
-              <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
-                {groups.length} high-correlation {groups.length === 1 ? "cluster" : "clusters"} detected across {groups.reduce((s, g) => s + g.symbols.length, 0)} positions.
-              </p>
+                <div className="space-y-2">
+                {groups.map((g) => {
+                    const sev = clusterSeverity(g.avgCorrelation);
+                    return (
+                    <div key={g.symbols.join(",")} className={`flex items-start gap-3 rounded-xl border ${sev.border} ${sev.bg} px-4 py-3 text-sm`}>
+                        <IconWarn />
+                        <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`font-semibold ${sev.titleColor}`}>{g.symbols.join(", ")}</span>
+                            <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${sev.bg} ${sev.titleColor} border ${sev.border}`}>
+                            {sev.label} · r = {g.avgCorrelation.toFixed(2)}
+                            </span>
+                        </div>
+                        <p className={sev.bodyColor}>{clusterMessage(g, symbols.length)}</p>
+                        </div>
+                    </div>
+                    );
+                })}
+                </div>
             )}
-          </div>
+
+            {!hasWarnings && (
+                <div className="flex items-center gap-3 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
+                <IconCheck />
+                <span>No high-correlation clusters detected. Your positions are driven by different market factors — that's exactly what you want.</span>
+                </div>
+            )}
+
         </div>
 
         {/* Action Steps card */}
@@ -139,35 +173,57 @@ export function CorrelationPanel({ data }: CorrelationPanelProps) {
         </div>
       </div>
 
-      {/* ── Cluster Warnings (full width) ── */}
-      {hasWarnings && (
-        <div className="space-y-2">
-          {groups.map((g) => {
-            const sev = clusterSeverity(g.avgCorrelation);
-            return (
-              <div key={g.symbols.join(",")} className={`flex items-start gap-3 rounded-xl border ${sev.border} ${sev.bg} px-4 py-3 text-sm`}>
-                <IconWarn />
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`font-semibold ${sev.titleColor}`}>{g.symbols.join(", ")}</span>
-                    <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${sev.bg} ${sev.titleColor} border ${sev.border}`}>
-                      {sev.label} · r = {g.avgCorrelation.toFixed(2)}
-                    </span>
-                  </div>
-                  <p className={sev.bodyColor}>{clusterMessage(g, symbols.length)}</p>
-                </div>
+      {/* ── Full Matrix (full width, smooth collapsible) ── */}
+      <div className="rounded-2xl border bg-white dark:bg-neutral-900 overflow-hidden">
+        <button
+          onClick={() => setShowMatrix((v) => !v)}
+          className="w-full flex items-center justify-between px-5 py-3.5 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors duration-150"
+        >
+          <span>Full correlation matrix</span>
+          <IconChevron open={showMatrix} />
+        </button>
+        <div className={`grid transition-all duration-300 ease-in-out ${showMatrix ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+          <div className="overflow-hidden">
+            <div className="border-t dark:border-neutral-800">
+              <div className="overflow-x-auto">
+                <table className="text-xs text-center border-collapse">
+                  <thead>
+                    <tr>
+                      <th className="w-16 px-3 py-2 bg-gray-50 dark:bg-neutral-800 text-left text-gray-500 sticky left-0 z-10"></th>
+                      {symbols.map((s) => (
+                        <th key={s} className="px-3 py-2 bg-gray-50 dark:bg-neutral-800 font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">{s}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {symbols.map((row) => (
+                      <tr key={row}>
+                        <td className="px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 text-left bg-gray-50 dark:bg-neutral-800 whitespace-nowrap sticky left-0 z-10">{row}</td>
+                        {symbols.map((col) => {
+                          const r = matrix[row][col];
+                          const isDiag = row === col;
+                          return (
+                            <td key={col} className={`px-3 py-2 tabular-nums font-medium border border-gray-100 dark:border-neutral-700 ${isDiag ? "bg-gray-100 dark:bg-neutral-700 text-gray-400" : r >= 0.7 ? corrColor(r) + " text-orange-800 dark:text-orange-300" : corrColor(r) + " text-gray-600 dark:text-gray-400"}`}>
+                              {r.toFixed(2)}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            );
-          })}
+              <div className="px-4 py-2 flex flex-wrap items-center gap-3 border-t bg-gray-50 dark:bg-neutral-800 text-xs text-gray-400">
+                <span>Legend:</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-200 dark:bg-red-900/50 inline-block"></span>≥ 0.9 very high</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-orange-100 dark:bg-orange-900/40 inline-block"></span>0.7–0.9 high</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-yellow-50 dark:bg-yellow-900/20 inline-block"></span>0.4–0.7 moderate</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-white dark:bg-neutral-800 border inline-block"></span>&lt; 0.4 low</span>
+              </div>
+            </div>
+          </div>
         </div>
-      )}
-
-      {!hasWarnings && (
-        <div className="flex items-center gap-3 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
-          <IconCheck />
-          <span>No high-correlation clusters detected. Your positions are driven by different market factors — that's exactly what you want.</span>
-        </div>
-      )}
+      </div>
 
       {/* ── How Correlation Works (full width, smooth collapsible) ── */}
       <div className="rounded-2xl border bg-white dark:bg-neutral-900 overflow-hidden">
@@ -243,58 +299,6 @@ export function CorrelationPanel({ data }: CorrelationPanelProps) {
                 <p>A well-diversified retail portfolio typically has an average pairwise correlation between 0.20 and 0.45. If yours is above 0.60, the portfolio is acting more like a single concentrated bet than a basket of independent investments.</p>
               </div>
 
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Full Matrix (full width, smooth collapsible) ── */}
-      <div className="rounded-2xl border bg-white dark:bg-neutral-900 overflow-hidden">
-        <button
-          onClick={() => setShowMatrix((v) => !v)}
-          className="w-full flex items-center justify-between px-5 py-3.5 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors duration-150"
-        >
-          <span>Full correlation matrix</span>
-          <IconChevron open={showMatrix} />
-        </button>
-        <div className={`grid transition-all duration-300 ease-in-out ${showMatrix ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
-          <div className="overflow-hidden">
-            <div className="border-t dark:border-neutral-800">
-              <div className="overflow-x-auto">
-                <table className="text-xs text-center border-collapse">
-                  <thead>
-                    <tr>
-                      <th className="w-16 px-3 py-2 bg-gray-50 dark:bg-neutral-800 text-left text-gray-500 sticky left-0 z-10"></th>
-                      {symbols.map((s) => (
-                        <th key={s} className="px-3 py-2 bg-gray-50 dark:bg-neutral-800 font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">{s}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {symbols.map((row) => (
-                      <tr key={row}>
-                        <td className="px-3 py-2 font-semibold text-gray-700 dark:text-gray-300 text-left bg-gray-50 dark:bg-neutral-800 whitespace-nowrap sticky left-0 z-10">{row}</td>
-                        {symbols.map((col) => {
-                          const r = matrix[row][col];
-                          const isDiag = row === col;
-                          return (
-                            <td key={col} className={`px-3 py-2 tabular-nums font-medium border border-gray-100 dark:border-neutral-700 ${isDiag ? "bg-gray-100 dark:bg-neutral-700 text-gray-400" : r >= 0.7 ? corrColor(r) + " text-orange-800 dark:text-orange-300" : corrColor(r) + " text-gray-600 dark:text-gray-400"}`}>
-                              {r.toFixed(2)}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="px-4 py-2 flex flex-wrap items-center gap-3 border-t bg-gray-50 dark:bg-neutral-800 text-xs text-gray-400">
-                <span>Legend:</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-200 dark:bg-red-900/50 inline-block"></span>≥ 0.9 very high</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-orange-100 dark:bg-orange-900/40 inline-block"></span>0.7–0.9 high</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-yellow-50 dark:bg-yellow-900/20 inline-block"></span>0.4–0.7 moderate</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-white dark:bg-neutral-800 border inline-block"></span>&lt; 0.4 low</span>
-              </div>
             </div>
           </div>
         </div>

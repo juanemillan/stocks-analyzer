@@ -47,9 +47,13 @@ export default function Dashboard() {
     if (data.viewMode && data.viewMode !== "profile" && data.viewMode !== "favorites") prevViewMode.current = data.viewMode;
   }, [data.viewMode]);
 
-  // Load portfolio when portfolio tab is active
+  // Load portfolio when portfolio tab is active; also ensure ranking rows are
+  // loaded (needed for the Add Holding symbol search dropdown)
   useEffect(() => {
-    if (data.viewMode === "portfolio") portfolio.loadHoldings();
+    if (data.viewMode === "portfolio") {
+      portfolio.loadHoldings();
+      if (data.rows.length === 0) data.loadRanking();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.viewMode]);
 
