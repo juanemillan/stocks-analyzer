@@ -4,6 +4,9 @@
 
 :root {
   color-scheme: light;
+  --color-brand:       #10b981;
+  --color-brand-hover: #059669;
+  --color-brand-text:  #065f46;
 }
 
 /* Login page background — gradient shown briefly before JS mounts */
