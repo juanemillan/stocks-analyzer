@@ -158,7 +158,7 @@ export default function Dashboard() {
               <button
                 onClick={handleReload}
                 title={t("reloadBtn", lang)}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border dark:border-neutral-600 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors duration-200"
+                className="w-8 h-8 flex items-center justify-center rounded-lg border dark:border-neutral-600 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-all duration-150 active:scale-95"
               >
                 <svg
                   width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -172,7 +172,7 @@ export default function Dashboard() {
               <button
                 onClick={() => setShowLegend(true)}
                 title={t("legendTitle", lang)}
-                className="w-8 h-8 rounded-lg border dark:border-neutral-600 text-sm font-bold hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors duration-200 flex items-center justify-center"
+                className="w-8 h-8 rounded-lg border dark:border-neutral-600 text-sm font-bold hover:bg-gray-100 dark:hover:bg-neutral-800 transition-all duration-150 active:scale-95 flex items-center justify-center"
               >
                 ?
               </button>
@@ -192,7 +192,7 @@ export default function Dashboard() {
                       auth.setShowUserMenu((v) => !v);
                     }
                   }}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-none transition-all duration-150 ${
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-none transition-all duration-150 active:scale-95 ${
                     data.viewMode === "profile"
                       ? "bg-emerald-500 text-white ring-2 ring-emerald-300"
                       : "bg-black text-white dark:bg-white dark:text-black hover:opacity-75"
@@ -226,14 +226,14 @@ export default function Dashboard() {
                     <div className="py-1">
                       <button
                         onClick={() => { auth.setShowUserMenu(false); data.setViewMode("favorites"); }}
-                        className="w-full text-left px-4 py-2 text-sm flex items-center gap-2 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
+                        className="w-full text-left px-4 py-2 text-sm flex items-center gap-2 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors duration-150"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-rose-500"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                         Favorites{watchlist.size > 0 ? ` (${watchlist.size})` : ""}
                       </button>
                       <button
                         onClick={auth.signOut}
-                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-150"
                       >
                         {t("portLogout", lang)}
                       </button>

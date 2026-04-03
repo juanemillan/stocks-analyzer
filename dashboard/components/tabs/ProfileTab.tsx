@@ -203,13 +203,13 @@ export function ProfileTab({
               <button
                 onClick={onSave}
                 disabled={editSaving}
-                className="flex-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold transition-colors disabled:opacity-60"
+                className="flex-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold transition-all duration-150 active:scale-[0.98] disabled:opacity-60"
               >
                 {editSaving ? (lang === "es" ? "Guardando…" : "Saving…") : t("editSave", lang)}
               </button>
               <button
                 onClick={() => setSection(null)}
-                className="flex-1 py-2 rounded-xl border dark:border-neutral-600 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
+                className="flex-1 py-2 rounded-xl border dark:border-neutral-600 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-all duration-150 active:scale-[0.98]"
               >
                 {t("editCancel", lang)}
               </button>
@@ -222,7 +222,7 @@ export function ProfileTab({
       <div className="mt-4 flex justify-center">
         <button
           onClick={onSignOut}
-          className="text-sm text-red-500 hover:text-red-700 transition-colors px-4 py-2"
+          className="text-sm text-red-500 hover:text-red-700 transition-colors duration-150 px-4 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95"
         >
           {t("portLogout", lang)}
         </button>

@@ -42,16 +42,16 @@ export function EditProfileModal({
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 animate-backdropIn"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
+        className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-scaleIn"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-6 pt-5 pb-3">
           <h2 className="font-bold text-base">{t("editProfile", lang)}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-neutral-800 transition-all duration-150">&times;</button>
         </div>
         <div className="px-6 pb-6 flex flex-col gap-3 overflow-y-auto max-h-[70vh]">
           <div className="text-xs text-gray-500 pb-1 border-b">{userEmail}</div>
@@ -104,13 +104,13 @@ export function EditProfileModal({
             <option value="aggressive">{lang === "es" ? "Agresivo" : "Aggressive"}</option>
           </select>
           <div className="flex gap-2 pt-1">
-            <button onClick={onClose} className="flex-1 rounded-xl py-2 border text-sm hover:bg-gray-50">
+            <button onClick={onClose} className="flex-1 rounded-xl py-2 border text-sm hover:bg-gray-50 transition-all duration-150 active:scale-[0.98]">
               {t("editCancel", lang)}
             </button>
             <button
               onClick={onSave}
               disabled={editSaving}
-              className="flex-1 rounded-xl py-2 bg-black text-white text-sm hover:opacity-90 disabled:opacity-50"
+              className="flex-1 rounded-xl py-2 bg-black text-white text-sm hover:opacity-90 disabled:opacity-50 transition-opacity duration-150 active:scale-[0.98]"
             >
               {editSaving ? "…" : t("editSave", lang)}
             </button>

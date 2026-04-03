@@ -50,7 +50,7 @@ export function SlidingTabBar({
           className={`relative z-10 px-2 sm:px-3 py-1 text-xs sm:text-sm whitespace-nowrap transition-colors duration-150 ${
             viewMode === key
               ? "text-white dark:text-black font-medium"
-              : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+              : "text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-neutral-800 rounded-md"
           }`}
         >
           {label(lang)}

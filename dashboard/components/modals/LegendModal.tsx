@@ -12,12 +12,12 @@ export function LegendModal({ open, onClose, lang }: LegendModalProps) {
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 animate-backdropIn"
       onClick={onClose}
     >
       {/* outer shell: clips border-radius, no overflow */}
       <div
-        className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden"
+        className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden animate-scaleIn"
         onClick={(e) => e.stopPropagation()}
       >
         {/* sticky header */}
@@ -25,7 +25,7 @@ export function LegendModal({ open, onClose, lang }: LegendModalProps) {
           <h2 className="text-lg font-bold">{t("legendTitle", lang)}</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-700 text-2xl leading-none"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-neutral-800 transition-all duration-150"
           >
             &times;
           </button>
@@ -60,7 +60,7 @@ export function LegendModal({ open, onClose, lang }: LegendModalProps) {
         <div className="px-6 py-4 shrink-0">
           <button
             onClick={onClose}
-            className="w-full rounded-xl py-2 bg-black text-white text-sm hover:opacity-90"
+            className="w-full rounded-xl py-2 bg-black text-white text-sm hover:opacity-90 transition-opacity duration-150 active:scale-[0.98]"
           >
             {t("legendClose", lang)}
           </button>

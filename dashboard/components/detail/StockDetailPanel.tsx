@@ -86,10 +86,10 @@ export function StockDetailPanel({
       role="dialog"
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-backdropIn" onClick={onClose} />
 
       {/* Panel: bottom-sheet on mobile, centered dialog on sm+ */}
-      <div className="relative w-full sm:max-w-5xl max-h-[90svh] flex flex-col bg-white dark:bg-neutral-900 rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden">
+      <div className="relative w-full sm:max-w-5xl max-h-[90svh] flex flex-col bg-white dark:bg-neutral-900 rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden animate-slideUp">
 
         {/* ── Sticky header ── */}
         <div className="flex-none flex items-center gap-3 px-5 py-4 border-b dark:border-neutral-700 bg-white dark:bg-neutral-900">
