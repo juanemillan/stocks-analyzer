@@ -342,6 +342,7 @@ export default function Dashboard() {
             onRemoveHolding={portfolio.removeHolding}
             onOpen={data.handleOpen}
             onOpenFromSymbol={data.openFromSymbol}
+            correlationData={portfolio.correlationData}
           />
         )}
 

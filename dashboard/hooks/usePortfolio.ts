@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { getLatestPrices } from "@/app/actions";
+import { getLatestPrices, getPricesMulti } from "@/app/actions";
 import { createClient } from "@/lib/supabase/client";
 import type { Holding } from "@/lib/stockUtils";
+import { computeCorrelation, type CorrelationResult } from "@/lib/correlation";
 
 export function usePortfolio() {
   const [holdings, setHoldings] = useState<Holding[]>([]);
@@ -14,6 +15,7 @@ export function usePortfolio() {
   const [symbolSearch, setSymbolSearch] = useState("");
   const [symDropOpen, setSymDropOpen] = useState(false);
   const [latestPrices, setLatestPrices] = useState<Record<string, { price: number; date: string }>>({});
+  const [correlationData, setCorrelationData] = useState<CorrelationResult | null>(null);;
 
   const dataDate = Object.values(latestPrices).map((v) => v.date).sort().at(-1) ?? null;
 
@@ -40,8 +42,15 @@ export function usePortfolio() {
     if (list.length) {
       const prices = await getLatestPrices(list.map((h) => h.symbol));
       setLatestPrices(prices);
+      if (list.length >= 2) {
+        const priceMap = await getPricesMulti(list.map((h) => h.symbol), 90);
+        setCorrelationData(computeCorrelation(priceMap));
+      } else {
+        setCorrelationData(null);
+      }
     } else {
       setLatestPrices({});
+      setCorrelationData(null);
     }
     setHoldingsLoading(false);
   }
@@ -94,6 +103,7 @@ export function usePortfolio() {
   return {
     holdings, holdingsLoading,
     latestPrices, dataDate,
+    correlationData,
     showAddHolding, setShowAddHolding,
     newSymbol, setNewSymbol,
     newShares, setNewShares,

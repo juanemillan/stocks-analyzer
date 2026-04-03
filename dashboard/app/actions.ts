@@ -63,6 +63,29 @@ export async function getAccumulationZone() {
     return rows.map(parseRow);
 }
 
+export async function getPricesMulti(
+    symbols: string[],
+    days: number
+): Promise<Record<string, { date: string; close: number }[]>> {
+    if (!symbols.length) return {};
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    const { rows } = await pool.query(
+        `SELECT symbol, date::text AS date, close
+         FROM prices_daily
+         WHERE symbol = ANY($1::text[])
+           AND date >= $2
+         ORDER BY symbol, date ASC`,
+        [symbols, since.toISOString().slice(0, 10)]
+    );
+    const result: Record<string, { date: string; close: number }[]> = {};
+    for (const row of rows) {
+        if (!result[row.symbol]) result[row.symbol] = [];
+        result[row.symbol].push({ date: row.date, close: Number(row.close) });
+    }
+    return result;
+}
+
 // ===== Finnhub =====
 type FinnhubNewsItem = {
     headline: string;

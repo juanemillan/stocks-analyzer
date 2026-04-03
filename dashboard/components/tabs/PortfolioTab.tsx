@@ -3,6 +3,8 @@ import { t } from "@/app/i18n";
 import type { Lang, RankRow } from "@/app/types";
 import { InfoBox } from "@/components/ui/InfoBox";
 import { logoSrc, type Holding } from "@/lib/stockUtils";
+import { CorrelationPanel } from "@/components/portfolio/CorrelationPanel";
+import type { CorrelationResult } from "@/lib/correlation";
 
 interface PortfolioTabProps {
   holdings: Holding[];
@@ -15,6 +17,7 @@ interface PortfolioTabProps {
   onRemoveHolding: (id: string) => void;
   onOpen: (row: RankRow) => void;
   onOpenFromSymbol: (symbol: string) => void;
+  correlationData: CorrelationResult | null;
 }
 
 export function PortfolioTab({
@@ -28,6 +31,7 @@ export function PortfolioTab({
   onRemoveHolding,
   onOpen,
   onOpenFromSymbol,
+  correlationData,
 }: PortfolioTabProps) {
   return (
     <div className="animate-fadeIn">
@@ -155,6 +159,8 @@ export function PortfolioTab({
           </table>
         </div>
       )}
+
+      {correlationData && <CorrelationPanel data={correlationData} />}
     </div>
   );
 }
