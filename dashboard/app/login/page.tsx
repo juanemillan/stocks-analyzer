@@ -38,15 +38,14 @@ function validatePassword(password: string): string | null {
   return null;
 }
 
-function BulliaLogo() {
+function BulliaLogo({ dark }: { dark: boolean }) {
   return (
-    <div className="w-14 h-14 rounded-2xl bg-gray-900 dark:bg-gray-100 flex items-center justify-center mx-auto mb-4 shadow-lg">
-      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="2" y="19" width="7" height="9" rx="2" className="fill-white dark:fill-gray-900"/>
-        <rect x="11.5" y="12" width="7" height="16" rx="2" className="fill-white dark:fill-gray-900"/>
-        <rect x="21" y="4" width="7" height="24" rx="2" className="fill-white dark:fill-gray-900"/>
-        <polyline points="5.5,17 15,10 25,2" stroke="white" className="dark:stroke-gray-900" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-      </svg>
+    <div className="mx-auto mb-4 flex items-center justify-center">
+      <img
+        src={dark ? "/bullia-icon-dark-mode.svg" : "/bullia-icon.svg"}
+        alt="Bullia"
+        className="w-16 h-16 rounded-2xl shadow-lg"
+      />
     </div>
   );
 }
@@ -178,7 +177,7 @@ export default function LoginPage() {
       <div className="relative w-full max-w-sm bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-2xl shadow-xl p-8">
         {/* Logo / title */}
         <div className="mb-6 text-center">
-          <BulliaLogo />
+          <BulliaLogo dark={mounted && resolvedTheme === "dark"} />
           <h1 className="text-2xl font-bold tracking-tight">BULLIA</h1>
           <p className="text-sm text-gray-500 mt-1">
             {mode === "login" ? "Sign in to your account"

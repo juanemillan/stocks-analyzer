@@ -13,7 +13,15 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata = { title: "Racional Dashboard" };
+export const metadata: Metadata = {
+  title: "Bullia",
+  description: "Stock analysis dashboard",
+  icons: {
+    icon: "/bullia-icon.svg",
+    shortcut: "/bullia-icon.svg",
+    apple: "/bullia-icon.svg",
+  },
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
