@@ -1,4 +1,4 @@
-export type ViewMode = "overview" | "ranking" | "turnarounds" | "accumulation" | "compounders" | "portfolio" | "profile";
+export type ViewMode = "overview" | "ranking" | "turnarounds" | "accumulation" | "compounders" | "portfolio" | "profile" | "favorites";
 
 export type RankRow = {
   symbol: string;

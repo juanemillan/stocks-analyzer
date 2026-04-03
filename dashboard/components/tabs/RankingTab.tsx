@@ -59,11 +59,11 @@ export function RankingTab({
   watchlist,
   onToggleWatchlist,
 }: RankingTabProps) {
-  const [starredOnly, setStarredOnly] = useState(false);
-  const displayRows = starredOnly
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const displayRows = favoritesOnly
     ? filteredRanking.filter((r) => watchlist.has(r.symbol))
     : pagedRanking;
-  const showPagination = !starredOnly;
+  const showPagination = !favoritesOnly;
   return (
     <div className="animate-fadeIn">
       <InfoBox text={t("infoRankingText", lang)} label={t("infoHowItWorks", lang)} />
@@ -126,18 +126,18 @@ export function RankingTab({
           <option value="asc">Asc</option>
         </select>
         <button
-          onClick={() => setStarredOnly((v) => !v)}
+          onClick={() => setFavoritesOnly((v) => !v)}
           className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-sm transition-colors ${
-            starredOnly
-              ? "bg-amber-50 border-amber-400 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400"
-              : "border-gray-300 text-gray-500 hover:border-amber-400 hover:text-amber-500"
+            favoritesOnly
+              ? "bg-rose-50 border-rose-400 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400"
+              : "border-gray-300 text-gray-500 hover:border-rose-400 hover:text-rose-500"
           }`}
         >
-          <span>{starredOnly ? "★" : "☆"}</span>
-          <span>Starred{starredOnly && watchlist.size > 0 ? ` (${displayRows.length})` : ""}</span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill={favoritesOnly ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <span>Favorites{favoritesOnly && watchlist.size > 0 ? ` (${displayRows.length})` : ""}</span>
         </button>
         <span className="ml-auto text-gray-500">
-          {starredOnly ? displayRows.length : filteredRanking.length} {t("results", lang)}
+          {favoritesOnly ? displayRows.length : filteredRanking.length} {t("results", lang)}
         </span>
         <select
           value={pageSize}
@@ -174,12 +174,10 @@ export function RankingTab({
                   <td className="w-8 px-2 py-2 text-center">
                     <button
                       onClick={(e) => { e.stopPropagation(); onToggleWatchlist(r.symbol); }}
-                      className="text-base leading-none transition-colors hover:scale-110"
-                      title={watchlist.has(r.symbol) ? "Remove from watchlist" : "Add to watchlist"}
+                      className="flex items-center justify-center transition-transform hover:scale-125"
+                      title={watchlist.has(r.symbol) ? "Remove from favorites" : "Add to favorites"}
                     >
-                      {watchlist.has(r.symbol)
-                        ? <span className="text-amber-400">★</span>
-                        : <span className="text-gray-300 hover:text-amber-400">☆</span>}
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill={watchlist.has(r.symbol) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={watchlist.has(r.symbol) ? "text-rose-500" : "text-gray-300 hover:text-rose-400"}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                     </button>
                   </td>
                   <td className="px-3 py-2">
@@ -219,7 +217,7 @@ export function RankingTab({
               {displayRows.length === 0 && (
                 <tr>
                   <td colSpan={11} className="px-3 py-6 text-center text-gray-500">
-                    {starredOnly ? "No starred symbols match current filters." : t("noResults", lang)}
+                    {favoritesOnly ? "No favorites match current filters." : t("noResults", lang)}
                   </td>
                 </tr>
               )}
