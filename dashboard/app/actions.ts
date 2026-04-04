@@ -3,6 +3,12 @@
 import pool from '@/lib/db';
 import http from 'node:http';
 import { Resend } from 'resend';
+import { unstable_cache } from 'next/cache';
+
+// Shared ranking data re-fetched at most once per 2 hours.
+// All users get the same result from the cache; only one DB hit per TTL window.
+// Data updates once daily via the pipeline; 2h TTL = ≤12 DB hits/day worst case.
+const RANKING_TTL = 7200; // 2 hours in seconds
 
 // pg returns numeric columns as strings; coerce them back to numbers
 function parseRow(row: Record<string, unknown>) {
@@ -59,25 +65,41 @@ export async function requestAsset(
     }
 }
 
-export async function getRanking() {
-    const { rows } = await pool.query('SELECT * FROM v_assets_rank ORDER BY final_score DESC NULLS LAST');
-    return rows.map(parseRow);
-}
+export const getRanking = unstable_cache(
+    async () => {
+        const { rows } = await pool.query('SELECT * FROM v_assets_rank ORDER BY final_score DESC NULLS LAST');
+        return rows.map(parseRow);
+    },
+    ['ranking'],
+    { revalidate: RANKING_TTL },
+);
 
-export async function getTurnarounds() {
-    const { rows } = await pool.query('SELECT * FROM v_turnaround_candidates ORDER BY rebound_from_low DESC NULLS LAST');
-    return rows.map(parseRow);
-}
+export const getTurnarounds = unstable_cache(
+    async () => {
+        const { rows } = await pool.query('SELECT * FROM v_turnaround_candidates ORDER BY rebound_from_low DESC NULLS LAST');
+        return rows.map(parseRow);
+    },
+    ['turnarounds'],
+    { revalidate: RANKING_TTL },
+);
+
+const _getCompounders1Y = unstable_cache(
+    async () => { const { rows } = await pool.query('SELECT * FROM v_compounders_1y'); return rows.map(parseRow); },
+    ['compounders-1y'], { revalidate: RANKING_TTL },
+);
+const _getCompounders3Y = unstable_cache(
+    async () => { const { rows } = await pool.query('SELECT * FROM v_compounders_3y'); return rows.map(parseRow); },
+    ['compounders-3y'], { revalidate: RANKING_TTL },
+);
+const _getCompounders5Y = unstable_cache(
+    async () => { const { rows } = await pool.query('SELECT * FROM v_compounders_5y'); return rows.map(parseRow); },
+    ['compounders-5y'], { revalidate: RANKING_TTL },
+);
 
 export async function getCompounders(horizon: '1Y' | '3Y' | '5Y') {
-    const view =
-        horizon === '1Y'
-            ? 'v_compounders_1y'
-            : horizon === '3Y'
-                ? 'v_compounders_3y'
-                : 'v_compounders_5y';
-    const { rows } = await pool.query(`SELECT * FROM ${view}`);
-    return rows.map(parseRow);
+    if (horizon === '1Y') return _getCompounders1Y();
+    if (horizon === '3Y') return _getCompounders3Y();
+    return _getCompounders5Y();
 }
 
 export async function getLatestPrices(symbols: string[]): Promise<Record<string, { price: number; date: string }>> {
@@ -106,10 +128,14 @@ export async function getPrices(symbol: string, days: number) {
     return rows.map(parseRow);
 }
 
-export async function getAccumulationZone() {
-    const { rows } = await pool.query('SELECT * FROM v_accumulation_zone');
-    return rows.map(parseRow);
-}
+export const getAccumulationZone = unstable_cache(
+    async () => {
+        const { rows } = await pool.query('SELECT * FROM v_accumulation_zone');
+        return rows.map(parseRow);
+    },
+    ['accumulation'],
+    { revalidate: RANKING_TTL },
+);
 
 export async function getPricesMulti(
     symbols: string[],
