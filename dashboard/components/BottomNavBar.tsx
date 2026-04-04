@@ -8,7 +8,7 @@ const STRATEGY_KEYS: ViewMode[] = ["turnarounds", "accumulation", "compounders"]
 
 function IconDashboard({ bold }: { bold?: boolean }) {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={bold ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={bold ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="3" width="7" height="7" rx="1.5" />
       <rect x="14" y="3" width="7" height="7" rx="1.5" />
       <rect x="3" y="14" width="7" height="7" rx="1.5" />
@@ -19,7 +19,7 @@ function IconDashboard({ bold }: { bold?: boolean }) {
 
 function IconRanking({ bold }: { bold?: boolean }) {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={bold ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={bold ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="12" width="4" height="9" rx="1" />
       <rect x="10" y="7" width="4" height="14" rx="1" />
       <rect x="17" y="3" width="4" height="18" rx="1" />
@@ -29,7 +29,7 @@ function IconRanking({ bold }: { bold?: boolean }) {
 
 function IconStrategies({ bold }: { bold?: boolean }) {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={bold ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={bold ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="3" />
       <path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" />
     </svg>
@@ -38,7 +38,7 @@ function IconStrategies({ bold }: { bold?: boolean }) {
 
 function IconPortfolio({ bold }: { bold?: boolean }) {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={bold ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={bold ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
       <rect x="2" y="7" width="20" height="14" rx="2" />
       <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
     </svg>
@@ -47,7 +47,7 @@ function IconPortfolio({ bold }: { bold?: boolean }) {
 
 function IconTurnarounds({ bold }: { bold?: boolean }) {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={bold ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={bold ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
       <polyline points="3 17 7 10 11 14 14 9 18 12" />
       <polyline points="15 7 20 7 20 12" />
     </svg>
@@ -56,7 +56,7 @@ function IconTurnarounds({ bold }: { bold?: boolean }) {
 
 function IconAccumulation({ bold }: { bold?: boolean }) {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={bold ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={bold ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 2L2 7l10 5 10-5-10-5z" />
       <path d="M2 12l10 5 10-5" />
       <path d="M2 17l10 5 10-5" />
@@ -66,7 +66,7 @@ function IconAccumulation({ bold }: { bold?: boolean }) {
 
 function IconCompounders({ bold }: { bold?: boolean }) {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={bold ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={bold ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
       <polyline points="3 20 7 12 11 17 15 8 20 13" />
     </svg>
   );
@@ -153,8 +153,8 @@ export function BottomNavBar({ viewMode, setViewMode, lang, onSubBarRef }: Props
           shadow-[0_-4px_24px_rgba(0,0,0,0.10)]
           transition-all duration-300 ease-out
           ${subOpen
-            ? "bottom-[92px] opacity-100 translate-y-0"
-            : "bottom-[92px] opacity-0 translate-y-full pointer-events-none"
+            ? "bottom-[144px] opacity-100 translate-y-0"
+            : "bottom-[144px] opacity-0 translate-y-full pointer-events-none"
           }`}
         // Tapping inside sub-bar resets the 2-s timer so user has time to read
         onClick={() => { if (subOpen) scheduleClose(); }}
@@ -184,8 +184,7 @@ export function BottomNavBar({ viewMode, setViewMode, lang, onSubBarRef }: Props
 
       {/* ── Main nav bar ─────────────────────────────────────────────────── */}
       <nav
-        className="fixed bottom-0 inset-x-0 z-20 md:hidden bg-white/95 dark:bg-gray-900/98 backdrop-blur-md border-t dark:border-gray-800 shadow-[0_-2px_12px_rgba(0,0,0,0.06)]"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        className="fixed bottom-[52px] inset-x-0 z-20 md:hidden bg-white/95 dark:bg-gray-900/98 backdrop-blur-md border-t dark:border-gray-800 shadow-[0_-2px_12px_rgba(0,0,0,0.06)]"
         aria-label="Main navigation"
       >
         <div className="flex h-[92px] max-w-lg mx-auto">

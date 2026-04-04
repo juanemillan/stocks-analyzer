@@ -30,6 +30,8 @@ import { useDashboardData } from "@/hooks/useDashboardData";
 import { usePortfolio } from "@/hooks/usePortfolio";
 import { useAuth } from "@/hooks/useAuth";
 import { useWatchlist } from "@/hooks/useWatchlist";
+import { useChat } from "@/hooks/useChat";
+import { ChatBar } from "@/components/ChatBar";
 
 export default function Dashboard() {
   const { resolvedTheme } = useTheme();
@@ -45,6 +47,33 @@ export default function Dashboard() {
   const portfolio = usePortfolio();
   const auth = useAuth();
   const { watchlist, toggle: toggleWatchlist } = useWatchlist();
+  const chat = useChat(lang);
+
+  // Build context string for the AI — refreshed whenever holdings or prices change
+  const chatContext = React.useMemo(() => {
+    const parts: string[] = [];
+
+    if (portfolio.holdings.length > 0) {
+      const lines = portfolio.holdings
+        .filter((h) => !h.sold_at)
+        .map((h) => {
+          const price = portfolio.latestPrices[h.symbol]?.price;
+          const pnlPct =
+            h.avg_cost && price ? (((price - h.avg_cost) / h.avg_cost) * 100).toFixed(1) : "n/a";
+          return `${h.symbol}: ${h.shares} shares @ $${h.avg_cost ?? "?"}, current $${price ?? "?"}, P&L ${pnlPct}%`;
+        });
+      if (lines.length > 0) parts.push(`Portfolio positions:\n${lines.join("\n")}`);
+    }
+
+    if (data.rows.length > 0) {
+      const top5 = data.rows.slice(0, 5).map(
+        (r) => `${r.symbol} score=${r.final_score?.toFixed(2) ?? "?"} bucket=${r.bucket ?? "?"}`
+      );
+      parts.push(`Top 5 ranking:\n${top5.join("\n")}`);
+    }
+
+    return parts.length > 0 ? parts.join("\n\n") : undefined;
+  }, [portfolio.holdings, portfolio.latestPrices, data.rows]);
 
   // Track previous view so profile back-button knows where to go
   useEffect(() => {
@@ -274,7 +303,7 @@ export default function Dashboard() {
       </header>
 
       {/* Main */}
-      <main className="max-w-6xl mx-auto px-4 py-6 pb-[106px] md:pb-6" style={{ paddingBottom: "calc(106px + env(safe-area-inset-bottom))" }}>
+      <main className="max-w-6xl mx-auto px-4 py-6 pb-[160px] md:pb-6" style={{ paddingBottom: "calc(160px + env(safe-area-inset-bottom))" }}>
         {data.error && (
           <div className="mb-4 rounded-xl border border-red-300 bg-red-50 text-red-800 px-4 py-3 text-sm">
             Error: {data.error}
@@ -370,6 +399,8 @@ export default function Dashboard() {
             onOpen={data.handleOpen}
             onOpenFromSymbol={data.openFromSymbol}
             correlationData={portfolio.correlationData}
+            weekChanges={portfolio.weekChanges}
+            techSignals={portfolio.techSignals}
             onShowConnectRacional={() => portfolio.setShowConnectRacional(true)}
             onShowRequestAsset={() => setShowRequestAsset(true)}
             racionalSyncing={portfolio.racionalSyncing}
@@ -420,6 +451,21 @@ export default function Dashboard() {
         setViewMode={data.setViewMode}
         lang={lang}
       />
+
+      {auth.userEmail && (
+        <ChatBar
+          messages={chat.messages}
+          input={chat.input}
+          setInput={chat.setInput}
+          isThinking={chat.isThinking}
+          isOpen={chat.isOpen}
+          setIsOpen={chat.setIsOpen}
+          onSend={chat.sendMessage}
+          onClear={chat.clearMessages}
+          lang={lang}
+          context={chatContext}
+        />
+      )}
 
       <footer className="max-w-6xl mx-auto px-4 py-10 text-xs text-gray-500">
         {t("footer", lang)}

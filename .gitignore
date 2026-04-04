@@ -30,3 +30,13 @@ Thumbs.db
 *.backup
 fetch_log.txt
 enrich_log.txt
+stock-prompts.md
+
+# Data pipeline debug / local artifacts
+data_pipeline/debug_*.html
+data_pipeline/debug_*.png
+data_pipeline/*.log
+data_pipeline/parse_*.py
+data_pipeline/debug_*.py
+data_pipeline/server.log
+data_pipeline/server_err.log
