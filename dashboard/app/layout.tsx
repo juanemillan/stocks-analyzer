@@ -16,10 +16,19 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Bullia",
   description: "Stock analysis dashboard",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "Bullia",
+    statusBarStyle: "black-translucent",
+  },
   icons: {
-    icon: "/bullia-icon.svg",
-    shortcut: "/bullia-icon.svg",
-    apple: "/bullia-icon.svg",
+    icon: [
+      { url: "/bullia-icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    shortcut: "/icon-192.png",
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 
