@@ -28,21 +28,34 @@ export async function requestAsset(
     // Send email notification to the admin if Resend is configured
     const resendKey = process.env.RESEND_API_KEY;
     const adminEmail = process.env.ADMIN_EMAIL;
-    if (resendKey && adminEmail) {
-        const resend = new Resend(resendKey);
-        await resend.emails.send({
-            from: 'Stocks Analyzer <onboarding@resend.dev>',
-            to: adminEmail,
-            subject: `[Stocks Analyzer] Asset request: ${symbol.toUpperCase()}`,
-            html: `
-                <h2>New asset request</h2>
-                <p><strong>Symbol:</strong> ${symbol.toUpperCase()}</p>
-                <p><strong>Reason:</strong> ${reason || '(no reason provided)'}</p>
-                <p><strong>User ID:</strong> ${userId}</p>
-                <hr/>
-                <p style="color:#888;font-size:12px">Submitted via Stocks Analyzer dashboard</p>
-            `,
-        });
+    if (!resendKey) {
+        console.warn('[requestAsset] RESEND_API_KEY not set — skipping email');
+    } else if (!adminEmail) {
+        console.warn('[requestAsset] ADMIN_EMAIL not set — skipping email');
+    } else {
+        try {
+            const resend = new Resend(resendKey);
+            const result = await resend.emails.send({
+                from: 'Stocks Analyzer <onboarding@resend.dev>',
+                to: adminEmail,
+                subject: `[Stocks Analyzer] Asset request: ${symbol.toUpperCase()}`,
+                html: `
+                    <h2>New asset request</h2>
+                    <p><strong>Symbol:</strong> ${symbol.toUpperCase()}</p>
+                    <p><strong>Reason:</strong> ${reason || '(no reason provided)'}</p>
+                    <p><strong>User ID:</strong> ${userId}</p>
+                    <hr/>
+                    <p style="color:#888;font-size:12px">Submitted via Stocks Analyzer dashboard</p>
+                `,
+            });
+            if (result.error) {
+                console.error('[requestAsset] Resend error:', result.error);
+            } else {
+                console.log('[requestAsset] Email sent, id:', result.data?.id);
+            }
+        } catch (err) {
+            console.error('[requestAsset] Resend threw:', err);
+        }
     }
 }
 
