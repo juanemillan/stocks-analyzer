@@ -4,6 +4,29 @@ import { createClient } from "@/lib/supabase/client";
 import type { Holding } from "@/lib/stockUtils";
 import { computeCorrelation, type CorrelationResult } from "@/lib/correlation";
 
+/** Simple 14-period RSI using the last 15 data points. Returns null if insufficient data. */
+function computeRSI14(prices: { close: number }[]): number | null {
+  if (prices.length < 15) return null;
+  const last15 = prices.slice(-15);
+  let gains = 0, losses = 0;
+  for (let i = 1; i < last15.length; i++) {
+    const diff = last15[i].close - last15[i - 1].close;
+    if (diff > 0) gains += diff; else losses += -diff;
+  }
+  const avgLoss = losses / 14;
+  if (avgLoss === 0) return 100;
+  return 100 - 100 / (1 + (gains / 14) / avgLoss);
+}
+
+/** Returns how many % the latest close is above its 20-day SMA. Positive = overextended. */
+function computeSMA20Distance(prices: { close: number }[]): number | null {
+  if (prices.length < 20) return null;
+  const last20 = prices.slice(-20);
+  const sma = last20.reduce((s, p) => s + p.close, 0) / 20;
+  if (sma === 0) return null;
+  return ((last20[last20.length - 1].close - sma) / sma) * 100;
+}
+
 export function usePortfolio() {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [holdingsLoading, setHoldingsLoading] = useState(false);
@@ -16,6 +39,8 @@ export function usePortfolio() {
   const [symDropOpen, setSymDropOpen] = useState(false);
   const [latestPrices, setLatestPrices] = useState<Record<string, { price: number; date: string }>>({});
   const [correlationData, setCorrelationData] = useState<CorrelationResult | null>(null);
+  const [weekChanges, setWeekChanges] = useState<Record<string, number>>({});
+  const [techSignals, setTechSignals] = useState<Record<string, boolean>>({});
   const [showConnectRacional, setShowConnectRacional] = useState(false);
   const [racionalSyncing, setRacionalSyncing] = useState(false);
   const [racionalSyncError, setRacionalSyncError] = useState<string | null>(null);
@@ -51,6 +76,25 @@ export function usePortfolio() {
       if (list.length >= 2) {
         const priceMap = await getPricesMulti(list.map((h) => h.symbol), 90);
         setCorrelationData(computeCorrelation(priceMap));
+        // Compute 7-day % change per symbol from the same price data
+        const changes: Record<string, number> = {};
+        for (const [sym, prices] of Object.entries(priceMap)) {
+          if (prices.length >= 2) {
+            const recent = prices.slice(-7);
+            const oldest = recent[0].close;
+            const newest = recent[recent.length - 1].close;
+            if (oldest > 0) changes[sym] = ((newest - oldest) / oldest) * 100;
+          }
+        }
+        setWeekChanges(changes);
+        // Overbought signal: RSI-14 > 70 OR price more than 15% above SMA-20
+        const signals: Record<string, boolean> = {};
+        for (const [sym, priceData] of Object.entries(priceMap)) {
+          const rsi = computeRSI14(priceData);
+          const dist = computeSMA20Distance(priceData);
+          signals[sym] = (rsi != null && rsi > 70) || (dist != null && dist > 15);
+        }
+        setTechSignals(signals);
       } else {
         setCorrelationData(null);
       }
@@ -138,7 +182,7 @@ export function usePortfolio() {
   return {
     holdings, holdingsLoading,
     latestPrices, dataDate,
-    correlationData,
+    correlationData, weekChanges, techSignals,
     showConnectRacional, setShowConnectRacional,
     racionalSyncing, racionalSyncError, lastRacionalSync,
     syncFromRacional,

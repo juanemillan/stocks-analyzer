@@ -1,6 +1,6 @@
 import React from "react";
 
-export function InfoBox({ text, label }: { text: string; label: string }) {
+export function InfoBox({ text, label, children }: { text: string; label: string; children?: React.ReactNode }) {
   const [open, setOpen] = React.useState(false);
   return (
     <div className="mb-4">
@@ -34,6 +34,7 @@ export function InfoBox({ text, label }: { text: string; label: string }) {
       {open && (
         <div className="mt-2 px-4 py-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded-xl text-sm text-gray-700 dark:text-gray-300 leading-relaxed animate-fadeIn">
           {text}
+          {children}
         </div>
       )}
     </div>

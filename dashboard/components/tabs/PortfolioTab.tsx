@@ -24,6 +24,8 @@ interface PortfolioTabProps {
   onOpen: (row: RankRow) => void;
   onOpenFromSymbol: (symbol: string) => void;
   correlationData: CorrelationResult | null;
+  weekChanges: Record<string, number>;
+  techSignals: Record<string, boolean>;
   onShowConnectRacional: () => void;
   onShowRequestAsset: () => void;
   racionalSyncing: boolean;
@@ -43,6 +45,8 @@ export function PortfolioTab({
   onOpen,
   onOpenFromSymbol,
   correlationData,
+  weekChanges,
+  techSignals,
   onShowConnectRacional,
   onShowRequestAsset,
   racionalSyncing,
@@ -52,6 +56,7 @@ export function PortfolioTab({
   const [showAll, setShowAll] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("symbol");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [actionsOpen, setActionsOpen] = useState(false);
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -107,53 +112,161 @@ export function PortfolioTab({
 
   return (
     <div className="animate-fadeIn">
-      <InfoBox text={t("infoPortfolioText", lang)} label={t("infoHowItWorks", lang)} />
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold">{t("tabPortfolio", lang)}</h2>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
-          {/* Request asset */}
+      <InfoBox text={t("infoPortfolioText", lang)} label={t("infoHowItWorks", lang)}>
+        <table className="mt-3 w-full text-xs border-collapse">
+          <thead>
+            <tr className="border-b border-blue-200 dark:border-blue-800">
+              <th className="pb-1.5 pr-4 text-left font-semibold text-gray-500 dark:text-gray-400 w-12">{t("infoPortfolioColIcon", lang)}</th>
+              <th className="pb-1.5 text-left font-semibold text-gray-500 dark:text-gray-400">{t("infoPortfolioColDesc", lang)}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-blue-100 dark:divide-blue-900/40">
+            <tr>
+              <td className="py-2 pr-4">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                  <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clipRule="evenodd" /></svg>
+                </span>
+              </td>
+              <td className="py-2">{t("infoPortfolioIconProfit", lang)}</td>
+            </tr>
+            <tr>
+              <td className="py-2 pr-4">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400">
+                  <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" /></svg>
+                </span>
+              </td>
+              <td className="py-2">{t("infoPortfolioIconLoss", lang)}</td>
+            </tr>
+            <tr>
+              <td className="py-2 pr-4">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-lime-100 text-lime-700 dark:bg-lime-900/40 dark:text-lime-400">
+                  <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>
+                </span>
+              </td>
+              <td className="py-2">{t("infoPortfolioIconUp", lang)}</td>
+            </tr>
+            <tr>
+              <td className="py-2 pr-4">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400">
+                  <svg className="w-3 h-3 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>
+                </span>
+              </td>
+              <td className="py-2">{t("infoPortfolioIconDown", lang)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </InfoBox>
+      <div className="mb-4">
+        {/* Title row */}
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold">{t("tabPortfolio", lang)}</h2>
+
+          {/* Mobile: single toggle button */}
           <button
-            onClick={onShowRequestAsset}
-            title="Solicitar que se agregue un activo"
-            className="flex items-center gap-1.5 rounded-2xl px-3 py-2 text-sm font-medium border border-gray-200 dark:border-neutral-700 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
+            onClick={() => setActionsOpen((v) => !v)}
+            className="md:hidden flex items-center gap-1.5 rounded-2xl px-3 py-2 text-sm font-medium border border-gray-200 dark:border-neutral-700 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" className="text-gray-500">
+              <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.381z" clipRule="evenodd"/>
             </svg>
-            {t("portRequestAsset", lang)}
+            {t("portActions", lang)}
+            <svg width="11" height="11" viewBox="0 0 20 20" fill="currentColor" className={`transition-transform duration-200 text-gray-400 ${actionsOpen ? "rotate-180" : ""}`}>
+              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"/>
+            </svg>
           </button>
-          {/* Racional connect */}
-          <button
-            onClick={onShowConnectRacional}
-            disabled={racionalSyncing}
-            title={lastRacionalSync ? `Último sync: ${lastRacionalSync.toLocaleTimeString()}` : "Importar desde Racional"}
-            className="flex items-center gap-1.5 rounded-2xl px-3 py-3 text-sm font-semibold text-black bg-[#18DAAE] hover:bg-[#13ab87] active:scale-95 disabled:opacity-60 transition-all duration-150"
-          >
-            {racionalSyncing ? (
-              <svg className="w-3.5 h-3.5 animate-spin flex-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+
+          {/* Desktop: all 3 buttons inline */}
+          <div className="hidden md:flex items-center gap-2">
+            {/* Request asset */}
+            <button
+              onClick={onShowRequestAsset}
+              title="Solicitar que se agregue un activo"
+              className="flex items-center gap-1.5 rounded-2xl px-3 py-2 text-sm font-medium border border-gray-200 dark:border-neutral-700 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
               </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-              </svg>
-            )}
-            <img
-              src="https://app.racional.cl/assets/img/racional-black.svg"
-              alt="Racional"
-              className="h-3.5 w-auto"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-            />
-            <span className="sr-only">Racional</span>
-          </button>
-          <button
-            onClick={onShowAddHolding}
-            className="rounded-xl px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm transition-colors duration-150"
-          >
-            {t("portAddHolding", lang)}
-          </button>
+              {t("portRequestAsset", lang)}
+            </button>
+            {/* Racional connect */}
+            <button
+              onClick={onShowConnectRacional}
+              disabled={racionalSyncing}
+              title={lastRacionalSync ? `Último sync: ${lastRacionalSync.toLocaleTimeString()}` : "Importar desde Racional"}
+              className="flex items-center gap-1.5 rounded-2xl px-3 py-3 text-sm font-semibold text-black bg-[#18DAAE] hover:bg-[#13ab87] active:scale-95 disabled:opacity-60 transition-all duration-150"
+            >
+              {racionalSyncing ? (
+                <svg className="w-3.5 h-3.5 animate-spin flex-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                </svg>
+              )}
+              <img
+                src="https://app.racional.cl/assets/img/racional-black.svg"
+                alt="Racional"
+                className="h-3.5 w-auto"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+              <span className="sr-only">Racional</span>
+            </button>
+            <button
+              onClick={onShowAddHolding}
+              className="rounded-xl px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm transition-colors duration-150"
+            >
+              {t("portAddHolding", lang)}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile: collapsible action buttons */}
+        <div className={`grid transition-all duration-300 ease-in-out md:hidden ${actionsOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+          <div className="overflow-hidden">
+            <div className="grid grid-cols-3 gap-2 pt-3">
+              <button
+                onClick={() => { setActionsOpen(false); onShowAddHolding(); }}
+                className="flex items-center justify-center gap-1.5 rounded-2xl px-2 py-3 text-sm font-medium bg-emerald-500 hover:bg-emerald-600 text-white transition-colors duration-150"
+              >
+                {t("portAddHolding", lang)}
+              </button>
+              <button
+                onClick={() => { setActionsOpen(false); onShowConnectRacional(); }}
+                disabled={racionalSyncing}
+                className="flex items-center justify-center gap-1.5 rounded-2xl px-2 py-3 text-sm font-semibold text-black bg-[#18DAAE] hover:bg-[#13ab87] active:scale-95 disabled:opacity-60 transition-all duration-150"
+              >
+                {racionalSyncing ? (
+                  <svg className="w-4 h-4 animate-spin flex-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                  </svg>
+                )}
+                <img
+                  src="https://app.racional.cl/assets/img/racional-black.svg"
+                  alt="Racional"
+                  className="h-4 w-auto"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+              </button>
+              <button
+                onClick={() => { setActionsOpen(false); onShowRequestAsset(); }}
+                className="flex items-center justify-center gap-1.5 rounded-2xl px-2 py-3 text-sm font-medium border border-gray-200 dark:border-neutral-700 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 flex-none" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                </svg>
+                {t("portRequestAsset", lang)}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -235,6 +348,42 @@ export function PortfolioTab({
                           <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
                             {t("portSold", lang)}
                           </span>
+                        )}
+                        {/* Take profit: P&L ≥ 20% AND technically overbought (RSI>70 or price >15% above SMA-20) */}
+                        {!h.sold_at && h.pnlPct != null && h.pnlPct >= 20 && techSignals[h.symbol] && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" title={lang === "es" ? "Sobrecomprado técnicamente" : "Technically overbought"}>
+                            {/* Dollar/coin icon */}
+                            <svg className="w-3 h-3 flex-none" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clipRule="evenodd" />
+                            </svg>
+                            {t("portAlertProfit", lang)}
+                          </span>
+                        )}
+                        {/* Review/Watch: P&L ≤ -20% */}
+                        {!h.sold_at && h.pnlPct != null && h.pnlPct <= -20 && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400">
+                            {/* Eye / Watch icon */}
+                            <svg className="w-3 h-3 flex-none" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                              <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                            </svg>
+                          </span>
+                        )}
+                        {/* Big move: ±10% in the last 7 days */}
+                        {!h.sold_at && weekChanges[h.symbol] != null && Math.abs(weekChanges[h.symbol]) >= 10 && (
+                          weekChanges[h.symbol] > 0 ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-lime-100 text-lime-700 dark:bg-lime-900/40 dark:text-lime-400">
+                              <svg className="w-3 h-3 flex-none" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                                <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+                              </svg>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400">
+                              <svg className="w-3 h-3 flex-none rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                                <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+                              </svg>
+                            </span>
+                          )
                         )}
                       </div>
                     </td>
