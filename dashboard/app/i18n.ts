@@ -164,6 +164,18 @@ export const LABELS = {
     es: "Rastrea tus posiciones personales. A\u00f1ade s\u00edmbolo, n\u00famero de acciones y costo promedio de compra para ver el P&L (ganancia/p\u00e9rdida no realizada) calculado con el \u00faltimo precio de cierre disponible. Haz clic en cualquier s\u00edmbolo para ver su gr\u00e1fico.",
     en: "Track your personal positions. Add symbol, number of shares and average purchase cost to see unrealized P&L calculated using the last available closing price. Click any symbol to view its chart.",
   },
+  corrTitle:         { es: "An\u00e1lisis de Correlaci\u00f3n",   en: "Correlation Analysis" },
+  corrDays:          { es: "d\u00edas de trading",             en: "trading days" },
+  corrDiversif:      { es: "Diversificaci\u00f3n",             en: "Diversification" },
+  corrNoCluster:     { es: "Sin clusters de alta correlaci\u00f3n. Tus posiciones responden a factores distintos del mercado \u2014 exactamente lo que buscas.", en: "No high-correlation clusters detected. Your positions are driven by different market factors \u2014 that's exactly what you want." },
+  corrActionSteps:   { es: "Pasos de acci\u00f3n para tu portafolio", en: "Action steps for your portfolio" },
+  corrMatrix:        { es: "Matriz de correlaci\u00f3n completa",   en: "Full correlation matrix" },
+  corrLearnBtn:      { es: "C\u00f3mo funciona la correlaci\u00f3n y qu\u00e9 hacer al respecto", en: "How correlation works and what to do about it" },
+  corrLegend:        { es: "Leyenda:",                      en: "Legend:" },
+  corrVeryHigh:      { es: "muy alta",                      en: "very high" },
+  corrHigh:          { es: "alta",                          en: "high" },
+  corrMod:           { es: "moderada",                      en: "moderate" },
+  corrLow:           { es: "baja",                          en: "low" },
 } as const;
 
 export function t(key: keyof typeof LABELS, lang: Lang): string {

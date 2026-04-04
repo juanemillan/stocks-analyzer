@@ -288,7 +288,7 @@ export function PortfolioTab({
         </>
       )}
 
-      {correlationData && <CorrelationPanel data={correlationData} />}
+      {correlationData && <CorrelationPanel data={correlationData} lang={lang} />}
     </div>
   );
 }
