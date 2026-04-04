@@ -1,6 +1,8 @@
 'use server';
 
 import pool from '@/lib/db';
+import http from 'node:http';
+import { Resend } from 'resend';
 
 // pg returns numeric columns as strings; coerce them back to numbers
 function parseRow(row: Record<string, unknown>) {
@@ -9,6 +11,39 @@ function parseRow(row: Record<string, unknown>) {
         result[k] = typeof v === 'string' && v !== '' && !isNaN(Number(v)) ? Number(v) : v;
     }
     return result;
+}
+
+export async function requestAsset(
+    userId: string,
+    symbol: string,
+    reason: string,
+): Promise<void> {
+    await pool.query(
+        `INSERT INTO asset_requests (user_id, symbol, reason)
+         VALUES ($1, $2, $3)
+         ON CONFLICT DO NOTHING`,
+        [userId, symbol.toUpperCase(), reason || null],
+    );
+
+    // Send email notification to the admin if Resend is configured
+    const resendKey = process.env.RESEND_API_KEY;
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (resendKey && adminEmail) {
+        const resend = new Resend(resendKey);
+        await resend.emails.send({
+            from: 'Stocks Analyzer <onboarding@resend.dev>',
+            to: adminEmail,
+            subject: `[Stocks Analyzer] Asset request: ${symbol.toUpperCase()}`,
+            html: `
+                <h2>New asset request</h2>
+                <p><strong>Symbol:</strong> ${symbol.toUpperCase()}</p>
+                <p><strong>Reason:</strong> ${reason || '(no reason provided)'}</p>
+                <p><strong>User ID:</strong> ${userId}</p>
+                <hr/>
+                <p style="color:#888;font-size:12px">Submitted via Stocks Analyzer dashboard</p>
+            `,
+        });
+    }
 }
 
 export async function getRanking() {
@@ -163,4 +198,56 @@ export async function getFinnhubData(symbol: string): Promise<{
     const metrics: FinnhubMetrics | null = metricData?.metric ?? null;
 
     return { news, recommendation, quote, metrics };
+}
+
+// ===== Racional Portfolio Sync =====
+export async function syncRacionalPortfolio(
+    userId: string,
+    email?: string,
+    password?: string,
+    replaceSold?: boolean,
+): Promise<{ synced: number; holdings: unknown[] }> {
+    const localApiUrl = (process.env.LOCAL_API_URL ?? 'http://localhost:8787').replace(/\/$/, '');
+    const syncKey = process.env.SYNC_KEY;
+    if (!syncKey) throw new Error('SYNC_KEY not set in .env.local');
+
+    // Scraping 20+ assets takes several minutes — use node:http directly
+    // to avoid undici's 30s headers timeout that fetch() cannot override.
+    const TEN_MIN_MS = 10 * 60 * 1000;
+    const { status, body: rawBody } = await new Promise<{ status: number; body: string }>(
+        (resolve, reject) => {
+            const payload = JSON.stringify({ user_id: userId, email, password, replace_sold: replaceSold ?? false });
+            const url = new URL(`${localApiUrl}/sync-racional`);
+            const req = http.request(
+                {
+                    hostname: url.hostname,
+                    port: url.port || 80,
+                    path: url.pathname,
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Sync-Key': syncKey,
+                        'Content-Length': Buffer.byteLength(payload),
+                    },
+                    timeout: TEN_MIN_MS,
+                },
+                (res) => {
+                    let data = '';
+                    res.on('data', (chunk: Buffer) => { data += chunk.toString(); });
+                    res.on('end', () => resolve({ status: res.statusCode ?? 0, body: data }));
+                },
+            );
+            req.on('timeout', () => { req.destroy(); reject(new Error('Sync timed out after 10 minutes')); });
+            req.on('error', reject);
+            req.write(payload);
+            req.end();
+        },
+    );
+
+    if (status < 200 || status >= 300) {
+        const detail = JSON.parse(rawBody)?.detail ?? `Racional sync failed (HTTP ${status})`;
+        throw new Error(detail);
+    }
+
+    return JSON.parse(rawBody);
 }

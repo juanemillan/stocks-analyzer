@@ -161,6 +161,7 @@ def main():
     parser.add_argument("--type", metavar="TYPE", default="EQUITY", choices=["EQUITY", "ETF", "FUND", "OTHER"], help="Tipo de activo (default: EQUITY)")
     parser.add_argument("--enrich", action="store_true", help="Enriquecer activos con metadata (descripción, sector, web…)")
     parser.add_argument("--enrich-racional", action="store_true", help="Scrape descripciones desde Racional (Playwright)")
+    parser.add_argument("--racional-portfolio", action="store_true", help="Sincronizar portfolio desde Racional → Supabase (Playwright)")
     parser.add_argument("--symbol", metavar="SYMBOL", help="Símbolo concreto (usar con --enrich)")
     parser.add_argument("--missing-only", action="store_true", help="Solo enriquecer activos sin descripción (usar con --enrich)")
 
@@ -215,6 +216,62 @@ def main():
         )
         print("🗂️  Actualizando vista v_assets_rank...")
         apply_sql_file("sql/02_views.sql")
+        print("🏁 Hecho.")
+
+    elif args.racional_portfolio:
+        print("🔄 Sincronizando portfolio desde Racional → Supabase (Playwright)...")
+        from etl.racional_scraper import run_scrape
+        from dotenv import load_dotenv
+        load_dotenv()
+        res = run_scrape()
+        if not res["success"]:
+            print(f"  ❌ {res['error']}")
+            sys.exit(1)
+        holdings = res["holdings"]
+        print(f"  ✅ Scrape exitoso: {len(holdings)} posiciones encontradas")
+        for h in holdings:
+            print(f"     {h['symbol']:12s}  acciones={h['shares']}  costo_prom={h.get('avg_cost')}")
+        print()
+
+        supabase_url = os.environ.get("SUPABASE_URL")
+        supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+        user_id      = os.environ.get("SUPABASE_USER_ID")  # set optionally
+        if not supabase_url or not supabase_key:
+            print("  ⚠️  SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY no configurados en .env")
+            print("      Holdings scrapeados correctamente, pero no se upsertaron en Supabase.")
+            sys.exit(0)
+
+        try:
+            from supabase import create_client
+        except ImportError:
+            print("  ⚠️  supabase-py no instalado. Ejecuta: pip install supabase")
+            sys.exit(1)
+
+        sb = create_client(supabase_url, supabase_key)
+        if not user_id:
+            # Use first user found in portfolios table
+            port_res = sb.table("portfolios").select("id, user_id").limit(1).execute()
+            if not port_res.data:
+                print("  ❌ No se encontró portfolio en Supabase. Pasa SUPABASE_USER_ID en .env.")
+                sys.exit(1)
+            portfolio_id = port_res.data[0]["id"]
+        else:
+            port_res = sb.table("portfolios").select("id").eq("user_id", user_id).limit(1).execute()
+            if port_res.data:
+                portfolio_id = port_res.data[0]["id"]
+            else:
+                new_port = sb.table("portfolios").insert({"user_id": user_id, "name": "My Portfolio"}).execute()
+                portfolio_id = new_port.data[0]["id"]
+
+        for h in holdings:
+            sb.table("portfolio_assets").upsert({
+                "portfolio_id": portfolio_id,
+                "symbol":   h["symbol"].upper(),
+                "shares":   h["shares"],
+                "avg_cost": h.get("avg_cost"),
+            }, on_conflict="portfolio_id,symbol").execute()
+
+        print(f"  ✅ {len(holdings)} posiciones sincronizadas en Supabase (portfolio {portfolio_id[:8]}…)")
         print("🏁 Hecho.")
 
     else:

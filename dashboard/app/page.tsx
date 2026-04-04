@@ -11,6 +11,9 @@ import { BottomNavBar } from "@/components/BottomNavBar";
 import { LegendModal } from "@/components/modals/LegendModal";
 import { AddHoldingModal } from "@/components/modals/AddHoldingModal";
 import { EditProfileModal } from "@/components/modals/EditProfileModal";
+import { ConnectRacionalModal } from "@/components/modals/ConnectRacionalModal";
+import { RequestAssetModal } from "@/components/modals/RequestAssetModal";
+import { requestAsset } from "./actions";
 import { StockDetailPanel } from "@/components/detail/StockDetailPanel";
 import { OverviewTab } from "@/components/tabs/OverviewTab";
 import { RankingTab } from "@/components/tabs/RankingTab";
@@ -35,6 +38,7 @@ export default function Dashboard() {
 
   const [lang, setLang] = useState<Lang>("es");
   const [showLegend, setShowLegend] = useState(false);
+  const [showRequestAsset, setShowRequestAsset] = useState(false);
   const prevViewMode = React.useRef<ViewMode>("overview");
 
   const data = useDashboardData();
@@ -89,6 +93,25 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-50">
       <LegendModal open={showLegend} onClose={() => setShowLegend(false)} lang={lang} />
+
+      <ConnectRacionalModal
+        open={portfolio.showConnectRacional}
+        syncing={portfolio.racionalSyncing}
+        error={portfolio.racionalSyncError}
+        onClose={() => portfolio.setShowConnectRacional(false)}
+        onConnect={portfolio.syncFromRacional}
+      />
+
+      <RequestAssetModal
+        open={showRequestAsset}
+        onClose={() => setShowRequestAsset(false)}
+        onSubmit={async (symbol, reason) => {
+          const supabase = createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) throw new Error("Debes iniciar sesión para solicitar un activo");
+          await requestAsset(user.id, symbol, reason);
+        }}
+      />
 
       <AddHoldingModal
         open={portfolio.showAddHolding}
@@ -347,6 +370,11 @@ export default function Dashboard() {
             onOpen={data.handleOpen}
             onOpenFromSymbol={data.openFromSymbol}
             correlationData={portfolio.correlationData}
+            onShowConnectRacional={() => portfolio.setShowConnectRacional(true)}
+            onShowRequestAsset={() => setShowRequestAsset(true)}
+            racionalSyncing={portfolio.racionalSyncing}
+            racionalSyncError={portfolio.racionalSyncError}
+            lastRacionalSync={portfolio.lastRacionalSync}
           />
         )}
 

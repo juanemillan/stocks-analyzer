@@ -57,7 +57,7 @@ export function AddHoldingModal({
           <div className="relative">
             <input
               type="text"
-              placeholder={`${t("portSymbol", lang)} — search…`}
+              placeholder={`${t("portSymbol", lang)} — ${t("portSearchHint", lang)}`}
               value={symbolSearch}
               onChange={(e) => {
                 const v = e.target.value.toUpperCase();
@@ -109,7 +109,7 @@ export function AddHoldingModal({
           />
           <input
             type="number"
-            placeholder={`${t("portAvgCost", lang)} (optional)`}
+            placeholder={`${t("portAvgCost", lang)} (${t("portOptional", lang)})`}
             min="0"
             step="any"
             value={newAvgCost}

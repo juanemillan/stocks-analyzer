@@ -42,4 +42,4 @@ export function fmtBig(n: number): string {
   return n.toFixed(2);
 }
 
-export type Holding = { id: string; symbol: string; shares: number; avg_cost: number | null };
+export type Holding = { id: string; symbol: string; shares: number; avg_cost: number | null; sold_at?: string | null };

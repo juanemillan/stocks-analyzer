@@ -167,7 +167,7 @@ export function StockDetailPanel({
                 <div className="bg-white border rounded-2xl p-4 dark:bg-neutral-900 dark:border-neutral-700">
                   <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t("fundamentals", lang)}</div>
                   {finnhubLoading ? (
-                    <div className="text-xs text-gray-400 animate-pulse">Loading…</div>
+                    <div className="text-xs text-gray-400 animate-pulse">{t("loadingBtn", lang)}</div>
                   ) : (
                     <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                       {finnhubData?.quote && (<>
@@ -197,7 +197,7 @@ export function StockDetailPanel({
                   <div className="bg-white border rounded-2xl p-4 dark:bg-neutral-900 dark:border-neutral-700">
                     <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t("analystConsensus", lang)}</div>
                     {finnhubLoading ? (
-                      <div className="text-xs text-gray-400 animate-pulse">Loading…</div>
+                      <div className="text-xs text-gray-400 animate-pulse">{t("loadingBtn", lang)}</div>
                     ) : finnhubData?.recommendation ? (
                       (() => {
                         const r = finnhubData.recommendation;
@@ -323,7 +323,7 @@ export function StockDetailPanel({
               <div className="bg-white border rounded-2xl p-4 dark:bg-neutral-900 dark:border-neutral-700">
                 <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t("latestNews", lang)}</div>
                 {finnhubLoading ? (
-                  <div className="text-xs text-gray-400 animate-pulse">Loading…</div>
+                  <div className="text-xs text-gray-400 animate-pulse">{t("loadingBtn", lang)}</div>
                 ) : finnhubData?.news && finnhubData.news.length > 0 ? (
                   <ul className="space-y-3">
                     {finnhubData.news.map((item, i) => (

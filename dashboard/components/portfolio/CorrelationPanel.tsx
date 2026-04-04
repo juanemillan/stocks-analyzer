@@ -185,13 +185,13 @@ export function CorrelationPanel({ data }: CorrelationPanelProps) {
         <div className={`grid transition-all duration-300 ease-in-out ${showMatrix ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
           <div className="overflow-hidden">
             <div className="border-t dark:border-neutral-800">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto overflow-y-auto max-h-[420px]">
                 <table className="text-xs text-center border-collapse">
                   <thead>
                     <tr>
-                      <th className="w-16 px-3 py-2 bg-gray-50 dark:bg-neutral-800 text-left text-gray-500 sticky left-0 z-10"></th>
+                      <th className="w-16 px-3 py-2 bg-gray-50 dark:bg-neutral-800 text-left text-gray-500 sticky left-0 top-0 z-30"></th>
                       {symbols.map((s) => (
-                        <th key={s} className="px-3 py-2 bg-gray-50 dark:bg-neutral-800 font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">{s}</th>
+                        <th key={s} className="px-3 py-2 bg-gray-50 dark:bg-neutral-800 font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap sticky top-0 z-20">{s}</th>
                       ))}
                     </tr>
                   </thead>
