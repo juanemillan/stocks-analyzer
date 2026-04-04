@@ -112,6 +112,8 @@ function buildStrategies(
 export function CorrelationPanel({ data, lang }: CorrelationPanelProps) {
   const [showMatrix, setShowMatrix] = useState(false);
   const [showLearn, setShowLearn] = useState(false);
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const [stepsOpen, setStepsOpen] = useState(false);
   const { matrix, symbols, groups, dataPoints } = data;
 
   const score = diversityScore(matrix, symbols);
@@ -154,24 +156,48 @@ export function CorrelationPanel({ data, lang }: CorrelationPanelProps) {
 
             {/* ── Cluster Warnings (full width) ── */}
             {hasWarnings && (
-                <div className="space-y-2">
-                {groups.map((g) => {
-                    const sev = clusterSeverity(g.avgCorrelation, lang);
-                    return (
-                    <div key={g.symbols.join(",")} className={`flex items-start gap-3 rounded-xl border ${sev.border} ${sev.bg} px-4 py-3 text-sm`}>
-                        <IconWarn />
-                        <div className="space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`font-semibold ${sev.titleColor}`}>{g.symbols.join(", ")}</span>
-                            <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${sev.bg} ${sev.titleColor} border ${sev.border}`}>
-                            {sev.label} · r = {g.avgCorrelation.toFixed(2)}
-                            </span>
+                <div>
+                {/* Mobile-only summary toggle */}
+                <button
+                    onClick={() => setAlertsOpen((v) => !v)}
+                    className="md:hidden w-full flex items-center justify-between rounded-xl border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20 px-4 py-3 text-sm mb-1"
+                >
+                    <span className="flex items-center gap-2 text-orange-700 dark:text-orange-400 font-semibold">
+                    <IconWarn />
+                    <span>
+                        {lang === "es"
+                        ? `${groups.length} cluster${groups.length === 1 ? "" : "s"} detectado${groups.length === 1 ? "" : "s"}`
+                        : `${groups.length} high-correlation ${groups.length === 1 ? "cluster" : "clusters"}`}
+                        {" · "}
+                        <span className="font-normal">{groups[0].symbols.slice(0, 3).join(", ")}</span>
+                    </span>
+                    </span>
+                    <IconChevron open={alertsOpen} />
+                </button>
+                {/* Content: collapsible on mobile, always open on desktop */}
+                <div className={`grid transition-all duration-300 ease-in-out ${alertsOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr] md:grid-rows-[1fr]"}`}>
+                    <div className="overflow-hidden">
+                    <div className="space-y-2">
+                    {groups.map((g) => {
+                        const sev = clusterSeverity(g.avgCorrelation, lang);
+                        return (
+                        <div key={g.symbols.join(",")} className={`flex items-start gap-3 rounded-xl border ${sev.border} ${sev.bg} px-4 py-3 text-sm`}>
+                            <IconWarn />
+                            <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`font-semibold ${sev.titleColor}`}>{g.symbols.join(", ")}</span>
+                                <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${sev.bg} ${sev.titleColor} border ${sev.border}`}>
+                                {sev.label} · r = {g.avgCorrelation.toFixed(2)}
+                                </span>
+                            </div>
+                            <p className={sev.bodyColor}>{clusterMessage(g, symbols.length, lang)}</p>
+                            </div>
                         </div>
-                        <p className={sev.bodyColor}>{clusterMessage(g, symbols.length, lang)}</p>
-                        </div>
+                        );
+                    })}
                     </div>
-                    );
-                })}
+                    </div>
+                </div>
                 </div>
             )}
 
@@ -185,19 +211,32 @@ export function CorrelationPanel({ data, lang }: CorrelationPanelProps) {
         </div>
 
         {/* Action Steps card */}
-        <div className="rounded-2xl border bg-white dark:bg-neutral-900 px-5 py-4">
-          <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-            <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor" className="text-emerald-500 flex-none"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.381z" clipRule="evenodd"/></svg>
-            {t("corrActionSteps", lang)}
-          </h4>
-          <ul className="space-y-2">
-            {strategies.map((tip, i) => (
-              <li key={i} className="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-400">
-                <span className="mt-0.5 w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center justify-center flex-none">{i + 1}</span>
-                {tip}
-              </li>
-            ))}
-          </ul>
+        <div className="rounded-2xl border bg-white dark:bg-neutral-900 overflow-hidden">
+          <button
+            onClick={() => setStepsOpen((v) => !v)}
+            className="w-full flex items-center justify-between px-5 py-4 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors duration-150 md:cursor-default"
+          >
+            <span className="flex items-center gap-2">
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor" className="text-emerald-500 flex-none"><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.381z" clipRule="evenodd"/></svg>
+              {t("corrActionSteps", lang)}
+            </span>
+            <span className="md:hidden flex items-center gap-1.5 text-xs text-gray-400 font-normal">
+              {strategies.length} {lang === "es" ? "pasos" : "steps"}
+              <IconChevron open={stepsOpen} />
+            </span>
+          </button>
+          <div className={`grid transition-all duration-300 ease-in-out ${stepsOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr] md:grid-rows-[1fr]"}`}>
+            <div className="overflow-hidden">
+              <ul className="px-5 pb-4 pt-1 space-y-2">
+                {strategies.map((tip, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-400">
+                    <span className="mt-0.5 w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold flex items-center justify-center flex-none">{i + 1}</span>
+                    {tip}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
 
