@@ -44,6 +44,7 @@ export function usePortfolio() {
   const [showConnectRacional, setShowConnectRacional] = useState(false);
   const [racionalSyncing, setRacionalSyncing] = useState(false);
   const [racionalSyncError, setRacionalSyncError] = useState<string | null>(null);
+  const [racionalSyncInfo, setRacionalSyncInfo] = useState<string | null>(null);
   const [lastRacionalSync, setLastRacionalSync] = useState<Date | null>(null);
 
   const dataDate = Object.values(latestPrices).map((v) => v.date).sort().at(-1) ?? null;
@@ -153,26 +154,31 @@ export function usePortfolio() {
   async function syncFromRacional(email: string, password: string, replaceSold: boolean) {
     setRacionalSyncing(true);
     setRacionalSyncError(null);
+    setRacionalSyncInfo(null);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setRacionalSyncError("Not authenticated"); setRacionalSyncing(false); return; }
     try {
-      await syncRacionalPortfolio(user.id, email, password, replaceSold);
+      const result = await syncRacionalPortfolio(user.id, email, password, replaceSold);
       setLastRacionalSync(new Date());
       setShowConnectRacional(false);
-      await loadHoldings();
+      if (result.queued) {
+        // GitHub Action dispatched — runs async (~2 min). Don't reload stale data yet.
+        setRacionalSyncInfo("Sync iniciado en segundo plano. Los datos se actualizarán en ~2 minutos — recarga la página para verlos.");
+      } else {
+        await loadHoldings();
+      }
     } catch (e) {
       const raw = e instanceof Error ? e.message : "Unknown error";
-      // Map common server-side messages to friendlier copy
       const friendly =
         raw.includes("Contraseña incorrecta") || raw.includes("Email no registrado")
-          ? raw  // already human-readable from firebase_login()
+          ? raw
           : raw.includes("Login failed") || raw.includes("check credentials")
           ? "Email o contraseña incorrectos. Verifica tus credenciales de Racional."
-          : raw.includes("fetch failed") || raw.includes("ECONNREFUSED") || raw.includes("network")
-          ? "No se pudo conectar al servidor local. ¿Está corriendo api_server.py?"
-          : raw.includes("SYNC_KEY")
-          ? "SYNC_KEY no configurado en .env.local del dashboard."
+          : raw.includes("GITHUB_TOKEN")
+          ? "GITHUB_TOKEN no configurado. Agrégalo a las variables de entorno de Vercel."
+          : raw.includes("workflow dispatch failed")
+          ? "No se pudo iniciar el sync automático. Verifica GITHUB_TOKEN y GITHUB_REPO."
           : raw;
       setRacionalSyncError(friendly);
     }
@@ -184,7 +190,7 @@ export function usePortfolio() {
     latestPrices, dataDate,
     correlationData, weekChanges, techSignals,
     showConnectRacional, setShowConnectRacional,
-    racionalSyncing, racionalSyncError, lastRacionalSync,
+    racionalSyncing, racionalSyncError, racionalSyncInfo, lastRacionalSync,
     syncFromRacional,
     showAddHolding, setShowAddHolding,
     newSymbol, setNewSymbol,

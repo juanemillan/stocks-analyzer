@@ -30,6 +30,7 @@ interface PortfolioTabProps {
   onShowRequestAsset: () => void;
   racionalSyncing: boolean;
   racionalSyncError: string | null;
+  racionalSyncInfo?: string | null;
   lastRacionalSync: Date | null;
 }
 
@@ -51,6 +52,7 @@ export function PortfolioTab({
   onShowRequestAsset,
   racionalSyncing,
   racionalSyncError,
+  racionalSyncInfo,
   lastRacionalSync,
 }: PortfolioTabProps) {
   const [showAll, setShowAll] = useState(false);
@@ -269,6 +271,12 @@ export function PortfolioTab({
           </div>
         </div>
       </div>
+
+      {racionalSyncInfo && (
+        <p className="mb-3 text-xs text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-300 rounded-lg px-3 py-2">
+          {racionalSyncInfo}
+        </p>
+      )}
 
       {racionalSyncError && (
         <p className="mb-3 text-xs text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">

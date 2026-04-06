@@ -1,7 +1,6 @@
 'use server';
 
 import pool from '@/lib/db';
-import http from 'node:http';
 import { Resend } from 'resend';
 import { unstable_cache } from 'next/cache';
 
@@ -242,51 +241,34 @@ export async function getFinnhubData(symbol: string): Promise<{
 // ===== Racional Portfolio Sync =====
 export async function syncRacionalPortfolio(
     userId: string,
-    email?: string,
-    password?: string,
-    replaceSold?: boolean,
-): Promise<{ synced: number; holdings: unknown[] }> {
-    const localApiUrl = (process.env.LOCAL_API_URL ?? 'http://localhost:8787').replace(/\/$/, '');
-    const syncKey = process.env.SYNC_KEY;
-    if (!syncKey) throw new Error('SYNC_KEY not set in .env.local');
+    _email?: string,
+    _password?: string,
+    _replaceSold?: boolean,
+): Promise<{ synced: number; holdings: unknown[]; queued: true }> {
+    const githubToken = process.env.GITHUB_TOKEN;
+    const githubRepo  = process.env.GITHUB_REPO ?? 'juanemillan/stocks-analyzer';
 
-    // Scraping 20+ assets takes several minutes — use node:http directly
-    // to avoid undici's 30s headers timeout that fetch() cannot override.
-    const TEN_MIN_MS = 10 * 60 * 1000;
-    const { status, body: rawBody } = await new Promise<{ status: number; body: string }>(
-        (resolve, reject) => {
-            const payload = JSON.stringify({ user_id: userId, email, password, replace_sold: replaceSold ?? false });
-            const url = new URL(`${localApiUrl}/sync-racional`);
-            const req = http.request(
-                {
-                    hostname: url.hostname,
-                    port: url.port || 80,
-                    path: url.pathname,
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Sync-Key': syncKey,
-                        'Content-Length': Buffer.byteLength(payload),
-                    },
-                    timeout: TEN_MIN_MS,
-                },
-                (res) => {
-                    let data = '';
-                    res.on('data', (chunk: Buffer) => { data += chunk.toString(); });
-                    res.on('end', () => resolve({ status: res.statusCode ?? 0, body: data }));
-                },
-            );
-            req.on('timeout', () => { req.destroy(); reject(new Error('Sync timed out after 10 minutes')); });
-            req.on('error', reject);
-            req.write(payload);
-            req.end();
+    if (!githubToken) throw new Error('GITHUB_TOKEN not set — add it to your environment variables.');
+
+    const response = await fetch(
+        `https://api.github.com/repos/${githubRepo}/actions/workflows/sync-racional.yml/dispatches`,
+        {
+            method: 'POST',
+            headers: {
+                Authorization: `token ${githubToken}`,
+                Accept: 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ ref: 'main', inputs: { user_id: userId } }),
         },
     );
 
-    if (status < 200 || status >= 300) {
-        const detail = JSON.parse(rawBody)?.detail ?? `Racional sync failed (HTTP ${status})`;
-        throw new Error(detail);
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`GitHub workflow dispatch failed (${response.status}): ${text}`);
     }
 
-    return JSON.parse(rawBody);
+    // The workflow runs asynchronously (~2 min). Return queued signal so the
+    // UI can show a "refresh shortly" message instead of loading holdings now.
+    return { synced: -1, holdings: [], queued: true };
 }

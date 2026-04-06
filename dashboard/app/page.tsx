@@ -405,6 +405,7 @@ export default function Dashboard() {
             onShowRequestAsset={() => setShowRequestAsset(true)}
             racionalSyncing={portfolio.racionalSyncing}
             racionalSyncError={portfolio.racionalSyncError}
+            racionalSyncInfo={portfolio.racionalSyncInfo}
             lastRacionalSync={portfolio.lastRacionalSync}
           />
         )}
