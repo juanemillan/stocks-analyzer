@@ -142,7 +142,10 @@ def sync_racional(body: SyncRequest, x_sync_key: str = Header(...)):
         portfolio_id = new_port.data[0]["id"]
 
     # Upsert each holding — also clears sold_at for any re-bought positions
-    scraped_symbols = {h["symbol"].upper() for h in holdings}
+    scraped_symbols  = {h["symbol"].upper() for h in holdings}
+    # Use Phase-1 ticker list as the authority for "gone" — not just scraped_symbols.
+    # Symbols that failed Phase 2 (click glitch) are in all_tickers but not scraped.
+    all_tickers_seen = {t.upper() for t in result.get("all_tickers", scraped_symbols)}
     for h in holdings:
         supabase.table("portfolio_assets").upsert(
             {
@@ -164,7 +167,7 @@ def sync_racional(body: SyncRequest, x_sync_key: str = Header(...)):
         .execute()
     )
     existing_symbols = {row["symbol"].upper() for row in (existing_res.data or [])}
-    gone_symbols = list(existing_symbols - scraped_symbols)
+    gone_symbols = list(existing_symbols - all_tickers_seen)
 
     if gone_symbols:
         if body.replace_sold:

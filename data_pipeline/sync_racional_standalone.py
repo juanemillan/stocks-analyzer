@@ -53,8 +53,12 @@ def main(user_id: str, replace_sold: bool = False) -> None:
     if not result["success"]:
         raise SystemExit(f"Scrape failed: {result['error']}")
 
-    holdings = result["holdings"]
-    print(f"✅ Scraped {len(holdings)} holdings: {[h['symbol'] for h in holdings]}")
+    holdings    = result["holdings"]
+    # all_tickers = every ticker Phase 1 found in the DOM (reliable).
+    # scraped_symbols ⊆ all_tickers. Missing from scraped = click glitch, NOT a sale.
+    # Only mark sold if the ticker wasn't even listed in Phase 1.
+    all_tickers_seen = {t.upper() for t in result.get("all_tickers", [h["symbol"] for h in holdings])}
+    print(f"✅ Scraped {len(holdings)}/{len(all_tickers_seen)} holdings: {[h['symbol'] for h in holdings]}")
 
     # ── Upsert into Supabase ──────────────────────────────────────────────────
     supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
@@ -77,7 +81,7 @@ def main(user_id: str, replace_sold: bool = False) -> None:
         portfolio_id = new_port.data[0]["id"]
 
     scraped_symbols = {h["symbol"].upper() for h in holdings}
-    for h in holdings:
+    for h in holdings:  # noqa: E501
         supabase.table("portfolio_assets").upsert(
             {
                 "portfolio_id": portfolio_id,
@@ -98,7 +102,9 @@ def main(user_id: str, replace_sold: bool = False) -> None:
         .execute()
     )
     existing_symbols = {row["symbol"].upper() for row in (existing_res.data or [])}
-    gone_symbols = list(existing_symbols - scraped_symbols)
+    # Only consider truly gone: was in Supabase AND wasn't even seen in Phase 1.
+    # Symbols seen in Phase 1 but not scraped = Angular click glitch — leave untouched.
+    gone_symbols = list(existing_symbols - all_tickers_seen)
 
     if gone_symbols:
         now_iso = datetime.now(timezone.utc).isoformat()

@@ -367,7 +367,7 @@ def _extract_holdings(page: Page) -> list[dict]:
                     pass  # next iteration's card-not-found logic will handle it
 
     print(f"--- Scrape complete: {len(holdings)}/{total_tickers} holdings extracted ---")
-    return holdings
+    return {"holdings": holdings, "all_tickers": [t.upper() for t in tickers]}
 
 
 # -- Top-level runner ---------------------------------------------------------
@@ -392,9 +392,12 @@ def run_scrape(email: Optional[str] = None, password: Optional[str] = None) -> d
     print(f"Auth OK (uid {auth_data['localId'][:8]}...). Opening portfolio ...")
 
     try:
-        holdings = fetch_portfolio(auth_data)
+        fetch_result = fetch_portfolio(auth_data)
     except Exception as e:
         return {"success": False, "error": f"Portfolio scrape error: {e}"}
+
+    holdings    = fetch_result["holdings"]
+    all_tickers = fetch_result["all_tickers"]
 
     if not holdings:
         return {
@@ -406,4 +409,4 @@ def run_scrape(email: Optional[str] = None, password: Optional[str] = None) -> d
         }
 
     print(f"Success: {len(holdings)} holding(s): {[h['symbol'] for h in holdings]}")
-    return {"success": True, "holdings": holdings, "count": len(holdings)}
+    return {"success": True, "holdings": holdings, "all_tickers": all_tickers, "count": len(holdings)}
