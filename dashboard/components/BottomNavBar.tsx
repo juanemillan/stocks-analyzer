@@ -153,8 +153,8 @@ export function BottomNavBar({ viewMode, setViewMode, lang, onSubBarRef }: Props
           shadow-[0_-4px_24px_rgba(0,0,0,0.10)]
           transition-all duration-300 ease-out
           ${subOpen
-            ? "bottom-[144px] opacity-100 translate-y-0"
-            : "bottom-[144px] opacity-0 translate-y-full pointer-events-none"
+            ? "bottom-[148px] opacity-100 translate-y-0"
+            : "bottom-[148px] opacity-0 translate-y-full pointer-events-none"
           }`}
         // Tapping inside sub-bar resets the 2-s timer so user has time to read
         onClick={() => { if (subOpen) scheduleClose(); }}
@@ -184,7 +184,7 @@ export function BottomNavBar({ viewMode, setViewMode, lang, onSubBarRef }: Props
 
       {/* ── Main nav bar ─────────────────────────────────────────────────── */}
       <nav
-        className="fixed bottom-[52px] inset-x-0 z-20 md:hidden bg-white/95 dark:bg-gray-900/98 backdrop-blur-md border-t dark:border-gray-800 shadow-[0_-2px_12px_rgba(0,0,0,0.06)]"
+        className="fixed bottom-[56px] inset-x-0 z-20 md:hidden bg-white/95 dark:bg-gray-900/98 backdrop-blur-md border-t dark:border-gray-800 shadow-[0_-2px_12px_rgba(0,0,0,0.06)]"
         aria-label="Main navigation"
       >
         <div className="flex h-[92px] max-w-lg mx-auto">

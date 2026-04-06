@@ -9,7 +9,7 @@ import type { CorrelationResult } from "@/lib/correlation";
 
 const INITIAL_VISIBLE = 8;
 
-type SortKey = "symbol" | "shares" | "avg_cost" | "marketValue" | "pnl";
+type SortKey = "symbol" | "shares" | "avg_cost" | "marketValue" | "pnl" | "pnlPct";
 type SortDir = "asc" | "desc";
 
 interface PortfolioTabProps {
@@ -89,6 +89,7 @@ export function PortfolioTab({
     else if (sortKey === "avg_cost") { va = a.avg_cost ?? -Infinity; vb = b.avg_cost ?? -Infinity; }
     else if (sortKey === "marketValue") { va = a.marketValue ?? -Infinity; vb = b.marketValue ?? -Infinity; }
     else if (sortKey === "pnl")    { va = a.pnl ?? -Infinity; vb = b.pnl ?? -Infinity; }
+    else if (sortKey === "pnlPct") { va = a.pnlPct ?? -Infinity; vb = b.pnlPct ?? -Infinity; }
     if (typeof va === "string") return sortDir === "asc" ? va.localeCompare(vb as string) : (vb as string).localeCompare(va);
     return sortDir === "asc" ? (va as number) - (vb as number) : (vb as number) - (va as number);
   }), [enriched, sortKey, sortDir]);
@@ -231,14 +232,14 @@ export function PortfolioTab({
             <div className="grid grid-cols-3 gap-2 pt-3">
               <button
                 onClick={() => { setActionsOpen(false); onShowAddHolding(); }}
-                className="flex items-center justify-center gap-1.5 rounded-2xl px-2 py-3 text-sm font-medium bg-emerald-500 hover:bg-emerald-600 text-white transition-colors duration-150"
+                className="flex items-center justify-center gap-1 rounded-2xl px-2 py-3 text-xs font-medium bg-emerald-500 hover:bg-emerald-600 text-white transition-colors duration-150"
               >
                 {t("portAddHolding", lang)}
               </button>
               <button
                 onClick={() => { setActionsOpen(false); onShowConnectRacional(); }}
                 disabled={racionalSyncing}
-                className="flex items-center justify-center gap-1.5 rounded-2xl px-2 py-3 text-sm font-semibold text-black bg-[#18DAAE] hover:bg-[#13ab87] active:scale-95 disabled:opacity-60 transition-all duration-150"
+                className="flex items-center justify-center gap-1 rounded-2xl px-2 py-3 text-xs font-semibold text-black bg-[#18DAAE] hover:bg-[#13ab87] active:scale-95 disabled:opacity-60 transition-all duration-150"
               >
                 {racionalSyncing ? (
                   <svg className="w-4 h-4 animate-spin flex-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -254,13 +255,13 @@ export function PortfolioTab({
                 <img
                   src="https://app.racional.cl/assets/img/racional-black.svg"
                   alt="Racional"
-                  className="h-4 w-auto"
+                  className="h-3 w-auto"
                   onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                 />
               </button>
               <button
                 onClick={() => { setActionsOpen(false); onShowRequestAsset(); }}
-                className="flex items-center justify-center gap-1.5 rounded-2xl px-2 py-3 text-sm font-medium border border-gray-200 dark:border-neutral-700 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
+                className="flex items-center justify-center gap-1 rounded-2xl px-2 py-3 text-xs font-medium border border-gray-200 dark:border-neutral-700 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 flex-none" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
@@ -319,6 +320,7 @@ export function PortfolioTab({
                     {t("portLastPrice", lang)}
                     {dataDate && <span className="ml-1 normal-case font-normal text-gray-400">({dataDate})</span>}
                   </th>
+                  <ColHeader col="pnlPct" label={t("portPnLPct", lang)} />
                   <ColHeader col="pnl" label={t("portPnL", lang)} />
                   <ColHeader col="marketValue" label={t("portMarketValue", lang)} />
                   <th className="px-4 py-3" />
@@ -400,15 +402,17 @@ export function PortfolioTab({
                     <td className="px-4 py-3 tabular-nums">
                       {h.lp ? `$${h.lp.price.toFixed(2)}` : <span className="text-gray-300">—</span>}
                     </td>
+                    <td className="px-4 py-3 tabular-nums font-medium">
+                      {h.pnlPct != null ? (
+                        <span className={h.pnlPct >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}>
+                          {h.pnlPct >= 0 ? "+" : ""}{h.pnlPct.toFixed(1)}%
+                        </span>
+                      ) : <span className="text-gray-300">—</span>}
+                    </td>
                     <td className="px-4 py-3 tabular-nums">
                       {h.pnl != null ? (
                         <span className={h.pnl >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}>
                           {h.pnl >= 0 ? "+" : ""}{h.pnl.toFixed(2)}
-                          {h.pnlPct != null && (
-                            <span className="ml-1 text-xs opacity-70">
-                              ({h.pnlPct >= 0 ? "+" : ""}{h.pnlPct.toFixed(1)}%)
-                            </span>
-                          )}
                         </span>
                       ) : <span className="text-gray-300">—</span>}
                     </td>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { getLatestPrices, getPricesMulti, syncRacionalPortfolio } from "@/app/actions";
 import { createClient } from "@/lib/supabase/client";
 import type { Holding } from "@/lib/stockUtils";
@@ -47,9 +47,14 @@ export function usePortfolio() {
   const [racionalSyncInfo, setRacionalSyncInfo] = useState<string | null>(null);
   const [lastRacionalSync, setLastRacionalSync] = useState<Date | null>(null);
 
+  const holdingsEverLoaded = useRef(false);
+
   const dataDate = Object.values(latestPrices).map((v) => v.date).sort().at(-1) ?? null;
 
-  async function loadHoldings() {
+  async function loadHoldings(force = false) {
+    // Skip if already loaded unless explicitly forced (e.g. after a sync)
+    if (!force && holdingsEverLoaded.current) return;
+    holdingsEverLoaded.current = true;
     setHoldingsLoading(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -142,13 +147,13 @@ export function usePortfolio() {
     }, { onConflict: "portfolio_id,symbol" });
     if (error) { setHoldingError(error.message); return; }
     closeAddModal();
-    loadHoldings();
+    loadHoldings(true);
   }
 
   async function removeHolding(id: string) {
     const supabase = createClient();
     await supabase.from("portfolio_assets").delete().eq("id", id);
-    loadHoldings();
+    loadHoldings(true);
   }
 
   async function syncFromRacional(email: string, password: string, replaceSold: boolean) {
@@ -166,7 +171,7 @@ export function usePortfolio() {
         // GitHub Action dispatched — runs async (~2 min). Don't reload stale data yet.
         setRacionalSyncInfo("Sync iniciado en segundo plano. Los datos se actualizarán en ~2 minutos — recarga la página para verlos.");
       } else {
-        await loadHoldings();
+        await loadHoldings(true);
       }
     } catch (e) {
       const raw = e instanceof Error ? e.message : "Unknown error";

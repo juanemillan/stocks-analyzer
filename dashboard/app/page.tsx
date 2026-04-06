@@ -303,7 +303,7 @@ export default function Dashboard() {
       </header>
 
       {/* Main */}
-      <main className="max-w-6xl mx-auto px-4 py-6 pb-[160px] md:pb-6" style={{ paddingBottom: "calc(160px + env(safe-area-inset-bottom))" }}>
+      <main className="max-w-6xl mx-auto px-4 py-6 pb-[164px] md:pb-6" style={{ paddingBottom: "calc(164px + env(safe-area-inset-bottom))" }}>
         {data.error && (
           <div className="mb-4 rounded-xl border border-red-300 bg-red-50 text-red-800 px-4 py-3 text-sm">
             Error: {data.error}
