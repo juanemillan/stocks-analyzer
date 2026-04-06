@@ -70,7 +70,7 @@ export function ConnectRacionalModal({
         </div>
 
         {/* ── Form ─────────────────────────────────────────────────────── */}
-        <form onSubmit={handleSubmit} className="px-6 pt-5 pb-2 flex flex-col gap-3">
+        <form onSubmit={handleSubmit} autoComplete="off" className="px-6 pt-5 pb-2 flex flex-col gap-3">
           {/* Email */}
           <div className="flex flex-col gap-1">
             <label className="text-xs font-semibold text-gray-500 dark:text-neutral-400 uppercase tracking-wide">
@@ -81,7 +81,7 @@ export function ConnectRacionalModal({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="tu@email.com"
-              autoComplete="username"
+              autoComplete="new-password"
               disabled={syncing}
               required
               className="rounded-xl border border-gray-200 dark:border-neutral-700 px-4 py-2.5 text-sm bg-white dark:bg-neutral-800 text-gray-900 dark:text-gray-100 placeholder-gray-300 dark:placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-[#A0D800] disabled:opacity-50 transition"
@@ -110,7 +110,7 @@ export function ConnectRacionalModal({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                autoComplete="current-password"
+                autoComplete="new-password"
                 disabled={syncing}
                 required
                 className="w-full rounded-xl border border-gray-200 dark:border-neutral-700 px-4 py-2.5 pr-11 text-sm bg-white dark:bg-neutral-800 text-gray-900 dark:text-gray-100 placeholder-gray-300 dark:placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-[#A0D800] disabled:opacity-50 transition"
