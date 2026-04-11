@@ -1,0 +1,36 @@
+name: Portfolio Alerts
+
+on:
+  schedule:
+    # Run at 23:00 UTC Mon–Fri — 1 hour after the ETL (22:00 UTC) refreshes prices
+    - cron: "0 23 * * 1-5"
+  workflow_dispatch:  # can also trigger manually from GitHub UI
+
+jobs:
+  alerts:
+    name: Check portfolio P&L thresholds
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install psycopg2-binary supabase requests python-dotenv
+
+      - name: Check portfolio alerts
+        env:
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DATABASE_URL:              ${{ secrets.DATABASE_URL }}
+          RESEND_API_KEY:            ${{ secrets.RESEND_API_KEY }}          
+          OPENROUTER_API_KEY:        ${{ secrets.OPENROUTER_API_KEY }}          
+          ALERT_EMAIL:               ${{ secrets.ALERT_EMAIL }}
+          FROM_EMAIL:                "Bullia Alerts <onboarding@resend.dev>"
+          DASHBOARD_URL:             "https://bullia.vercel.app"
+        run: python data_pipeline/check_portfolio_alerts.py

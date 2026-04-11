@@ -40,3 +40,8 @@ data_pipeline/parse_*.py
 data_pipeline/debug_*.py
 data_pipeline/server.log
 data_pipeline/server_err.log
+
+# Other folders & files to ignore
+data-2/
+data/
+download_binance_data.py

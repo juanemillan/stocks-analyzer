@@ -61,6 +61,17 @@ export function StockDetailPanel({
 
   if (!open || !selected) return null;
 
+  // % change for the currently selected range
+  const rangeChgPct: number | null = (() => {
+    if (rangeKey === "1D" && finnhubData?.quote?.dp != null) return finnhubData.quote.dp;
+    if (prices.length >= 2) {
+      const first = prices[0].close;
+      const last = prices[prices.length - 1].close;
+      return first !== 0 ? ((last - first) / first) * 100 : null;
+    }
+    return null;
+  })();
+
   const RangeButtons = () => (
     <div className="flex gap-1 flex-wrap">
       {RANGE_OPTIONS.map((r) => (
@@ -138,6 +149,24 @@ export function StockDetailPanel({
 
               {/* Chart */}
               <div className="bg-gray-50 dark:bg-neutral-800 rounded-2xl p-4">
+                {/* chart header: range label + % change */}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    {rangeKey} {lang === "es" ? "precio" : "price"}
+                  </span>
+                  {!pricesLoading && rangeChgPct != null && (
+                    <span className={`text-sm font-bold tabular-nums px-2 py-0.5 rounded-lg ${
+                      rangeChgPct >= 0
+                        ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+                        : "bg-red-50 text-red-500 dark:bg-red-900/30 dark:text-red-400"
+                    }`}>
+                      {rangeChgPct >= 0 ? "+" : ""}{rangeChgPct.toFixed(2)}%
+                    </span>
+                  )}
+                  {pricesLoading && (
+                    <span className="text-xs text-gray-400 animate-pulse">…</span>
+                  )}
+                </div>
                 <div className="h-52 md:h-64">
                   {pricesLoading ? (
                     <div className="h-full flex items-center justify-center text-gray-500">{t("loadingPrices", lang)}</div>
