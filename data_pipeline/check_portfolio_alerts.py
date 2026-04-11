@@ -62,10 +62,23 @@ ALL_THRESHOLDS  = THRESHOLDS_UP + THRESHOLDS_DOWN
 
 OPENROUTER_URL       = "https://openrouter.ai/api/v1/chat/completions"
 FREE_MODELS          = [
+    # Qwen (best financial reasoning on free tier — try newest first)
     "qwen/qwen3-14b:free",
     "qwen/qwen3.6-plus:free",
+    "qwen/qwen3-8b:free",
+    "qwen/qwen2.5-72b-instruct:free",
+    "qwen/qwen-2.5-7b-instruct:free",
+    # NVIDIA / Meta / Mistral fallbacks
     "nvidia/nemotron-super-49b-v1:free",
     "meta-llama/llama-4-scout:free",
+    "meta-llama/llama-4-maverick:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "mistralai/mistral-small-3.2-24b-instruct:free",
+    "mistralai/devstral-small:free",
+    # Additional safety net
+    "deepseek/deepseek-r1-0528:free",
+    "google/gemma-3-12b-it:free",
+    "microsoft/phi-4-reasoning-plus:free",
 ]
 OPPORTUNITY_TTL_DAYS = 7   # re-alert at most once per week per signal type
 
@@ -477,17 +490,14 @@ def main() -> None:
         if not pnl_triggered and not opp_triggered:
             continue
 
-        # Resolve destination email
-        to_email = None
-        try:
-            user_resp = sb.auth.admin.get_user_by_id(user_id)
-            to_email  = user_resp.user.email if user_resp.user else None
-        except Exception as e:
-            print(f"  [warn] Could not look up email for {user_id[:8]}: {e}")
-        to_email = to_email or FALLBACK_EMAIL
-
+        # Resolve destination email.
+        # Always use ALERT_EMAIL for now — avoids Resend's test-domain restriction
+        # (onboarding@resend.dev can only send to the Resend account owner's address).
+        # When you verify a domain at resend.com/domains and update FROM_EMAIL,
+        # replace this with: sb.auth.admin.get_user_by_id(user_id).user.email
+        to_email = FALLBACK_EMAIL
         if not to_email:
-            print(f"  [warn] No email for user {user_id[:8]} — skipping")
+            print(f"  [warn] ALERT_EMAIL secret not set — skipping user {user_id[:8]}")
             continue
 
         print(f"User {user_id[:8]}: {len(opp_triggered)} opportunity / {len(pnl_triggered)} P&L → {to_email}")
