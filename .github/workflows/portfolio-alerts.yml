@@ -30,6 +30,7 @@ jobs:
           DATABASE_URL:              ${{ secrets.DATABASE_URL }}
           RESEND_API_KEY:            ${{ secrets.RESEND_API_KEY }}          
           OPENROUTER_API_KEY:        ${{ secrets.OPENROUTER_API_KEY }}          
+          FINNHUB_API_KEY:           ${{ secrets.FINNHUB_API_KEY }}
           ALERT_EMAIL:               ${{ secrets.ALERT_EMAIL }}
           FROM_EMAIL:                "Bullia Alerts <onboarding@resend.dev>"
           DASHBOARD_URL:             "https://bullia.vercel.app"
