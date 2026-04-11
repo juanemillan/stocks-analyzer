@@ -134,29 +134,39 @@ def db_fetch_accum_symbols(conn, symbols: list) -> set:
 
 # ── AI analysis via OpenRouter ────────────────────────────────────────────────
 
-def get_ai_analysis(symbol: str, holding: dict, rank: dict, signals: list) -> str:
-    """Call a free OpenRouter model for a 2-3 sentence add-to-position analysis."""
-    if not OPENROUTER_KEY:
-        return ""
+def get_ai_analysis_batch(stocks: list) -> dict:
+    """Send ONE prompt covering all opportunity-triggered stocks; return {symbol: text}.
 
-    pct_chg = holding["pct_chg"]
+    Each entry in `stocks` must have keys: symbol, pct_chg, current, avg_cost,
+    shares, signals, and rank (the dict from rank_map).
+    """
+    import time as _time
+
+    if not OPENROUTER_KEY or not stocks:
+        return {}
+
+    stock_syms = {s["symbol"] for s in stocks}
+    lines = []
+    for s in stocks:
+        r = s.get("rank", {})
+        lines.append(
+            f"- {s['symbol']}: P&L {s['pct_chg']:+.1f}% | signals: {', '.join(s['signals'])} | "
+            f"score={r.get('final_score','?')} (Δ{r.get('score_delta','?')}) | "
+            f"mom 1w={r.get('mom_1w','?')}% 1m={r.get('mom_1m','?')}% | "
+            f"trend={r.get('tech_trend','?')} | RS_SPY={r.get('rs_spy','?')}"
+        )
+
     prompt = (
-        "You are a financial analyst reviewing a portfolio holding. "
-        "Write exactly 2-3 short sentences (no bullet points, no markdown) analyzing "
-        "whether NOW is a good moment to add to this position. Be direct and specific.\n\n"
-        f"Stock: {symbol}\n"
-        f"Position: {holding['shares']:.2f} shares, avg cost ${holding['avg_cost']:.2f}, "
-        f"current price ${holding['current']:.2f} ({pct_chg:+.1f}% P&L)\n"
-        f"Signals today: {', '.join(signals)}\n"
-        f"Score: {rank.get('final_score', 'N/A')} | Bucket: {rank.get('bucket', 'N/A')} | "
-        f"Score delta today: {rank.get('score_delta', 'N/A')}\n"
-        f"Momentum: 1w={rank.get('mom_1w', 'N/A')}%  1m={rank.get('mom_1m', 'N/A')}%  "
-        f"3m={rank.get('mom_3m', 'N/A')}%  1y={rank.get('mom_1y', 'N/A')}%\n"
-        f"RS vs SPY: {rank.get('rs_spy', 'N/A')} | Trend: {rank.get('tech_trend', 'N/A')} | "
-        f"Liquidity: {rank.get('liq_score', 'N/A')}"
+        "You are a financial analyst. For each stock below, write exactly ONE short sentence "
+        "(20-30 words, no markdown, no bullet points) on whether now is a good time to add "
+        "to the position based on the signals and metrics provided. "
+        "Reply in this EXACT format — one line per stock, symbol in uppercase followed by a colon:\n"
+        "SYMBOL: sentence\n\n"
+        + "\n".join(lines)
     )
 
     for model in FREE_MODELS:
+        short_model = model.split("/")[-1]
         try:
             resp = requests.post(
                 OPENROUTER_URL,
@@ -168,23 +178,31 @@ def get_ai_analysis(symbol: str, holding: dict, rank: dict, signals: list) -> st
                 json={
                     "model": model,
                     "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": 160,
+                    "max_tokens": 60 * len(stocks),
                     "temperature": 0.4,
                 },
-                timeout=25,
+                timeout=45,
             )
+            if resp.status_code == 429:
+                print(f"  [ai/{short_model}] 429 rate-limited — waiting 5s before next model …")
+                _time.sleep(5)
+                continue
             if resp.ok:
                 text = resp.json()["choices"][0]["message"]["content"].strip()
-                short_model = model.split("/")[-1]
-                print(f"    [ai/{short_model}] OK")
-                return text
-            short_model = model.split("/")[-1]
-            print(f"    [ai/{short_model}] HTTP {resp.status_code} — trying next model")
+                print(f"  [ai/{short_model}] OK — parsing {len(stocks)} stock(s)")
+                result: dict = {}
+                for line in text.splitlines():
+                    parts = line.split(":", 1)
+                    if len(parts) == 2:
+                        sym = parts[0].strip().upper()
+                        if sym in stock_syms:
+                            result[sym] = parts[1].strip()
+                return result
+            print(f"  [ai/{short_model}] HTTP {resp.status_code} — trying next model")
         except Exception as e:
-            short_model = model.split("/")[-1]
-            print(f"    [ai/{short_model}] error: {e} — trying next model")
+            print(f"  [ai/{short_model}] error: {e} — trying next model")
 
-    return ""
+    return {}
 
 
 # ── Email builder ─────────────────────────────────────────────────────────────
@@ -478,17 +496,22 @@ def main() -> None:
                     opp_sent.add(key)
 
             if signals:
-                holding_info = {"pct_chg": pct, "current": current, "avg_cost": avg_cost, "shares": shares}
-                print(f"  {symbol}: signals={signals} — fetching AI analysis …")
-                ai_text = get_ai_analysis(symbol, holding_info, rank, signals)
+                print(f"  {symbol}: signals={signals}")
                 opp_triggered.append({
                     "symbol": symbol, "name": rank.get("name") or "",
                     "pct_chg": pct, "current": current, "avg_cost": avg_cost,
-                    "shares": shares, "signals": signals, "ai": ai_text,
+                    "shares": shares, "signals": signals, "ai": "", "rank": rank,
                 })
 
         if not pnl_triggered and not opp_triggered:
             continue
+
+        # Fetch AI analysis in a single batch call (one prompt for all stocks)
+        if opp_triggered and OPENROUTER_KEY:
+            print(f"  Fetching AI batch analysis for {len(opp_triggered)} stock(s) …")
+            ai_results = get_ai_analysis_batch(opp_triggered)
+            for o in opp_triggered:
+                o["ai"] = ai_results.get(o["symbol"], "")
 
         # Resolve destination email.
         # Always use ALERT_EMAIL for now — avoids Resend's test-domain restriction
