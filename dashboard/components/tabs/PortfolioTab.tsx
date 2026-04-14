@@ -328,14 +328,14 @@ export function PortfolioTab({
         </div>
       ) : (
         <>
-          {/* Sort pills â€” card mode only */}
+          {/* Sort pills — card mode only */}
           {viewMode === "cards" && (
             <div className="flex gap-2 overflow-x-auto pb-1 mb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {([
                 { key: "pnlPct" as SortKey, label: "P&L %" },
                 { key: "pnl" as SortKey, label: "P&L $" },
                 { key: "marketValue" as SortKey, label: lang === "es" ? "Valor" : "Value" },
-                { key: "symbol" as SortKey, label: "Aâ†’Z" },
+                { key: "symbol" as SortKey, label: "A→Z" },
                 { key: "shares" as SortKey, label: lang === "es" ? "Acciones" : "Shares" },
               ]).map(({ key, label }) => (
                 <button
@@ -348,7 +348,7 @@ export function PortfolioTab({
                   }`}
                 >
                   {label}
-                  {sortKey === key && <span>{sortDir === "asc" ? " â†‘" : " â†“"}</span>}
+                  {sortKey === key && <span>{sortDir === "asc" ? " ↑" : " ↓"}</span>}
                 </button>
               ))}
             </div>
@@ -432,15 +432,15 @@ export function PortfolioTab({
                   {/* Row 2: price details */}
                   <div className="mt-1 ml-10 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
                     {h.avg_cost != null && h.lp ? (
-                      <span className="tabular-nums">${h.avg_cost.toFixed(2)} â†’ <span className="text-gray-800 dark:text-gray-200 font-medium">${h.lp.price.toFixed(2)}</span></span>
+                      <span className="tabular-nums">${h.avg_cost.toFixed(2)} → <span className="text-gray-800 dark:text-gray-200 font-medium">${h.lp.price.toFixed(2)}</span></span>
                     ) : h.lp ? (
                       <span className="tabular-nums font-medium text-gray-800 dark:text-gray-200">${h.lp.price.toFixed(2)}</span>
                     ) : null}
-                    <span className="text-gray-300 dark:text-neutral-600">Â·</span>
+                    <span className="text-gray-300 dark:text-neutral-600">·</span>
                     <span>{h.shares} {lang === "es" ? "acc." : "sh."}</span>
                     {h.marketValue != null && (
                       <>
-                        <span className="text-gray-300 dark:text-neutral-600">Â·</span>
+                        <span className="text-gray-300 dark:text-neutral-600">·</span>
                         <span className="font-medium text-gray-800 dark:text-gray-200 tabular-nums">
                           ${h.marketValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
@@ -448,7 +448,7 @@ export function PortfolioTab({
                     )}
                     {h.pnl != null && (
                       <>
-                        <span className="text-gray-300 dark:text-neutral-600">Â·</span>
+                        <span className="text-gray-300 dark:text-neutral-600">·</span>
                         <span className={`tabular-nums ${h.pnl >= 0 ? "text-emerald-500" : "text-red-400"}`}>
                           {h.pnl >= 0 ? "+" : ""}{h.pnl.toFixed(2)}
                         </span>
