@@ -229,7 +229,11 @@ export async function getFinnhubData(symbol: string): Promise<{
 
     const news: FinnhubNewsItem[] = newsRes.ok ? (await newsRes.json()).slice(0, 5) : [];
     const recData = recRes.ok ? await recRes.json() : [];
-    const recommendation: FinnhubRec | null = Array.isArray(recData) && recData.length > 0 ? recData[0] : null;
+    const recommendation: FinnhubRec | null = Array.isArray(recData) && recData.length > 0
+        ? [...recData]
+            .filter((item): item is FinnhubRec => Boolean(item?.period))
+            .sort((left, right) => right.period.localeCompare(left.period))[0] ?? null
+        : null;
     const quoteData = quoteRes.ok ? await quoteRes.json() : null;
     const quote: FinnhubQuote | null = quoteData && quoteData.c ? quoteData : null;
     const metricData = metricRes.ok ? await metricRes.json() : null;

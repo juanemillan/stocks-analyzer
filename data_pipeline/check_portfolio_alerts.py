@@ -565,6 +565,7 @@ def send_digest_email(to_email: str, insights_text: str, n_holdings: int, finnhu
     return False
 
 
+def send_email(to_email: str, opportunities: list, pnl_alerts: list) -> bool:
     if not RESEND_API_KEY:
         print(f"  [skip] RESEND_API_KEY not set — would email {to_email}")
         return False
