@@ -421,6 +421,7 @@ export default function Dashboard() {
             onUpdateHolding={portfolio.updateHolding}
             watchlist={watchlist}
             onToggleWatchlist={toggleWatchlist}
+            snapshots={portfolio.snapshots}
           />
         )}
 
@@ -446,6 +447,7 @@ export default function Dashboard() {
             onShowLegend={() => setShowLegend(true)}
             onReload={handleReload}
             loading={data.loading}
+            isAdmin={!!process.env.NEXT_PUBLIC_ADMIN_EMAIL && auth.userEmail === process.env.NEXT_PUBLIC_ADMIN_EMAIL}
           />
         )}
 

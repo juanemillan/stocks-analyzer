@@ -21,7 +21,14 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install psycopg2-binary supabase requests python-dotenv
+        run: pip install psycopg2-binary supabase requests python-dotenv pywebpush
+
+      - name: Snapshot portfolio values
+        env:
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DATABASE_URL:              ${{ secrets.DATABASE_URL }}
+        run: python data_pipeline/snapshot_portfolio.py
 
       - name: Check portfolio alerts
         env:

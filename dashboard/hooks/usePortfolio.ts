@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
-import { getLatestPrices, getPricesMulti, syncRacionalPortfolio } from "@/app/actions";
+import { getLatestPrices, getPricesMulti, syncRacionalPortfolio, getPortfolioSnapshots } from "@/app/actions";
+import type { PortfolioSnapshot } from "@/app/actions";
 import { createClient } from "@/lib/supabase/client";
 import type { Holding } from "@/lib/stockUtils";
 import { computeCorrelation, type CorrelationResult } from "@/lib/correlation";
@@ -46,6 +47,7 @@ export function usePortfolio() {
   const [racionalSyncError, setRacionalSyncError] = useState<string | null>(null);
   const [racionalSyncInfo, setRacionalSyncInfo] = useState<string | null>(null);
   const [lastRacionalSync, setLastRacionalSync] = useState<Date | null>(null);
+  const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
 
   const holdingsEverLoaded = useRef(false);
 
@@ -58,6 +60,9 @@ export function usePortfolio() {
     setHoldingsLoading(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id) {
+      getPortfolioSnapshots(user.id, 90).then(setSnapshots).catch(() => {});
+    }
     const { data: port } = await supabase
       .from("portfolios")
       .select("id")
@@ -210,6 +215,7 @@ export function usePortfolio() {
     holdingError, setHoldingError,
     symbolSearch, setSymbolSearch,
     symDropOpen, setSymDropOpen,
+    snapshots,
     loadHoldings, addHolding, removeHolding, updateHolding, closeAddModal,
   };
 }

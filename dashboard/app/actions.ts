@@ -335,3 +335,70 @@ export async function deleteAlertRule(userId: string, ruleId: string): Promise<v
         .eq('user_id', userId);
     if (error) throw new Error(error.message);
 }
+
+// ===== Portfolio snapshots =====
+
+export type PortfolioSnapshot = {
+    date: string;
+    total_value: number;
+    total_cost: number;
+};
+
+export async function getPortfolioSnapshots(userId: string, days = 90): Promise<PortfolioSnapshot[]> {
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = createClient();
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    const { data, error } = await (await supabase)
+        .from('portfolio_snapshots')
+        .select('date, total_value, total_cost')
+        .eq('user_id', userId)
+        .gte('date', since.toISOString().slice(0, 10))
+        .order('date', { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r) => ({
+        date: r.date,
+        total_value: Number(r.total_value),
+        total_cost: Number(r.total_cost),
+    }));
+}
+
+export type ScoreHistoryPoint = { date: string; final_score: number };
+
+export async function getScoreHistory(symbol: string, days = 60): Promise<ScoreHistoryPoint[]> {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    const { rows } = await pool.query<{ date: string; final_score: string }>(
+        `SELECT date::text, final_score FROM scores_daily WHERE symbol=$1 AND date>=$2 ORDER BY date ASC`,
+        [symbol, since.toISOString().slice(0, 10)],
+    );
+    return rows.map((r) => ({ date: r.date, final_score: Number(r.final_score) }));
+}
+
+export type AssetRequestStatus = 'pending' | 'added' | 'rejected';
+
+export interface AssetRequest {
+    id: string;
+    user_id: string;
+    symbol: string;
+    reason: string | null;
+    status: AssetRequestStatus;
+    created_at: string;
+}
+
+export async function getAssetRequests(): Promise<AssetRequest[]> {
+    const { rows } = await pool.query<AssetRequest>(
+        `SELECT id::text, user_id, symbol, reason, status, created_at::text
+         FROM asset_requests
+         ORDER BY created_at DESC
+         LIMIT 200`,
+    );
+    return rows;
+}
+
+export async function updateAssetRequestStatus(id: string, status: AssetRequestStatus): Promise<void> {
+    await pool.query(
+        `UPDATE asset_requests SET status = $1 WHERE id = $2`,
+        [status, id],
+    );
+}

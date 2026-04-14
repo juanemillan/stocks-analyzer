@@ -23,6 +23,9 @@ import { t } from "@/app/i18n";
 import type { RankRow, PriceRow, Lang, FinnhubData } from "@/app/types";
 import { AlertsModal } from "@/components/modals/AlertsModal";
 import type { AlertRule, AlertType } from "@/hooks/useAlerts";
+import { ScoreSparkline } from "@/components/detail/ScoreSparkline";
+import { getScoreHistory } from "@/app/actions";
+import type { ScoreHistoryPoint } from "@/app/actions";
 
 type Props = {
   open: boolean;
@@ -71,6 +74,15 @@ export function StockDetailPanel({
 
   // Alerts modal
   const [showAlerts, setShowAlerts] = useState(false);
+
+  // Score history
+  const [scoreHistory, setScoreHistory] = useState<ScoreHistoryPoint[]>([]);
+  useEffect(() => {
+    if (!selected?.symbol) { setScoreHistory([]); return; }
+    getScoreHistory(selected.symbol, 60)
+      .then(setScoreHistory)
+      .catch(() => setScoreHistory([]));
+  }, [selected?.symbol]);
 
   // Chart display options
   const [chartMode, setChartMode] = useState<"line" | "candle">("line");
@@ -546,6 +558,9 @@ export function StockDetailPanel({
                     <div><span className="text-gray-500">{t("trend", lang)}: </span><span className="font-medium">{selected.tech_trend?.toFixed(2) ?? "—"}</span></div>
                   </div>
                 </div>
+                {scoreHistory.length > 1 && (
+                  <ScoreSparkline data={scoreHistory} latest={selected.final_score ?? scoreHistory[scoreHistory.length - 1].final_score} />
+                )}
               </div>
 
               {/* Latest news */}

@@ -1,0 +1,33 @@
+name: Intraday Price Refresh
+
+on:
+  schedule:
+    # Every 15 minutes, Mon–Fri 13:30–20:15 UTC (covers NYSE/NASDAQ market hours)
+    - cron: "*/15 13-20 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  intraday:
+    name: Refresh intraday prices
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install psycopg2-binary yfinance python-dotenv numpy pandas
+
+      - name: Fetch intraday prices
+        working-directory: data_pipeline
+        run: python fetch_intraday.py

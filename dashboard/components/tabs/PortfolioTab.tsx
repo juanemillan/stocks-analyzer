@@ -7,6 +7,8 @@ import { logoSrc, type Holding } from "@/lib/stockUtils";
 import { CorrelationPanel } from "@/components/portfolio/CorrelationPanel";
 import type { CorrelationResult } from "@/lib/correlation";
 import { computeDiversificationScore } from "@/lib/correlation";
+import { PortfolioPerformanceChart } from "@/components/portfolio/PortfolioPerformanceChart";
+import type { PortfolioSnapshot } from "@/app/actions";
 
 const INITIAL_VISIBLE = 8;
 
@@ -36,6 +38,7 @@ interface PortfolioTabProps {
   onUpdateHolding: (id: string, shares: number, avg_cost: number | null) => Promise<void>;
   watchlist: Set<string>;
   onToggleWatchlist: (symbol: string) => void;
+  snapshots: PortfolioSnapshot[];
 }
 
 export function PortfolioTab({
@@ -61,6 +64,7 @@ export function PortfolioTab({
   onUpdateHolding,
   watchlist,
   onToggleWatchlist,
+  snapshots,
 }: PortfolioTabProps) {
   const [showAll, setShowAll] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("symbol");
@@ -333,6 +337,13 @@ export function PortfolioTab({
         <p className="mb-3 text-xs text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
           {racionalSyncError}
         </p>
+      )}
+
+      {/* ── Portfolio performance chart ── */}
+      {snapshots.length > 1 && (
+        <div className="mb-4">
+          <PortfolioPerformanceChart snapshots={snapshots} lang={lang} />
+        </div>
       )}
 
       {/* ── Portfolio summary bar ── */}

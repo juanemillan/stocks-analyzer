@@ -1,10 +1,12 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { t } from "@/app/i18n";
 import type { Lang } from "@/app/types";
 import ThemeToggle from "@/components/ThemeToggle";
 import { LangToggle } from "@/components/LangToggle";
 import { PushNotificationToggle } from "@/components/PushNotificationToggle";
+import { getAssetRequests, updateAssetRequestStatus } from "@/app/actions";
+import type { AssetRequest, AssetRequestStatus } from "@/app/actions";
 
 interface ProfileTabProps {
   lang: Lang;
@@ -27,6 +29,7 @@ interface ProfileTabProps {
   onShowLegend: () => void;
   onReload: () => void;
   loading?: boolean;
+  isAdmin?: boolean;
 }
 
 const AGE_RANGES   = ["18-24", "25-34", "35-44", "45-54", "55-64", "65+"];
@@ -42,9 +45,26 @@ export function ProfileTab({
   editExperience, setEditExperience,
   editRiskTolerance, setEditRiskTolerance,
   editSaving, onSave,
-  onSignOut, onShowLegend, onReload, loading,
+  onSignOut, onShowLegend, onReload, loading, isAdmin,
 }: ProfileTabProps) {
   const [section, setSection] = useState<"settings" | "info" | null>(null);
+  const [requests, setRequests] = useState<AssetRequest[]>([]);
+  const [reqLoading, setReqLoading] = useState(false);
+
+  const loadRequests = useCallback(async () => {
+    setReqLoading(true);
+    try { setRequests(await getAssetRequests()); } catch { /* silent */ }
+    finally { setReqLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (isAdmin) loadRequests();
+  }, [isAdmin, loadRequests]);
+
+  async function handleStatus(id: string, status: AssetRequestStatus) {
+    await updateAssetRequestStatus(id, status);
+    setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status } : r));
+  }
 
   const initial = (userDisplayName || userEmail || "?").charAt(0).toUpperCase();
   const expLabel = (v: string) => ({ beginner: lang === "es" ? "Principiante" : "Beginner", intermediate: lang === "es" ? "Intermedio" : "Intermediate", advanced: lang === "es" ? "Avanzado" : "Advanced", professional: lang === "es" ? "Profesional" : "Professional" }[v] ?? v);
@@ -220,6 +240,58 @@ export function ProfileTab({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── Admin: Asset Requests ── */}
+      {isAdmin && (
+        <div className="mt-6 mb-2 bg-white dark:bg-neutral-900 border dark:border-neutral-700 rounded-2xl p-4 animate-fadeIn">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+              {lang === "es" ? "Solicitudes de activos" : "Asset requests"}
+            </div>
+            <button
+              onClick={loadRequests}
+              disabled={reqLoading}
+              className="text-xs text-emerald-600 hover:text-emerald-700 disabled:opacity-50 transition-colors"
+            >
+              {reqLoading ? "…" : lang === "es" ? "Refrescar" : "Refresh"}
+            </button>
+          </div>
+          {requests.length === 0 ? (
+            <p className="text-xs text-gray-400">{lang === "es" ? "Sin solicitudes." : "No requests."}</p>
+          ) : (
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {requests.map((req) => (
+                <div key={req.id} className="flex items-start gap-2 text-xs border-b dark:border-neutral-700 pb-2 last:border-0 last:pb-0">
+                  <div className="flex-1 min-w-0">
+                    <span className="font-semibold">{req.symbol}</span>
+                    {req.reason && <span className="ml-1 text-gray-500 truncate block">{req.reason}</span>}
+                    <span className="text-gray-400 block">{req.created_at?.slice(0, 10)}</span>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
+                      req.status === "added" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                      : req.status === "rejected" ? "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400"
+                      : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
+                    }`}>{req.status}</span>
+                    {req.status === "pending" && (
+                      <>
+                        <button
+                          onClick={() => handleStatus(req.id, "added")}
+                          className="px-2 py-0.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] transition-colors"
+                        >✓</button>
+                        <button
+                          onClick={() => handleStatus(req.id, "rejected")}
+                          className="px-2 py-0.5 rounded-lg bg-red-400 hover:bg-red-500 text-white text-[10px] transition-colors"
+                        >✗</button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
