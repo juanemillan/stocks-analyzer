@@ -72,7 +72,14 @@ export type CompoundRow = {
   days_covered: number | null;
 };
 
-export type PriceRow = { date: string; close: number };
+export type PriceRow = {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+};
 
 export type Lang = "es" | "en";
 

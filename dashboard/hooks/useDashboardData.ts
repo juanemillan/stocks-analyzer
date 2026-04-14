@@ -158,9 +158,12 @@ export function useDashboardData() {
   // ---------- Effects ----------
   useEffect(() => {
     if (!selected?.symbol) { setFinnhubData(null); return; }
+    const CACHE_KEY = `finnhub_${selected.symbol}`;
+    const cached = cacheGet<FinnhubData>(CACHE_KEY);
+    if (cached) { setFinnhubData(cached); return; }
     setFinnhubLoading(true);
     getFinnhubData(selected.symbol)
-      .then(setFinnhubData)
+      .then((data) => { setFinnhubData(data); cacheSet(CACHE_KEY, data); })
       .catch(() => setFinnhubData(null))
       .finally(() => setFinnhubLoading(false));
   }, [selected?.symbol]);

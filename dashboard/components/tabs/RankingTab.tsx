@@ -35,10 +35,28 @@ interface RankingTabProps {
   onAddToPortfolio?: (symbol: string) => void;
 }
 
-function ScoreDelta({ delta }: { delta?: number | null }) {
-  if (delta == null || Math.abs(delta) < 0.001) return <span className="text-gray-400 text-xs ml-1">→</span>;
-  if (delta > 0) return <span className="text-emerald-500 text-xs ml-1">▲ +{delta.toFixed(3)}</span>;
-  return <span className="text-red-400 text-xs ml-1">▼ {delta.toFixed(3)}</span>;
+function ScoreDelta({ score, delta }: { score?: number | null; delta?: number | null }) {
+  // Mini sparkline: two bars representing prev_score and final_score
+  const prev = score != null && delta != null ? score - delta : null;
+  const showBar = score != null && prev != null;
+  const up = (delta ?? 0) > 0.001;
+  const down = (delta ?? 0) < -0.001;
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className={`text-xs tabular-nums font-semibold ${score != null ? (score >= 0.7 ? "text-emerald-600 dark:text-emerald-400" : score < 0.35 ? "text-red-500 dark:text-red-400" : "text-gray-700 dark:text-gray-300") : ""}`}>
+        {score != null ? score.toFixed(3) : "—"}
+      </span>
+      {showBar && (
+        <svg width="28" height="14" viewBox="0 0 28 14" className="flex-none">
+          <rect x="1" y={14 - Math.round(prev! * 13)} width="10" height={Math.round(prev! * 13)} rx="1.5"
+            fill={up ? "#d1d5db" : down ? "#fca5a5" : "#d1d5db"} />
+          <rect x="15" y={14 - Math.round(score! * 13)} width="10" height={Math.round(score! * 13)} rx="1.5"
+            fill={up ? "#10b981" : down ? "#ef4444" : "#9ca3af"} />
+        </svg>
+      )}
+      {!showBar && delta == null && <span className="text-gray-300 text-xs">&mdash;</span>}
+    </span>
+  );
 }
 
 export function RankingTab({
@@ -205,10 +223,7 @@ export function RankingTab({
                   <td className="px-3 py-2">{r.name ?? "—"}</td>
                   <td className="px-3 py-2">{r.asset_type ?? "—"}</td>
                   <td className="px-3 py-2 text-right tabular-nums">
-                    {r.final_score != null
-                      ? <span className={r.final_score >= 0.7 ? "text-emerald-600 dark:text-emerald-400 font-semibold" : r.final_score < 0.35 ? "text-red-500 dark:text-red-400" : "text-gray-700 dark:text-gray-300"}>{r.final_score.toFixed(3)}</span>
-                      : "—"}
-                    <ScoreDelta delta={r.score_delta} />
+                    <ScoreDelta score={r.final_score} delta={r.score_delta} />
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">
                     {r.mom_1m != null ? <span className={r.mom_1m >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}>{(r.mom_1m * 100).toFixed(2)}%</span> : "—"}

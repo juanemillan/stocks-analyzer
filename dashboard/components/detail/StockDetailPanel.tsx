@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
+  ComposedChart,
   LineChart,
   Line,
+  Bar,
   XAxis,
   YAxis,
   Tooltip,
@@ -59,7 +61,55 @@ export function StockDetailPanel({
     return () => { document.body.style.overflow = ""; };
   }, [open]);
 
+  // Chart display options
+  const [chartMode, setChartMode] = useState<"line" | "candle">("line");
+  const [showSma20, setShowSma20] = useState(false);
+  const [showSma50, setShowSma50] = useState(false);
+  const [showVolume, setShowVolume] = useState(false);
+
+  // Compute SMAs and enrich chartData
+  const chartData = useMemo(() => {
+    if (!prices.length) return [];
+    return prices.map((p, i) => {
+      const slice20 = prices.slice(Math.max(0, i - 19), i + 1);
+      const slice50 = prices.slice(Math.max(0, i - 49), i + 1);
+      const sma20 = slice20.reduce((s, d) => s + d.close, 0) / slice20.length;
+      const sma50 = slice50.reduce((s, d) => s + d.close, 0) / slice50.length;
+      return { ...p, sma20, sma50 };
+    });
+  }, [prices]);
+
   if (!open || !selected) return null;
+
+  // Custom candlestick shape — uses yAxis.scale to correctly map prices → pixels
+  function CandleShape(props: any) {
+    const { x, width, payload } = props;
+    const yScale = props.yAxis?.scale as ((v: number) => number) | undefined;
+    if (!payload || !yScale) return <g />;
+    const { open, close, high, low } = payload;
+    const bullish = close >= open;
+    const color = bullish ? "#10b981" : "#ef4444";
+    const yHigh   = yScale(high);
+    const yLow    = yScale(low);
+    const yTop    = yScale(Math.max(open, close));
+    const yBottom = yScale(Math.min(open, close));
+    const cx = x + width / 2;
+    const bodyW = Math.max(width * 0.7, 3);
+    return (
+      <g>
+        <line x1={cx} x2={cx} y1={yHigh} y2={yLow} stroke={color} strokeWidth={1} />
+        <rect
+          x={cx - bodyW / 2}
+          y={yTop}
+          width={bodyW}
+          height={Math.max(yBottom - yTop, 1)}
+          fill={color}
+          stroke={bullish ? "#059669" : "#dc2626"}
+          strokeWidth={0.5}
+        />
+      </g>
+    );
+}
 
   // % change for the currently selected range
   const rangeChgPct: number | null = (() => {
@@ -149,39 +199,136 @@ export function StockDetailPanel({
 
               {/* Chart */}
               <div className="bg-gray-50 dark:bg-neutral-800 rounded-2xl p-4">
-                {/* chart header: range label + % change */}
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    {rangeKey} {lang === "es" ? "precio" : "price"}
-                  </span>
-                  {!pricesLoading && rangeChgPct != null && (
-                    <span className={`text-sm font-bold tabular-nums px-2 py-0.5 rounded-lg ${
-                      rangeChgPct >= 0
-                        ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
-                        : "bg-red-50 text-red-500 dark:bg-red-900/30 dark:text-red-400"
-                    }`}>
-                      {rangeChgPct >= 0 ? "+" : ""}{rangeChgPct.toFixed(2)}%
+                {/* chart header */}
+                <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      {rangeKey} {lang === "es" ? "precio" : "price"}
                     </span>
-                  )}
-                  {pricesLoading && (
-                    <span className="text-xs text-gray-400 animate-pulse">…</span>
-                  )}
+                    {!pricesLoading && rangeChgPct != null && (
+                      <span className={`text-sm font-bold tabular-nums px-2 py-0.5 rounded-lg ${
+                        rangeChgPct >= 0
+                          ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+                          : "bg-red-50 text-red-500 dark:bg-red-900/30 dark:text-red-400"
+                      }`}>
+                        {rangeChgPct >= 0 ? "+" : ""}{rangeChgPct.toFixed(2)}%
+                      </span>
+                    )}
+                    {pricesLoading && <span className="text-xs text-gray-400 animate-pulse">…</span>}
+                  </div>
+                  {/* Chart controls */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* Line/Candle toggle */}
+                    <div className="flex rounded-lg border border-gray-200 dark:border-neutral-600 overflow-hidden text-xs">
+                      <button
+                        onClick={() => setChartMode("line")}
+                        className={`px-2 py-1 transition-colors ${chartMode === "line" ? "bg-blue-500 text-white" : "bg-white dark:bg-neutral-800 text-gray-600 dark:text-gray-400"}`}
+                      >
+                        {lang === "es" ? "Línea" : "Line"}
+                      </button>
+                      <button
+                        onClick={() => setChartMode("candle")}
+                        className={`px-2 py-1 border-l border-gray-200 dark:border-neutral-600 transition-colors ${chartMode === "candle" ? "bg-blue-500 text-white" : "bg-white dark:bg-neutral-800 text-gray-600 dark:text-gray-400"}`}
+                      >
+                        {lang === "es" ? "Velas" : "Candles"}
+                      </button>
+                    </div>
+                    {/* Overlay toggles */}
+                    {[
+                      { label: "SMA 20", active: showSma20, toggle: () => setShowSma20((v) => !v), color: "#f59e0b" },
+                      { label: "SMA 50", active: showSma50, toggle: () => setShowSma50((v) => !v), color: "#8b5cf6" },
+                      { label: lang === "es" ? "Vol" : "Vol", active: showVolume, toggle: () => setShowVolume((v) => !v), color: "#6b7280" },
+                    ].map(({ label, active, toggle, color }) => (
+                      <button
+                        key={label}
+                        onClick={toggle}
+                        className={`px-2 py-1 rounded-lg border text-xs transition-colors ${active ? "text-white border-transparent" : "bg-white dark:bg-neutral-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-neutral-600"}`}
+                        style={active ? { backgroundColor: color, borderColor: color } : undefined}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Main price chart */}
                 <div className="h-52 md:h-64">
                   {pricesLoading ? (
-                    <div className="h-full flex items-center justify-center text-gray-500">{t("loadingPrices", lang)}</div>
-                  ) : prices.length ? (
+                    <div className="h-full flex flex-col gap-2 pt-2">
+                      <div className="h-3 w-24 rounded bg-gray-200 dark:bg-neutral-700 animate-pulse" />
+                      <div className="flex-1 rounded-xl bg-gray-200 dark:bg-neutral-700 animate-pulse" />
+                    </div>
+                  ) : chartData.length ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={prices} margin={{ top: 0, right: 32, left: 0, bottom: 0 }}>
+                      <ComposedChart data={chartData} margin={{ top: 4, right: 32, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
                         <XAxis dataKey="date" tick={{ fontSize: 11 }} minTickGap={28} tickMargin={6} />
-                        <YAxis tick={{ fontSize: 11 }} domain={["auto", "auto"]} width={60} tickMargin={4} />
+                        <YAxis
+                          yAxisId="price"
+                          tick={{ fontSize: 11 }}
+                          domain={["auto", "auto"]}
+                          width={60}
+                          tickMargin={4}
+                        />
+                        {showVolume && (
+                          <YAxis
+                            yAxisId="vol"
+                            orientation="right"
+                            tick={{ fontSize: 9 }}
+                            width={40}
+                            tickFormatter={(v) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(0)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v)}
+                          />
+                        )}
                         <Tooltip
                           contentStyle={{ fontSize: "12px", borderRadius: "8px", padding: "6px 10px" }}
-                          formatter={(v: any) => Number(v).toFixed(2)}
+                          content={({ active, payload, label }) => {
+                            if (!active || !payload?.length) return null;
+                            const d = payload[0]?.payload;
+                            return (
+                              <div style={{ fontSize: "12px", borderRadius: "8px", padding: "6px 10px", background: "#fff", border: "1px solid #e5e7eb", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+                                <div className="font-medium text-gray-700 mb-1">{label}</div>
+                                {chartMode === "candle" && d ? (
+                                  <div className="space-y-0.5 text-gray-600">
+                                    <div>O: <span className="font-semibold tabular-nums">{d.open?.toFixed(2)}</span></div>
+                                    <div>H: <span className="font-semibold tabular-nums text-emerald-600">{d.high?.toFixed(2)}</span></div>
+                                    <div>L: <span className="font-semibold tabular-nums text-red-500">{d.low?.toFixed(2)}</span></div>
+                                    <div>C: <span className="font-semibold tabular-nums">{d.close?.toFixed(2)}</span></div>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-0.5 text-gray-600">
+                                    {payload.map((p: any, i: number) => (
+                                      <div key={i}>
+                                        <span style={{ color: p.color }}>{p.name === "close" ? "Price" : p.name === "sma20" ? "SMA 20" : p.name === "sma50" ? "SMA 50" : p.name}</span>
+                                        {": "}
+                                        <span className="font-semibold tabular-nums">
+                                          {p.name === "volume" ? Number(p.value).toLocaleString() : Number(p.value).toFixed(2)}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }}
                         />
-                        <Line type="monotone" dataKey="close" dot={false} strokeWidth={2} stroke="#10b981" />
-                      </LineChart>
+                        {/* Volume bars behind everything */}
+                        {showVolume && (
+                          <Bar yAxisId="vol" dataKey="volume" fill="#9ca3af" opacity={0.3} barSize={4} isAnimationActive={false} />
+                        )}
+                        {/* Candle mode — single Bar per point, CandleShape handles positioning via yAxis.scale */}
+                        {chartMode === "candle" ? (
+                          <Bar yAxisId="price" dataKey="close" barSize={10} shape={<CandleShape />} isAnimationActive={false} fill="transparent" stroke="none" />
+                        ) : (
+                          <Line yAxisId="price" type="monotone" dataKey="close" dot={false} strokeWidth={2} stroke="#10b981" isAnimationActive={false} />
+                        )}
+                        {/* SMA overlays */}
+                        {showSma20 && (
+                          <Line yAxisId="price" type="monotone" dataKey="sma20" dot={false} strokeWidth={1.5} stroke="#f59e0b" strokeDasharray="4 2" isAnimationActive={false} />
+                        )}
+                        {showSma50 && (
+                          <Line yAxisId="price" type="monotone" dataKey="sma50" dot={false} strokeWidth={1.5} stroke="#8b5cf6" strokeDasharray="4 2" isAnimationActive={false} />
+                        )}
+                      </ComposedChart>
                     </ResponsiveContainer>
                   ) : (
                     <div className="h-full flex items-center justify-center text-gray-500">{t("noPriceData", lang)}</div>
@@ -196,7 +343,14 @@ export function StockDetailPanel({
                 <div className="bg-white border rounded-2xl p-4 dark:bg-neutral-900 dark:border-neutral-700">
                   <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t("fundamentals", lang)}</div>
                   {finnhubLoading ? (
-                    <div className="text-xs text-gray-400 animate-pulse">{t("loadingBtn", lang)}</div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                      {[...Array(8)].map((_, i) => (
+                        <div key={i} className="space-y-1">
+                          <div className="h-2.5 w-16 rounded bg-gray-200 dark:bg-neutral-700 animate-pulse" />
+                          <div className="h-3.5 w-12 rounded bg-gray-100 dark:bg-neutral-800 animate-pulse" />
+                        </div>
+                      ))}
+                    </div>
                   ) : (
                     <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                       {finnhubData?.quote && (<>
@@ -226,7 +380,14 @@ export function StockDetailPanel({
                   <div className="bg-white border rounded-2xl p-4 dark:bg-neutral-900 dark:border-neutral-700">
                     <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t("analystConsensus", lang)}</div>
                     {finnhubLoading ? (
-                      <div className="text-xs text-gray-400 animate-pulse">{t("loadingBtn", lang)}</div>
+                      <div className="flex items-center gap-4">
+                        <div className="w-28 h-28 rounded-full bg-gray-200 dark:bg-neutral-700 animate-pulse flex-none" />
+                        <div className="flex-1 space-y-2">
+                          {[...Array(5)].map((_, i) => (
+                            <div key={i} className="h-3 rounded bg-gray-200 dark:bg-neutral-700 animate-pulse" style={{ width: `${60 + i * 8}%` }} />
+                          ))}
+                        </div>
+                      </div>
                     ) : finnhubData?.recommendation ? (
                       (() => {
                         const r = finnhubData.recommendation;

@@ -121,10 +121,17 @@ export async function getPrices(symbol: string, days: number) {
     const since = new Date();
     since.setDate(since.getDate() - days);
     const { rows } = await pool.query(
-        'SELECT date::text AS date, close FROM prices_daily WHERE symbol = $1 AND date >= $2 ORDER BY date ASC',
+        'SELECT date::text AS date, open, high, low, close, volume FROM prices_daily WHERE symbol = $1 AND date >= $2 ORDER BY date ASC',
         [symbol, since.toISOString().slice(0, 10)]
     );
-    return rows.map(parseRow);
+    return rows.map((r: any) => ({
+        date: r.date,
+        open: Number(r.open),
+        high: Number(r.high),
+        low: Number(r.low),
+        close: Number(r.close),
+        volume: Number(r.volume),
+    }));
 }
 
 export const getAccumulationZone = unstable_cache(
