@@ -34,14 +34,18 @@ export function PushNotificationToggle() {
 
   if (state === "error") {
     return (
-      <button
-        onClick={subscribe}
-        title={errorMsg ?? "Error — tap to retry"}
-        className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors"
-      >
-        <BellIcon />
-        Reintentar
-      </button>
+      <div className="flex flex-col gap-1">
+        <button
+          onClick={subscribe}
+          className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors"
+        >
+          <BellIcon />
+          Reintentar
+        </button>
+        {errorMsg && (
+          <span className="text-xs text-red-500 dark:text-red-400 px-1">{errorMsg}</span>
+        )}
+      </div>
     );
   }
 
