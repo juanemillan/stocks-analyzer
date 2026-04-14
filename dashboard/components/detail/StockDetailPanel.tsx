@@ -21,6 +21,8 @@ import { DescriptionBlock } from "@/components/ui/DescriptionBlock";
 import { logoSrc, bucketDisplay, fmtBig, RANGE_OPTIONS } from "@/lib/stockUtils";
 import { t } from "@/app/i18n";
 import type { RankRow, PriceRow, Lang, FinnhubData } from "@/app/types";
+import { AlertsModal } from "@/components/modals/AlertsModal";
+import type { AlertRule, AlertType } from "@/hooks/useAlerts";
 
 type Props = {
   open: boolean;
@@ -33,6 +35,9 @@ type Props = {
   rangeKey: string;
   setRangeKey: (k: string) => void;
   lang: Lang;
+  alertRules?: AlertRule[];
+  onUpsertAlert?: (symbol: string, type: AlertType, threshold: number) => Promise<void>;
+  onRemoveAlert?: (ruleId: string) => Promise<void>;
 };
 
 export function StockDetailPanel({
@@ -46,6 +51,9 @@ export function StockDetailPanel({
   rangeKey,
   setRangeKey,
   lang,
+  alertRules = [],
+  onUpsertAlert,
+  onRemoveAlert,
 }: Props) {
   // ESC key closes modal
   useEffect(() => {
@@ -60,6 +68,9 @@ export function StockDetailPanel({
     document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [open]);
+
+  // Alerts modal
+  const [showAlerts, setShowAlerts] = useState(false);
 
   // Chart display options
   const [chartMode, setChartMode] = useState<"line" | "candle">("line");
@@ -186,6 +197,22 @@ export function StockDetailPanel({
           <div className="hidden sm:flex gap-1 flex-wrap">
             <RangeButtons />
           </div>
+          {/* Alert bell */}
+          {onUpsertAlert && (
+            <button
+              onClick={() => setShowAlerts(true)}
+              className="flex-none w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors relative"
+              title={lang === "es" ? "Configurar alertas" : "Set alerts"}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              {alertRules.length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-amber-400 rounded-full" />
+              )}
+            </button>
+          )}
           <button
             onClick={onClose}
             className="flex-none w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-neutral-800 transition-colors"
@@ -547,6 +574,19 @@ export function StockDetailPanel({
           </div>
         </div>
       </div>
+      {/* Alerts modal */}
+      {onUpsertAlert && onRemoveAlert && selected && (
+        <AlertsModal
+          open={showAlerts}
+          onClose={() => setShowAlerts(false)}
+          symbol={selected.symbol}
+          currentPrice={finnhubData?.quote?.c ?? null}
+          rules={alertRules}
+          onUpsert={onUpsertAlert}
+          onRemove={onRemoveAlert}
+          lang={lang}
+        />
+      )}
     </div>
   );
 }

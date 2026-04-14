@@ -697,7 +697,17 @@ def main() -> None:
     )[:TOP_HOLDINGS_FOR_NEWS]
     finnhub_ctx = fetch_finnhub_context(top_symbols_for_news)
 
-    # 3. Previously fired alerts
+    # 3. User-defined alert rules (price targets + custom P&L thresholds)
+    rules_resp = (
+        sb.from_("alert_rules")
+        .select("id, user_id, symbol, type, threshold, active, triggered_at")
+        .eq("active", True)
+        .execute()
+    )
+    user_rules: list = [r for r in (rules_resp.data or []) if r.get("active")]
+    print(f"User-defined alert rules: {len(user_rules)}")
+
+    # 4. Previously fired alerts
     log_resp = (
         sb.from_("portfolio_alert_log")
         .select("id, user_id, symbol, alert_key, alerted_at")
@@ -795,7 +805,7 @@ def main() -> None:
             pct  = (current - avg_cost) / avg_cost * 100
             rank = rank_map.get(symbol, {})
 
-            # P&L milestone check
+            # P&L milestone check (hardcoded thresholds)
             for thr in ALL_THRESHOLDS:
                 ak  = f"{thr:+d}"
                 key = (user_id, symbol, ak)
@@ -807,6 +817,57 @@ def main() -> None:
                     })
                     new_log.append({"user_id": user_id, "symbol": symbol, "alert_key": ak})
                     pnl_sent.add(key)
+
+            # User-defined alert_rules: custom P&L % thresholds and price targets
+            for rule in user_rules:
+                if rule["user_id"] != user_id or rule["symbol"] != symbol:
+                    continue
+                rtype     = rule["type"]
+                rthreshold = float(rule["threshold"])
+                rule_key  = f"rule_{rtype}_{rthreshold:.4f}"
+                r_key_tup = (user_id, symbol, rule_key)
+
+                triggered = False
+                push_title = "Bullia alert"
+                push_body  = ""
+
+                if rtype == "stop_loss":
+                    # threshold is a negative %, e.g. -15 means fire when P&L ≤ -15%
+                    if pct <= rthreshold and r_key_tup not in pnl_sent:
+                        triggered = True
+                        push_title = f"🔴 Stop-loss hit: {symbol}"
+                        push_body  = f"P&L {pct:+.1f}% crossed your {rthreshold:+.0f}% threshold"
+                elif rtype == "take_profit":
+                    # threshold is a positive %, e.g. 30 means fire when P&L ≥ 30%
+                    if pct >= rthreshold and r_key_tup not in pnl_sent:
+                        triggered = True
+                        push_title = f"💰 Take-profit hit: {symbol}"
+                        push_body  = f"P&L {pct:+.1f}% reached your {rthreshold:+.0f}% target"
+                elif rtype == "price_above":
+                    if current >= rthreshold and r_key_tup not in pnl_sent:
+                        triggered = True
+                        push_title = f"📈 Price target hit: {symbol}"
+                        push_body  = f"Price ${current:.2f} ≥ your target ${rthreshold:.2f}"
+                elif rtype == "price_below":
+                    if current <= rthreshold and r_key_tup not in pnl_sent:
+                        triggered = True
+                        push_title = f"📉 Price alert: {symbol}"
+                        push_body  = f"Price ${current:.2f} ≤ your alert ${rthreshold:.2f}"
+
+                if triggered:
+                    print(f"  {symbol}: user rule '{rtype}' triggered (threshold={rthreshold})")
+                    pnl_triggered.append({
+                        "symbol": symbol, "pct_chg": pct,
+                        "threshold": rthreshold if rtype in ("stop_loss", "take_profit") else 0,
+                        "current": current, "avg_cost": avg_cost, "shares": shares,
+                        "_push_title": push_title, "_push_body": push_body,
+                    })
+                    new_log.append({"user_id": user_id, "symbol": symbol, "alert_key": rule_key})
+                    pnl_sent.add(r_key_tup)
+                    # Mark rule as triggered in alert_rules table
+                    sb.from_("alert_rules").update(
+                        {"triggered_at": datetime.now(timezone.utc).isoformat()}
+                    ).eq("id", rule["id"]).execute()
 
             # Opportunity signal check
             signals: list = []

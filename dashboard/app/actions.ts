@@ -283,3 +283,55 @@ export async function syncRacionalPortfolio(
     // UI can show a "refresh shortly" message instead of loading holdings now.
     return { synced: -1, holdings: [], queued: true };
 }
+
+// ===== Alert Rules (P&L thresholds + price targets) =====
+
+export type AlertRule = {
+    id: string;
+    symbol: string;
+    type: 'stop_loss' | 'take_profit' | 'price_above' | 'price_below';
+    threshold: number;
+    active: boolean;
+    triggered_at: string | null;
+    created_at: string;
+};
+
+export async function getAlertRules(userId: string): Promise<AlertRule[]> {
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = createClient();
+    const { data, error } = await (await supabase)
+        .from('alert_rules')
+        .select('id, symbol, type, threshold, active, triggered_at, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as AlertRule[];
+}
+
+export async function upsertAlertRule(
+    userId: string,
+    symbol: string,
+    type: AlertRule['type'],
+    threshold: number,
+): Promise<void> {
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = createClient();
+    const { error } = await (await supabase)
+        .from('alert_rules')
+        .upsert(
+            { user_id: userId, symbol, type, threshold, active: true, triggered_at: null },
+            { onConflict: 'user_id,symbol,type' },
+        );
+    if (error) throw new Error(error.message);
+}
+
+export async function deleteAlertRule(userId: string, ruleId: string): Promise<void> {
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = createClient();
+    const { error } = await (await supabase)
+        .from('alert_rules')
+        .delete()
+        .eq('id', ruleId)
+        .eq('user_id', userId);
+    if (error) throw new Error(error.message);
+}

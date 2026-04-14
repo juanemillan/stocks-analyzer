@@ -31,6 +31,7 @@ import { usePortfolio } from "@/hooks/usePortfolio";
 import { useAuth } from "@/hooks/useAuth";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useChat } from "@/hooks/useChat";
+import { useAlerts } from "@/hooks/useAlerts";
 import { ChatBar } from "@/components/ChatBar";
 
 export default function Dashboard() {
@@ -48,6 +49,7 @@ export default function Dashboard() {
   const auth = useAuth();
   const { watchlist, toggle: toggleWatchlist } = useWatchlist();
   const chat = useChat(lang);
+  const alerts = useAlerts();
 
   // Build context string for the AI — refreshed whenever holdings or prices change
   const chatContext = React.useMemo(() => {
@@ -191,6 +193,9 @@ export default function Dashboard() {
         rangeKey={data.rangeKey}
         setRangeKey={data.setRangeKey}
         lang={lang}
+        alertRules={data.selected ? alerts.forSymbol(data.selected.symbol) : []}
+        onUpsertAlert={alerts.upsert}
+        onRemoveAlert={alerts.remove}
       />
 
       {/* Header */}

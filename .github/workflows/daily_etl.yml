@@ -39,3 +39,18 @@ jobs:
       - name: Pipeline status
         working-directory: data_pipeline
         run: python main.py --status
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          VAPID_PRIVATE_KEY:         ${{ secrets.VAPID_PRIVATE_KEY }}
+          VAPID_SUBJECT:             ${{ secrets.VAPID_SUBJECT }}
+          NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
+          DASHBOARD_URL:             "https://bullia.vercel.app"
+        run: |
+          pip install pywebpush supabase python-dotenv --quiet
+          python data_pipeline/send_push.py \
+            --title "⚠️ Pipeline failed" \
+            --body "The nightly ETL did not complete. Check GitHub Actions for details."
