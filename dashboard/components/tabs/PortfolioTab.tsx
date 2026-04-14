@@ -379,6 +379,7 @@ export function PortfolioTab({
           ))}
         </div>
       ) : holdings.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-14 text-center">
           <svg className="w-14 h-14 mb-4 text-gray-300 dark:text-neutral-600" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <rect x="8" y="16" width="48" height="36" rx="4" stroke="currentColor" strokeWidth="3" />
             <path d="M8 26h48" stroke="currentColor" strokeWidth="3" />
