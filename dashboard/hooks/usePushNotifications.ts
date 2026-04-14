@@ -13,23 +13,31 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   return view;
 }
 
-export type PushState = "unsupported" | "denied" | "subscribed" | "unsubscribed";
+export type PushState = "unsupported" | "denied" | "subscribed" | "unsubscribed" | "error";
 
 export function usePushNotifications() {
   const [state, setState] = useState<PushState>("unsubscribed");
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    // Check Push API availability (requires iOS 16.4+ as PWA)
+    if (
+      !("serviceWorker" in navigator) ||
+      !("PushManager" in window) ||
+      !("Notification" in window)
+    ) {
       setState("unsupported");
       return;
     }
 
-    // Register the service worker on mount
-    navigator.serviceWorker.register("/sw.js").catch(console.error);
+    // Register service worker on mount
+    navigator.serviceWorker.register("/sw.js").catch((e) =>
+      console.error("[sw] registration failed:", e)
+    );
 
-    // Check existing subscription state
+    // Sync current subscription state
     navigator.serviceWorker.ready.then(async (reg) => {
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
@@ -41,9 +49,19 @@ export function usePushNotifications() {
   }, []);
 
   const subscribe = async () => {
-    if (!("serviceWorker" in navigator) || !PUBLIC_VAPID_KEY) return;
+    if (!("serviceWorker" in navigator) || !("Notification" in window) || !PUBLIC_VAPID_KEY) return;
     setLoading(true);
+    setErrorMsg(null);
     try {
+      // iOS requires an explicit Notification.requestPermission() call
+      // triggered synchronously from a user gesture before pushManager.subscribe()
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        setState("denied");
+        setLoading(false);
+        return;
+      }
+
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
@@ -56,11 +74,21 @@ export function usePushNotifications() {
         body: JSON.stringify({ subscription: sub.toJSON() }),
       });
 
-      if (res.ok) setState("subscribed");
-    } catch (err) {
-      // User denied permission or other error
-      if (Notification.permission === "denied") setState("denied");
-      console.error("[push] subscribe error:", err);
+      if (res.ok) {
+        setState("subscribed");
+      } else {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `Server error ${res.status}`);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[push] subscribe error:", msg);
+      if (Notification.permission === "denied") {
+        setState("denied");
+      } else {
+        setState("error");
+        setErrorMsg(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -86,5 +114,6 @@ export function usePushNotifications() {
     }
   };
 
-  return { state, loading, subscribe, unsubscribe };
+  return { state, loading, errorMsg, subscribe, unsubscribe };
 }
+

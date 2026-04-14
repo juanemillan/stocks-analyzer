@@ -20,15 +20,28 @@ function BellIcon({ filled }: { filled?: boolean }) {
 }
 
 export function PushNotificationToggle() {
-  const { state, loading, subscribe, unsubscribe } = usePushNotifications();
+  const { state, loading, errorMsg, subscribe, unsubscribe } = usePushNotifications();
 
   if (state === "unsupported") return null;
 
   if (state === "denied") {
     return (
-      <div className="text-xs text-muted-foreground px-3 py-2">
-        Notifications blocked — enable in browser settings
-      </div>
+      <span className="text-xs text-orange-500 dark:text-orange-400">
+        Bloqueadas — habilita en configuración del sistema
+      </span>
+    );
+  }
+
+  if (state === "error") {
+    return (
+      <button
+        onClick={subscribe}
+        title={errorMsg ?? "Error — tap to retry"}
+        className="flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors"
+      >
+        <BellIcon />
+        Reintentar
+      </button>
     );
   }
 
@@ -51,8 +64,8 @@ export function PushNotificationToggle() {
       {loading
         ? "..."
         : isSubscribed
-        ? "Notifications on"
-        : "Enable notifications"}
+        ? "Notif. activas"
+        : "Activar notificaciones"}
     </button>
   );
 }
