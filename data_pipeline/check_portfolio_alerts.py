@@ -31,6 +31,7 @@ Environment variables (GitHub Secrets):
 """
 
 import os
+import json
 import requests
 import psycopg2
 from datetime import datetime, timezone, timedelta
@@ -47,15 +48,17 @@ except ImportError:
     raise SystemExit("supabase-py not installed.  Run: pip install supabase")
 
 # ── Config ────────────────────────────────────────────────────────────────────
-SUPABASE_URL   = os.environ["SUPABASE_URL"]
-SUPABASE_KEY   = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-DATABASE_URL   = os.environ["DATABASE_URL"]
-RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
-OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY", "")
-FINNHUB_KEY    = os.environ.get("FINNHUB_API_KEY", "")
-FROM_EMAIL     = os.environ.get("FROM_EMAIL", "Bullia Alerts <onboarding@resend.dev>")
-FALLBACK_EMAIL = os.environ.get("ALERT_EMAIL", "")
-DASHBOARD_URL  = os.environ.get("DASHBOARD_URL", "https://bullia.app")
+SUPABASE_URL     = os.environ["SUPABASE_URL"]
+SUPABASE_KEY     = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+DATABASE_URL     = os.environ["DATABASE_URL"]
+RESEND_API_KEY   = os.environ.get("RESEND_API_KEY", "")
+OPENROUTER_KEY   = os.environ.get("OPENROUTER_API_KEY", "")
+FINNHUB_KEY      = os.environ.get("FINNHUB_API_KEY", "")
+FROM_EMAIL       = os.environ.get("FROM_EMAIL", "Bullia Alerts <onboarding@resend.dev>")
+FALLBACK_EMAIL   = os.environ.get("ALERT_EMAIL", "")
+DASHBOARD_URL    = os.environ.get("DASHBOARD_URL", "https://bullia.app")
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
+VAPID_SUBJECT    = os.environ.get("VAPID_SUBJECT", "mailto:jmillanstudio@gmail.com")
 
 THRESHOLDS_UP   = [50, 100, 200, 300]
 THRESHOLDS_DOWN = [-20, -30]
@@ -596,6 +599,63 @@ def send_email(to_email: str, opportunities: list, pnl_alerts: list) -> bool:
     return False
 
 
+# ── Web Push notifications ────────────────────────────────────────────────────
+
+def send_push_notifications(sb, user_id: str, title: str, body: str) -> int:
+    """Send a Web Push notification to all subscribed devices for this user.
+    Returns the number of successfully sent pushes.
+    """
+    if not VAPID_PRIVATE_KEY:
+        return 0
+
+    try:
+        from pywebpush import webpush, WebPushException
+    except ImportError:
+        print("  [push] pywebpush not installed — skipping push")
+        return 0
+
+    subs_resp = (
+        sb.from_("push_subscriptions")
+        .select("endpoint, p256dh, auth")
+        .eq("user_id", user_id)
+        .execute()
+    )
+    subs = subs_resp.data or []
+    if not subs:
+        return 0
+
+    payload = json.dumps({"title": title, "body": body, "url": DASHBOARD_URL})
+    sent = 0
+    stale_endpoints: list = []
+
+    for sub in subs:
+        try:
+            webpush(
+                subscription_info={
+                    "endpoint": sub["endpoint"],
+                    "keys": {"p256dh": sub["p256dh"], "auth": sub["auth"]},
+                },
+                data=payload,
+                vapid_private_key=VAPID_PRIVATE_KEY,
+                vapid_claims={"sub": VAPID_SUBJECT},
+            )
+            sent += 1
+        except WebPushException as e:
+            status = getattr(e.response, "status_code", None) if e.response else None
+            print(f"  [push] error ({status}) for {sub['endpoint'][:50]}: {e}")
+            # 404/410 means the subscription is no longer valid — clean it up
+            if status in (404, 410):
+                stale_endpoints.append(sub["endpoint"])
+        except Exception as e:
+            print(f"  [push] unexpected error: {e}")
+
+    if stale_endpoints:
+        sb.from_("push_subscriptions").delete().in_("endpoint", stale_endpoints).execute()
+        print(f"  [push] removed {len(stale_endpoints)} stale subscription(s)")
+
+    return sent
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main() -> None:
@@ -839,7 +899,27 @@ def main() -> None:
 
         print(f"User {user_id[:8]}: {len(opp_triggered)} opportunity / {len(pnl_triggered)} P&L → {to_email}")
 
-        if send_email(to_email, opp_triggered, pnl_triggered):
+        email_ok = send_email(to_email, opp_triggered, pnl_triggered)
+
+        # Build a concise push notification body
+        symbols_preview = ", ".join(
+            list(dict.fromkeys(
+                [o["symbol"] for o in opp_triggered] + [a["symbol"] for a in pnl_triggered]
+            ))[:4]
+        )
+        if opp_triggered and not pnl_triggered:
+            push_title = "💡 Opportunity signal"
+        elif pnl_triggered and not opp_triggered:
+            push_title = "📊 P&L milestone"
+        else:
+            push_title = "Bullia alert"
+        push_body = f"{symbols_preview} — tap to open dashboard"
+
+        push_count = send_push_notifications(sb, user_id, push_title, push_body)
+        if push_count:
+            print(f"  [push] sent {push_count} push notification(s)")
+
+        if email_ok or push_count:
             if new_log:
                 sb.from_("portfolio_alert_log").upsert(
                     new_log, on_conflict="user_id,symbol,alert_key"

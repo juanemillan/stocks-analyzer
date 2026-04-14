@@ -35,3 +35,5 @@ urllib3==2.5.0
 webencodings==0.5.1
 websockets>=13.0,<15
 yfinance==0.2.66
+
+pywebpush==2.3.0

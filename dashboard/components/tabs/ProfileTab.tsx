@@ -4,6 +4,7 @@ import { t } from "@/app/i18n";
 import type { Lang } from "@/app/types";
 import ThemeToggle from "@/components/ThemeToggle";
 import { LangToggle } from "@/components/LangToggle";
+import { PushNotificationToggle } from "@/components/PushNotificationToggle";
 
 interface ProfileTabProps {
   lang: Lang;
@@ -137,6 +138,10 @@ export function ProfileTab({
                 <path d="M21 3v5h-5" />
               </svg>
             </button>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600 dark:text-gray-300">{lang === "es" ? "Notificaciones" : "Notifications"}</span>
+            <PushNotificationToggle />
           </div>
         </div>
       )}
