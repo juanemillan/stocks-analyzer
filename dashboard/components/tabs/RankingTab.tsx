@@ -32,6 +32,7 @@ interface RankingTabProps {
   onOpen: (row: RankRow) => void;
   watchlist: Set<string>;
   onToggleWatchlist: (symbol: string) => void;
+  onAddToPortfolio?: (symbol: string) => void;
 }
 
 function ScoreDelta({ delta }: { delta?: number | null }) {
@@ -58,6 +59,7 @@ export function RankingTab({
   onOpen,
   watchlist,
   onToggleWatchlist,
+  onAddToPortfolio,
 }: RankingTabProps) {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const displayRows = favoritesOnly
@@ -156,6 +158,7 @@ export function RankingTab({
             <thead className="bg-gray-100 text-gray-700">
               <tr>
                 <th className="w-8 px-2 py-2"></th>
+                {onAddToPortfolio && <th className="w-8 px-2 py-2"></th>}
                 <th className="px-3 py-2">{t("symbol", lang)}</th>
                 <th className="px-3 py-2">{t("name", lang)}</th>
                 <th className="px-3 py-2">{t("type", lang)}</th>
@@ -180,6 +183,17 @@ export function RankingTab({
                       <svg width="14" height="14" viewBox="0 0 24 24" fill={watchlist.has(r.symbol) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={watchlist.has(r.symbol) ? "text-rose-500" : "text-gray-300 hover:text-rose-400"}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                     </button>
                   </td>
+                  {onAddToPortfolio && (
+                    <td className="w-8 px-2 py-2 text-center">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onAddToPortfolio(r.symbol); }}
+                        className="flex items-center justify-center text-gray-300 hover:text-emerald-500 transition-colors"
+                        title="Add to portfolio"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
+                      </button>
+                    </td>
+                  )}
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2">
                       <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">

@@ -122,3 +122,23 @@ export function corrColor(r: number): string {
   if (r >= 0.4) return "bg-yellow-50 dark:bg-yellow-900/20";
   return "bg-white dark:bg-neutral-800";
 }
+
+/**
+ * Diversification score 0–100 based on the average pairwise correlation.
+ * 100 = perfectly uncorrelated (ideal), 0 = all holdings move together.
+ */
+export function computeDiversificationScore(result: CorrelationResult): number {
+  const { matrix, symbols } = result;
+  if (symbols.length < 2) return 100;
+  let sum = 0;
+  let count = 0;
+  for (let i = 0; i < symbols.length; i++) {
+    for (let j = i + 1; j < symbols.length; j++) {
+      sum += matrix[symbols[i]][symbols[j]];
+      count++;
+    }
+  }
+  const avgCorr = count > 0 ? sum / count : 0;
+  // avgCorr in [-1, 1]; map [0,1] → score [100,0], clamp
+  return Math.round(Math.max(0, Math.min(100, (1 - avgCorr) * 100)));
+}

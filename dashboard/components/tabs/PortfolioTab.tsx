@@ -6,6 +6,7 @@ import { InfoBox } from "@/components/ui/InfoBox";
 import { logoSrc, type Holding } from "@/lib/stockUtils";
 import { CorrelationPanel } from "@/components/portfolio/CorrelationPanel";
 import type { CorrelationResult } from "@/lib/correlation";
+import { computeDiversificationScore } from "@/lib/correlation";
 
 const INITIAL_VISIBLE = 8;
 
@@ -32,6 +33,9 @@ interface PortfolioTabProps {
   racionalSyncError: string | null;
   racionalSyncInfo?: string | null;
   lastRacionalSync: Date | null;
+  onUpdateHolding: (id: string, shares: number, avg_cost: number | null) => Promise<void>;
+  watchlist: Set<string>;
+  onToggleWatchlist: (symbol: string) => void;
 }
 
 export function PortfolioTab({
@@ -54,12 +58,18 @@ export function PortfolioTab({
   racionalSyncError,
   racionalSyncInfo,
   lastRacionalSync,
+  onUpdateHolding,
+  watchlist,
+  onToggleWatchlist,
 }: PortfolioTabProps) {
   const [showAll, setShowAll] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("symbol");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [actionsOpen, setActionsOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editShares, setEditShares] = useState("");
+  const [editAvgCost, setEditAvgCost] = useState("");
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -97,6 +107,27 @@ export function PortfolioTab({
 
   const visible = showAll ? sorted : sorted.slice(0, INITIAL_VISIBLE);
   const hasMore = sorted.length > INITIAL_VISIBLE;
+
+  // Portfolio totals (active holdings only)
+  const activeEnriched = enriched.filter((h) => !h.sold_at);
+  const totalInvested = activeEnriched.reduce((s, h) => s + (h.avg_cost != null ? h.avg_cost * h.shares : 0), 0);
+  const totalValue = activeEnriched.reduce((s, h) => s + (h.marketValue ?? 0), 0);
+  const totalPnl = activeEnriched.reduce((s, h) => s + (h.pnl ?? 0), 0);
+  const totalPnlPct = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : null;
+  const divScore = correlationData ? computeDiversificationScore(correlationData) : null;
+
+  function startEdit(h: typeof enriched[0]) {
+    setEditingId(h.id);
+    setEditShares(String(h.shares));
+    setEditAvgCost(h.avg_cost != null ? String(h.avg_cost) : "");
+  }
+
+  async function saveEdit(id: string) {
+    const s = parseFloat(editShares);
+    if (isNaN(s) || s <= 0) return;
+    await onUpdateHolding(id, s, editAvgCost ? parseFloat(editAvgCost) : null);
+    setEditingId(null);
+  }
 
   function SortIcon({ col }: { col: SortKey }) {
     if (sortKey !== col) return <span className="ml-1 text-gray-300">⬍</span>;
@@ -304,6 +335,43 @@ export function PortfolioTab({
         </p>
       )}
 
+      {/* ── Portfolio summary bar ── */}
+      {!holdingsLoading && holdings.length > 0 && (
+        <div className="mb-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="bg-gray-50 dark:bg-neutral-800 rounded-2xl px-3 py-2.5">
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-0.5">{lang === "es" ? "Invertido" : "Invested"}</p>
+            <p className="text-sm font-semibold tabular-nums">${totalInvested.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </div>
+          <div className="bg-gray-50 dark:bg-neutral-800 rounded-2xl px-3 py-2.5">
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-0.5">{lang === "es" ? "Valor actual" : "Market value"}</p>
+            <p className="text-sm font-semibold tabular-nums">${totalValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </div>
+          <div className="bg-gray-50 dark:bg-neutral-800 rounded-2xl px-3 py-2.5">
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-0.5">P&amp;L total</p>
+            <p className={`text-sm font-semibold tabular-nums ${totalPnl >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}`}>
+              {totalPnl >= 0 ? "+" : ""}{totalPnl.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {totalPnlPct != null && <span className="ml-1 text-xs font-normal">({totalPnlPct >= 0 ? "+" : ""}{totalPnlPct.toFixed(1)}%)</span>}
+            </p>
+          </div>
+          <div className="bg-gray-50 dark:bg-neutral-800 rounded-2xl px-3 py-2.5">
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-0.5">{lang === "es" ? "Diversificación" : "Diversification"}</p>
+            {divScore != null ? (
+              <div className="flex items-center gap-2 mt-1">
+                <div className="flex-1 h-1.5 bg-gray-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${divScore >= 70 ? "bg-emerald-500" : divScore >= 40 ? "bg-amber-400" : "bg-red-400"}`}
+                    style={{ width: `${divScore}%` }}
+                  />
+                </div>
+                <span className={`text-xs font-semibold tabular-nums ${divScore >= 70 ? "text-emerald-600 dark:text-emerald-400" : divScore >= 40 ? "text-amber-600 dark:text-amber-400" : "text-red-500 dark:text-red-400"}`}>{divScore}</span>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400 mt-0.5">{lang === "es" ? "2+ activos" : "2+ holdings"}</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {holdingsLoading ? (
         <div className="space-y-2 py-4">
           {[...Array(4)].map((_, i) => (
@@ -311,7 +379,6 @@ export function PortfolioTab({
           ))}
         </div>
       ) : holdings.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
           <svg className="w-14 h-14 mb-4 text-gray-300 dark:text-neutral-600" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <rect x="8" y="16" width="48" height="36" rx="4" stroke="currentColor" strokeWidth="3" />
             <path d="M8 26h48" stroke="currentColor" strokeWidth="3" />
@@ -429,32 +496,63 @@ export function PortfolioTab({
                       </button>
                     </div>
                   </div>
-                  {/* Row 2: price details */}
-                  <div className="mt-1 ml-10 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
-                    {h.avg_cost != null && h.lp ? (
-                      <span className="tabular-nums">${h.avg_cost.toFixed(2)} → <span className="text-gray-800 dark:text-gray-200 font-medium">${h.lp.price.toFixed(2)}</span></span>
-                    ) : h.lp ? (
-                      <span className="tabular-nums font-medium text-gray-800 dark:text-gray-200">${h.lp.price.toFixed(2)}</span>
-                    ) : null}
-                    <span className="text-gray-300 dark:text-neutral-600">·</span>
-                    <span>{h.shares} {lang === "es" ? "acc." : "sh."}</span>
-                    {h.marketValue != null && (
-                      <>
-                        <span className="text-gray-300 dark:text-neutral-600">·</span>
-                        <span className="font-medium text-gray-800 dark:text-gray-200 tabular-nums">
-                          ${h.marketValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                      </>
-                    )}
-                    {h.pnl != null && (
-                      <>
-                        <span className="text-gray-300 dark:text-neutral-600">·</span>
-                        <span className={`tabular-nums ${h.pnl >= 0 ? "text-emerald-500" : "text-red-400"}`}>
-                          {h.pnl >= 0 ? "+" : ""}{h.pnl.toFixed(2)}
-                        </span>
-                      </>
-                    )}
-                  </div>
+                  {/* Row 2: inline edit form or price details */}
+                  {editingId === h.id ? (
+                    <div className="mt-2 ml-10 flex items-center gap-2 flex-wrap">
+                      <input
+                        type="number"
+                        value={editShares}
+                        onChange={(e) => setEditShares(e.target.value)}
+                        placeholder={lang === "es" ? "Acciones" : "Shares"}
+                        className="w-24 rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                      />
+                      <input
+                        type="number"
+                        value={editAvgCost}
+                        onChange={(e) => setEditAvgCost(e.target.value)}
+                        placeholder={lang === "es" ? "Precio prom." : "Avg cost"}
+                        className="w-28 rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                      />
+                      <button
+                        onClick={() => saveEdit(h.id)}
+                        className="rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1 transition-colors"
+                      >
+                        {lang === "es" ? "Guardar" : "Save"}
+                      </button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="rounded-lg border border-gray-200 dark:border-neutral-700 text-xs px-2 py-1 text-gray-500 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
+                      >
+                        {lang === "es" ? "Cancelar" : "Cancel"}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="mt-1 ml-10 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
+                      {h.avg_cost != null && h.lp ? (
+                        <span className="tabular-nums">${h.avg_cost.toFixed(2)} &rarr; <span className="text-gray-800 dark:text-gray-200 font-medium">${h.lp.price.toFixed(2)}</span></span>
+                      ) : h.lp ? (
+                        <span className="tabular-nums font-medium text-gray-800 dark:text-gray-200">${h.lp.price.toFixed(2)}</span>
+                      ) : null}
+                      <span className="text-gray-300 dark:text-neutral-600">&middot;</span>
+                      <span>{h.shares} {lang === "es" ? "acc." : "sh."}</span>
+                      {h.marketValue != null && (
+                        <>
+                          <span className="text-gray-300 dark:text-neutral-600">&middot;</span>
+                          <span className="font-medium text-gray-800 dark:text-gray-200 tabular-nums">
+                            ${h.marketValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </>
+                      )}
+                      {h.pnl != null && (
+                        <>
+                          <span className="text-gray-300 dark:text-neutral-600">&middot;</span>
+                          <span className={`tabular-nums ${h.pnl >= 0 ? "text-emerald-500" : "text-red-400"}`}>
+                            {h.pnl >= 0 ? "+" : ""}{h.pnl.toFixed(2)}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -156,6 +156,12 @@ export function usePortfolio() {
     loadHoldings(true);
   }
 
+  async function updateHolding(id: string, shares: number, avg_cost: number | null) {
+    const supabase = createClient();
+    await supabase.from("portfolio_assets").update({ shares, avg_cost }).eq("id", id);
+    loadHoldings(true);
+  }
+
   async function syncFromRacional(email: string, password: string, replaceSold: boolean) {
     setRacionalSyncing(true);
     setRacionalSyncError(null);
@@ -204,6 +210,6 @@ export function usePortfolio() {
     holdingError, setHoldingError,
     symbolSearch, setSymbolSearch,
     symDropOpen, setSymDropOpen,
-    loadHoldings, addHolding, removeHolding, closeAddModal,
+    loadHoldings, addHolding, removeHolding, updateHolding, closeAddModal,
   };
 }

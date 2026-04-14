@@ -343,6 +343,12 @@ export default function Dashboard() {
             onOpen={data.handleOpen}
             watchlist={watchlist}
             onToggleWatchlist={toggleWatchlist}
+            onAddToPortfolio={(symbol) => {
+              portfolio.setNewSymbol(symbol);
+              portfolio.setShowAddHolding(true);
+              portfolio.setHoldingError(null);
+              data.setViewMode("portfolio");
+            }}
           />
         )}
 
@@ -407,6 +413,9 @@ export default function Dashboard() {
             racionalSyncError={portfolio.racionalSyncError}
             racionalSyncInfo={portfolio.racionalSyncInfo}
             lastRacionalSync={portfolio.lastRacionalSync}
+            onUpdateHolding={portfolio.updateHolding}
+            watchlist={watchlist}
+            onToggleWatchlist={toggleWatchlist}
           />
         )}
 
