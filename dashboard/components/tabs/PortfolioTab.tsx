@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useMemo } from "react";
 import { t } from "@/app/i18n";
 import type { Lang, RankRow } from "@/app/types";
@@ -59,6 +59,7 @@ export function PortfolioTab({
   const [sortKey, setSortKey] = useState<SortKey>("symbol");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -98,8 +99,8 @@ export function PortfolioTab({
   const hasMore = sorted.length > INITIAL_VISIBLE;
 
   function SortIcon({ col }: { col: SortKey }) {
-    if (sortKey !== col) return <span className="ml-1 text-gray-300">↕</span>;
-    return <span className="ml-1">{sortDir === "asc" ? "↑" : "↓"}</span>;
+    if (sortKey !== col) return <span className="ml-1 text-gray-300">â†•</span>;
+    return <span className="ml-1">{sortDir === "asc" ? "â†‘" : "â†“"}</span>;
   }
 
   function ColHeader({ col, label }: { col: SortKey; label: string }) {
@@ -162,8 +163,26 @@ export function PortfolioTab({
       <div className="mb-4">
         {/* Title row */}
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">{t("tabPortfolio", lang)}</h2>
-
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-bold">{t("tabPortfolio", lang)}</h2>
+            {/* Card / Table toggle */}
+            <div className="flex rounded-lg border border-gray-200 dark:border-neutral-700 overflow-hidden">
+              <button
+                onClick={() => setViewMode("cards")}
+                title="Vista tarjetas"
+                className={`px-2 py-1.5 transition-colors ${viewMode === "cards" ? "bg-gray-100 dark:bg-neutral-700 text-gray-900 dark:text-white" : "text-gray-400 hover:bg-gray-50 dark:hover:bg-neutral-800"}`}
+              >
+                <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+              </button>
+              <button
+                onClick={() => setViewMode("table")}
+                title="Vista tabla"
+                className={`px-2 py-1.5 transition-colors ${viewMode === "table" ? "bg-gray-100 dark:bg-neutral-700 text-gray-900 dark:text-white" : "text-gray-400 hover:bg-gray-50 dark:hover:bg-neutral-800"}`}
+              >
+                <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 4a3 3 0 00-3 3v6a3 3 0 003 3h10a3 3 0 003-3V7a3 3 0 00-3-3H5zm-1 9v-1h5v2H5a1 1 0 01-1-1zm7 1h4a1 1 0 001-1v-1h-5v2zm0-4h5V8h-5v2zM9 8H4v2h5V8z" clipRule="evenodd" /></svg>
+              </button>
+            </div>
+          </div>
           {/* Mobile: single toggle button */}
           <button
             onClick={() => setActionsOpen((v) => !v)}
@@ -195,7 +214,7 @@ export function PortfolioTab({
             <button
               onClick={onShowConnectRacional}
               disabled={racionalSyncing}
-              title={lastRacionalSync ? `Último sync: ${lastRacionalSync.toLocaleTimeString()}` : "Importar desde Racional"}
+              title={lastRacionalSync ? `Ãšltimo sync: ${lastRacionalSync.toLocaleTimeString()}` : "Importar desde Racional"}
               className="flex items-center gap-1.5 rounded-2xl px-3 py-3 text-sm font-semibold text-black bg-[#18DAAE] hover:bg-[#13ab87] active:scale-95 disabled:opacity-60 transition-all duration-150"
             >
               {racionalSyncing ? (
@@ -309,132 +328,260 @@ export function PortfolioTab({
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-2xl border">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 dark:bg-neutral-800/60 text-left text-xs text-gray-500 uppercase tracking-wide">
-                  <ColHeader col="symbol" label={t("portSymbol", lang)} />
-                  <ColHeader col="shares" label={t("portShares", lang)} />
-                  <ColHeader col="avg_cost" label={t("portAvgCost", lang)} />
-                  <th className="px-4 py-3 whitespace-nowrap">
-                    {t("portLastPrice", lang)}
-                    {dataDate && <span className="ml-1 normal-case font-normal text-gray-400">({dataDate})</span>}
-                  </th>
-                  <ColHeader col="pnlPct" label={t("portPnLPct", lang)} />
-                  <ColHeader col="pnl" label={t("portPnL", lang)} />
-                  <ColHeader col="marketValue" label={t("portMarketValue", lang)} />
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {visible.map((h, idx) => (
-                  <tr
-                    key={h.id}
-                    className={[
-                      h.sold_at
-                        ? "bg-amber-50/60 dark:bg-amber-900/10 opacity-70"
-                        : "hover:bg-gray-50 dark:hover:bg-neutral-800",
-                      "transition-colors duration-150",
-                      showAll && idx >= INITIAL_VISIBLE ? "animate-fadeIn-row" : "",
-                    ].join(" ")}
-                    style={showAll && idx >= INITIAL_VISIBLE ? { animationDelay: `${(idx - INITIAL_VISIBLE) * 35}ms` } : undefined}
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
-                          <img src={logoSrc(h.symbol)} alt={h.symbol} className="w-full h-full object-cover" />
-                        </div>
-                        <button
-                          className="font-semibold hover:underline"
-                          onClick={() => {
-                            const match = rows.find((r) => r.symbol === h.symbol);
-                            if (match) onOpen(match);
-                            else onOpenFromSymbol(h.symbol);
-                          }}
-                        >
-                          {h.symbol}
-                        </button>
-                        {h.sold_at && (
-                          <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
-                            {t("portSold", lang)}
-                          </span>
-                        )}
-                        {/* Take profit: P&L ≥ 20% AND technically overbought (RSI>70 or price >15% above SMA-20) */}
-                        {!h.sold_at && h.pnlPct != null && h.pnlPct >= 20 && techSignals[h.symbol] && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" title={lang === "es" ? "Sobrecomprado técnicamente" : "Technically overbought"}>
-                            {/* Dollar/coin icon */}
-                            <svg className="w-3 h-3 flex-none" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clipRule="evenodd" />
-                            </svg>
-                          </span>
-                        )}
-                        {/* Review/Watch: P&L ≤ -20% */}
-                        {!h.sold_at && h.pnlPct != null && h.pnlPct <= -20 && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400">
-                            {/* Eye / Watch icon */}
-                            <svg className="w-3 h-3 flex-none" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                              <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                            </svg>
-                          </span>
-                        )}
-                        {/* Big move: ±10% in the last 7 days */}
-                        {!h.sold_at && weekChanges[h.symbol] != null && Math.abs(weekChanges[h.symbol]) >= 10 && (
-                          weekChanges[h.symbol] > 0 ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-lime-100 text-lime-700 dark:bg-lime-900/40 dark:text-lime-400">
-                              <svg className="w-3 h-3 flex-none" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                                <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
-                              </svg>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400">
-                              <svg className="w-3 h-3 flex-none rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-                                <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
-                              </svg>
-                            </span>
-                          )
-                        )}
+          {/* Sort pills â€” card mode only */}
+          {viewMode === "cards" && (
+            <div className="flex gap-2 overflow-x-auto pb-1 mb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {([
+                { key: "pnlPct" as SortKey, label: "P&L %" },
+                { key: "pnl" as SortKey, label: "P&L $" },
+                { key: "marketValue" as SortKey, label: lang === "es" ? "Valor" : "Value" },
+                { key: "symbol" as SortKey, label: "Aâ†’Z" },
+                { key: "shares" as SortKey, label: lang === "es" ? "Acciones" : "Shares" },
+              ]).map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => handleSort(key)}
+                  className={`flex-none flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                    sortKey === key
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-neutral-700"
+                  }`}
+                >
+                  {label}
+                  {sortKey === key && <span>{sortDir === "asc" ? " â†‘" : " â†“"}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {viewMode === "cards" ? (
+            /* â”€â”€ Card view â”€â”€ */
+            <div className="grid grid-cols-1 gap-2">
+              {visible.map((h, idx) => (
+                <div
+                  key={h.id}
+                  className={[
+                    "rounded-2xl border px-4 py-3",
+                    h.sold_at
+                      ? "bg-amber-50/60 dark:bg-amber-900/10 opacity-70 border-amber-100 dark:border-amber-900/30"
+                      : "bg-white dark:bg-neutral-900 border-gray-100 dark:border-neutral-800",
+                    showAll && idx >= INITIAL_VISIBLE ? "animate-fadeIn-row" : "",
+                  ].join(" ")}
+                  style={showAll && idx >= INITIAL_VISIBLE ? { animationDelay: `${(idx - INITIAL_VISIBLE) * 35}ms` } : undefined}
+                >
+                  {/* Row 1: logo + symbol + tags | P&L% + delete */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div className="w-8 h-8 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
+                        <img src={logoSrc(h.symbol)} alt={h.symbol} className="w-full h-full object-cover" />
                       </div>
-                    </td>
-                    <td className="px-4 py-3 tabular-nums">{h.shares}</td>
-                    <td className="px-4 py-3 tabular-nums">{h.avg_cost != null ? `$${h.avg_cost.toFixed(2)}` : "—"}</td>
-                    <td className="px-4 py-3 tabular-nums">
-                      {h.lp ? `$${h.lp.price.toFixed(2)}` : <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className="px-4 py-3 tabular-nums font-medium">
+                      <button
+                        className="font-bold text-sm hover:underline flex-none"
+                        onClick={() => {
+                          const match = rows.find((r) => r.symbol === h.symbol);
+                          if (match) onOpen(match);
+                          else onOpenFromSymbol(h.symbol);
+                        }}
+                      >
+                        {h.symbol}
+                      </button>
+                      {h.sold_at && (
+                        <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+                          {t("portSold", lang)}
+                        </span>
+                      )}
+                      {!h.sold_at && h.pnlPct != null && h.pnlPct >= 20 && techSignals[h.symbol] && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                          <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clipRule="evenodd" /></svg>
+                        </span>
+                      )}
+                      {!h.sold_at && h.pnlPct != null && h.pnlPct <= -20 && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400">
+                          <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" /></svg>
+                        </span>
+                      )}
+                      {!h.sold_at && weekChanges[h.symbol] != null && Math.abs(weekChanges[h.symbol]) >= 10 && (
+                        weekChanges[h.symbol] > 0 ? (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-lime-100 text-lime-700 dark:bg-lime-900/40 dark:text-lime-400">
+                            <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400">
+                            <svg className="w-3 h-3 rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden><path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" /></svg>
+                          </span>
+                        )
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-none">
                       {h.pnlPct != null ? (
-                        <span className={h.pnlPct >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}>
+                        <span className={`text-sm font-bold tabular-nums ${h.pnlPct >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}`}>
                           {h.pnlPct >= 0 ? "+" : ""}{h.pnlPct.toFixed(1)}%
                         </span>
-                      ) : <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className="px-4 py-3 tabular-nums">
-                      {h.pnl != null ? (
-                        <span className={h.pnl >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}>
-                          {h.pnl >= 0 ? "+" : ""}{h.pnl.toFixed(2)}
-                        </span>
-                      ) : <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className="px-4 py-3 tabular-nums font-medium">
-                      {h.marketValue != null
-                        ? `$${h.marketValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                        : <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-right">
+                      ) : <span className="text-gray-300 text-sm">â€”</span>}
                       <button
                         onClick={() => onRemoveHolding(h.id)}
-                        className="text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded-lg hover:bg-red-50"
+                        className="text-gray-300 hover:text-red-400 transition-colors p-0.5"
+                        aria-label="Delete"
                       >
-                        {t("portDelete", lang)}
+                        <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
                       </button>
-                    </td>
+                    </div>
+                  </div>
+                  {/* Row 2: price details */}
+                  <div className="mt-1 ml-10 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
+                    {h.avg_cost != null && h.lp ? (
+                      <span className="tabular-nums">${h.avg_cost.toFixed(2)} â†’ <span className="text-gray-800 dark:text-gray-200 font-medium">${h.lp.price.toFixed(2)}</span></span>
+                    ) : h.lp ? (
+                      <span className="tabular-nums font-medium text-gray-800 dark:text-gray-200">${h.lp.price.toFixed(2)}</span>
+                    ) : null}
+                    <span className="text-gray-300 dark:text-neutral-600">Â·</span>
+                    <span>{h.shares} {lang === "es" ? "acc." : "sh."}</span>
+                    {h.marketValue != null && (
+                      <>
+                        <span className="text-gray-300 dark:text-neutral-600">Â·</span>
+                        <span className="font-medium text-gray-800 dark:text-gray-200 tabular-nums">
+                          ${h.marketValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </>
+                    )}
+                    {h.pnl != null && (
+                      <>
+                        <span className="text-gray-300 dark:text-neutral-600">Â·</span>
+                        <span className={`tabular-nums ${h.pnl >= 0 ? "text-emerald-500" : "text-red-400"}`}>
+                          {h.pnl >= 0 ? "+" : ""}{h.pnl.toFixed(2)}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* â”€â”€ Table view â”€â”€ */
+            <div className="overflow-x-auto rounded-2xl border">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 dark:bg-neutral-800/60 text-left text-xs text-gray-500 uppercase tracking-wide">
+                    <ColHeader col="symbol" label={t("portSymbol", lang)} />
+                    <ColHeader col="shares" label={t("portShares", lang)} />
+                    <ColHeader col="avg_cost" label={t("portAvgCost", lang)} />
+                    <th className="px-4 py-3 whitespace-nowrap">
+                      {t("portLastPrice", lang)}
+                      {dataDate && <span className="ml-1 normal-case font-normal text-gray-400">({dataDate})</span>}
+                    </th>
+                    <ColHeader col="pnlPct" label={t("portPnLPct", lang)} />
+                    <ColHeader col="pnl" label={t("portPnL", lang)} />
+                    <ColHeader col="marketValue" label={t("portMarketValue", lang)} />
+                    <th className="px-4 py-3" />
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y">
+                  {visible.map((h, idx) => (
+                    <tr
+                      key={h.id}
+                      className={[
+                        h.sold_at
+                          ? "bg-amber-50/60 dark:bg-amber-900/10 opacity-70"
+                          : "hover:bg-gray-50 dark:hover:bg-neutral-800",
+                        "transition-colors duration-150",
+                        showAll && idx >= INITIAL_VISIBLE ? "animate-fadeIn-row" : "",
+                      ].join(" ")}
+                      style={showAll && idx >= INITIAL_VISIBLE ? { animationDelay: `${(idx - INITIAL_VISIBLE) * 35}ms` } : undefined}
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
+                            <img src={logoSrc(h.symbol)} alt={h.symbol} className="w-full h-full object-cover" />
+                          </div>
+                          <button
+                            className="font-semibold hover:underline"
+                            onClick={() => {
+                              const match = rows.find((r) => r.symbol === h.symbol);
+                              if (match) onOpen(match);
+                              else onOpenFromSymbol(h.symbol);
+                            }}
+                          >
+                            {h.symbol}
+                          </button>
+                          {h.sold_at && (
+                            <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+                              {t("portSold", lang)}
+                            </span>
+                          )}
+                          {!h.sold_at && h.pnlPct != null && h.pnlPct >= 20 && techSignals[h.symbol] && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" title={lang === "es" ? "Sobrecomprado tÃ©cnicamente" : "Technically overbought"}>
+                              <svg className="w-3 h-3 flex-none" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clipRule="evenodd" />
+                              </svg>
+                            </span>
+                          )}
+                          {!h.sold_at && h.pnlPct != null && h.pnlPct <= -20 && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400">
+                              <svg className="w-3 h-3 flex-none" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                              </svg>
+                            </span>
+                          )}
+                          {!h.sold_at && weekChanges[h.symbol] != null && Math.abs(weekChanges[h.symbol]) >= 10 && (
+                            weekChanges[h.symbol] > 0 ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-lime-100 text-lime-700 dark:bg-lime-900/40 dark:text-lime-400">
+                                <svg className="w-3 h-3 flex-none" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                                  <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+                                </svg>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400">
+                                <svg className="w-3 h-3 flex-none rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                                  <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+                                </svg>
+                              </span>
+                            )
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 tabular-nums">{h.shares}</td>
+                      <td className="px-4 py-3 tabular-nums">{h.avg_cost != null ? `$${h.avg_cost.toFixed(2)}` : "â€”"}</td>
+                      <td className="px-4 py-3 tabular-nums">
+                        {h.lp ? `$${h.lp.price.toFixed(2)}` : <span className="text-gray-300">â€”</span>}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums font-medium">
+                        {h.pnlPct != null ? (
+                          <span className={h.pnlPct >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}>
+                            {h.pnlPct >= 0 ? "+" : ""}{h.pnlPct.toFixed(1)}%
+                          </span>
+                        ) : <span className="text-gray-300">â€”</span>}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums">
+                        {h.pnl != null ? (
+                          <span className={h.pnl >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}>
+                            {h.pnl >= 0 ? "+" : ""}{h.pnl.toFixed(2)}
+                          </span>
+                        ) : <span className="text-gray-300">â€”</span>}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums font-medium">
+                        {h.marketValue != null
+                          ? `$${h.marketValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : <span className="text-gray-300">â€”</span>}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => onRemoveHolding(h.id)}
+                          className="text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded-lg hover:bg-red-50"
+                        >
+                          {t("portDelete", lang)}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-          {/* Ver más / Ver menos */}
+          {/* Ver mÃ¡s / Ver menos */}
           {hasMore && (
             <button
               onClick={() => setShowAll((v) => !v)}
@@ -452,4 +599,3 @@ export function PortfolioTab({
     </div>
   );
 }
-
