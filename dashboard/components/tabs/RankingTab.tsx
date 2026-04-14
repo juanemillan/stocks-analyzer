@@ -36,26 +36,31 @@ interface RankingTabProps {
 }
 
 function ScoreDelta({ score, delta }: { score?: number | null; delta?: number | null }) {
-  // Mini sparkline: two bars representing prev_score and final_score
   const prev = score != null && delta != null ? score - delta : null;
-  const showBar = score != null && prev != null;
   const up = (delta ?? 0) > 0.001;
   const down = (delta ?? 0) < -0.001;
+  const color = score == null ? "#9ca3af" : score >= 0.7 ? "#10b981" : score < 0.35 ? "#ef4444" : "#f59e0b";
   return (
-    <span className="inline-flex items-center gap-1">
-      <span className={`text-xs tabular-nums font-semibold ${score != null ? (score >= 0.7 ? "text-emerald-600 dark:text-emerald-400" : score < 0.35 ? "text-red-500 dark:text-red-400" : "text-gray-700 dark:text-gray-300") : ""}`}>
-        {score != null ? score.toFixed(3) : "—"}
-      </span>
-      {showBar && (
-        <svg width="28" height="14" viewBox="0 0 28 14" className="flex-none">
-          <rect x="1" y={14 - Math.round(prev! * 13)} width="10" height={Math.round(prev! * 13)} rx="1.5"
-            fill={up ? "#d1d5db" : down ? "#fca5a5" : "#d1d5db"} />
-          <rect x="15" y={14 - Math.round(score! * 13)} width="10" height={Math.round(score! * 13)} rx="1.5"
-            fill={up ? "#10b981" : down ? "#ef4444" : "#9ca3af"} />
-        </svg>
+    <div className="inline-flex flex-col items-end gap-0.5 min-w-[80px]">
+      <div className="flex items-center gap-1">
+        <span className="text-xs tabular-nums font-semibold" style={{ color }}>
+          {score != null ? score.toFixed(3) : "—"}
+        </span>
+        {prev != null && (
+          <svg width="20" height="12" viewBox="0 0 20 12" className="flex-none opacity-70">
+            <rect x="1" y={12 - Math.round(Math.min(prev, 1) * 11)} width="7" height={Math.round(Math.min(prev, 1) * 11)} rx="1.5"
+              fill={up ? "#d1d5db" : down ? "#fca5a5" : "#d1d5db"} />
+            <rect x="11" y={12 - Math.round(Math.min(score!, 1) * 11)} width="7" height={Math.round(Math.min(score!, 1) * 11)} rx="1.5"
+              fill={up ? "#10b981" : down ? "#ef4444" : "#9ca3af"} />
+          </svg>
+        )}
+      </div>
+      {score != null && (
+        <div className="w-16 h-1.5 rounded-full bg-gray-100 dark:bg-neutral-700 overflow-hidden">
+          <div className="h-full rounded-full" style={{ width: `${Math.round(Math.min(score, 1) * 100)}%`, backgroundColor: color }} />
+        </div>
       )}
-      {!showBar && delta == null && <span className="text-gray-300 text-xs">&mdash;</span>}
-    </span>
+    </div>
   );
 }
 

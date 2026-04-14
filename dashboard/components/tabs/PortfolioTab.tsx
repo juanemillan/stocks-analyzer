@@ -695,6 +695,50 @@ export function PortfolioTab({
       )}
 
       {correlationData && <CorrelationPanel data={correlationData} lang={lang} />}
+
+      {/* ── Gaps: high-scoring assets NOT in portfolio ── */}
+      {(() => {
+        const portfolioSymbols = new Set(holdings.map((h) => h.symbol));
+        const gaps = rows
+          .filter((r) => !portfolioSymbols.has(r.symbol) && r.final_score != null && r.final_score >= 0.65)
+          .slice(0, 5);
+        if (gaps.length === 0) return null;
+        return (
+          <div className="mt-6">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              {lang === "es" ? "🔍 Oportunidades que no tienes" : "🔍 Gaps in your portfolio"}
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              {lang === "es"
+                ? "Activos con puntuación alta que no están en tu cartera."
+                : "High-scoring assets you don't currently hold."}
+            </p>
+            <div className="flex flex-col gap-2">
+              {gaps.map((r) => (
+                <button
+                  key={r.symbol}
+                  className="flex items-center gap-3 px-3 py-2 bg-white dark:bg-neutral-900 border dark:border-neutral-700 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors text-left"
+                  onClick={() => onOpen(r)}
+                >
+                  <div className="w-8 h-8 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
+                    <img src={logoSrc(r.symbol)} alt={r.symbol} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-semibold text-sm">{r.symbol}</span>
+                    {r.name && <span className="ml-2 text-xs text-gray-500 truncate">{r.name}</span>}
+                  </div>
+                  <div className="flex-none text-right">
+                    <span className={`text-sm font-bold tabular-nums ${r.final_score >= 0.7 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+                      {(r.final_score * 100).toFixed(0)}
+                    </span>
+                    <span className="text-xs text-gray-400 ml-0.5">/100</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

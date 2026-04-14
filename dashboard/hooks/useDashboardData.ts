@@ -24,12 +24,23 @@ export function useDashboardData() {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode | null>(null);
 
+  // ---------- Persist ranking filters to localStorage ----------
+  function lsGet(key: string, fallback: string) {
+    if (typeof window === "undefined") return fallback;
+    return localStorage.getItem(key) ?? fallback;
+  }
+  function lsGetNum(key: string, fallback: number) {
+    if (typeof window === "undefined") return fallback;
+    const v = localStorage.getItem(key);
+    return v != null ? Number(v) : fallback;
+  }
+
   // Ranking
   const [rows, setRows] = useState<RankRow[]>([]);
-  const [q, setQ] = useState("");
-  const [bucket, setBucket] = useState<string>("");
-  const [atype, setAtype] = useState<string>("");
-  const [minScore, setMinScore] = useState<number>(0);
+  const [q, setQ] = useState(() => lsGet("bullia_filter_q", ""));
+  const [bucket, setBucket] = useState<string>(() => lsGet("bullia_filter_bucket", ""));
+  const [atype, setAtype] = useState<string>(() => lsGet("bullia_filter_atype", ""));
+  const [minScore, setMinScore] = useState<number>(() => lsGetNum("bullia_filter_minScore", 0));
   const [sortKey, setSortKey] = useState<keyof RankRow>("final_score");
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
 
@@ -197,6 +208,12 @@ export function useDashboardData() {
     if (viewMode === "compounders") loadCompounders(cmpHorizon);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode]);
+
+  // Persist ranking filters to localStorage
+  useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("bullia_filter_q", q); }, [q]);
+  useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("bullia_filter_bucket", bucket); }, [bucket]);
+  useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("bullia_filter_atype", atype); }, [atype]);
+  useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("bullia_filter_minScore", String(minScore)); }, [minScore]);
 
   useEffect(() => {
     if (viewMode === "compounders") loadCompounders(cmpHorizon);

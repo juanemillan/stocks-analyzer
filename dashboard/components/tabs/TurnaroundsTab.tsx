@@ -49,6 +49,22 @@ export function TurnaroundsTab({
           <option value={100}>{`100 / ${t("perPage", lang)}`}</option>
         </select>
       </div>
+      {turnRows.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <svg className="w-12 h-12 mb-3 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M7 16l-4-4m0 0l4-4m-4 4h18M17 8l4 4m0 0l-4 4" />
+          </svg>
+          <p className="font-semibold text-gray-600 dark:text-gray-400">
+            {lang === "es" ? "Sin candidatos por ahora" : "No candidates right now"}
+          </p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1 max-w-xs">
+            {lang === "es"
+              ? "No hay activos con perfil de recuperación que cumplan todos los criterios."
+              : "No assets currently match the turnaround recovery criteria."}
+          </p>
+        </div>
+      )}
+      {turnRows.length > 0 && (
       <section className="bg-white border rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-[620px] w-full text-left text-sm">
@@ -101,6 +117,7 @@ export function TurnaroundsTab({
           </table>
         </div>
       </section>
+      )}
       <PaginationBar
         lang={lang}
         page={turnPage}

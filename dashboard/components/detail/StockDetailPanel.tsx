@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   ComposedChart,
   LineChart,
@@ -66,6 +66,14 @@ export function StockDetailPanel({
   const [showSma20, setShowSma20] = useState(false);
   const [showSma50, setShowSma50] = useState(false);
   const [showVolume, setShowVolume] = useState(false);
+
+  // Swipe-down-to-dismiss (mobile bottom-sheet)
+  const touchStartY = useRef(0);
+  function onTouchStart(e: React.TouchEvent) { touchStartY.current = e.touches[0].clientY; }
+  function onTouchMove(e: React.TouchEvent) {
+    const dy = e.touches[0].clientY - touchStartY.current;
+    if (dy > 80) onClose();
+  }
 
   // Compute SMAs and enrich chartData
   const chartData = useMemo(() => {
@@ -150,7 +158,11 @@ export function StockDetailPanel({
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-backdropIn" onClick={onClose} />
 
       {/* Panel: bottom-sheet on mobile, centered dialog on sm+ */}
-      <div className="relative w-full sm:max-w-5xl max-h-[90svh] flex flex-col bg-white dark:bg-neutral-900 rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden animate-slideUp">
+      <div
+        className="relative w-full sm:max-w-5xl max-h-[90svh] flex flex-col bg-white dark:bg-neutral-900 rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden animate-slideUp"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+      >
 
         {/* ── Sticky header ── */}
         <div className="flex-none flex items-center gap-3 px-5 py-4 border-b dark:border-neutral-700 bg-white dark:bg-neutral-900">

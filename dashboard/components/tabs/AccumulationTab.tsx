@@ -52,6 +52,23 @@ export function AccumulationTab({
           <option value={100}>{`100 / ${t("perPage", lang)}`}</option>
         </select>
       </div>
+      {accumRows.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <svg className="w-12 h-12 mb-3 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.5l5-5 4 4 5-6 4 3" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 20h18" />
+          </svg>
+          <p className="font-semibold text-gray-600 dark:text-gray-400">
+            {lang === "es" ? "Sin candidatos por ahora" : "No candidates right now"}
+          </p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1 max-w-xs">
+            {lang === "es"
+              ? "El mercado no tiene activos en zona de acumulación que cumplan todos los criterios."
+              : "The market doesn't currently have any assets in accumulation matching all criteria."}
+          </p>
+        </div>
+      )}
+      {accumRows.length > 0 && (
       <section className="bg-white border rounded-2xl shadow-sm overflow-hidden dark:bg-neutral-900 dark:border-neutral-700">
         <div className="overflow-x-auto">
           <table className="min-w-[700px] w-full text-left text-sm">
@@ -114,6 +131,7 @@ export function AccumulationTab({
           </table>
         </div>
       </section>
+      )}
       <PaginationBar
         lang={lang}
         page={accumPage}
