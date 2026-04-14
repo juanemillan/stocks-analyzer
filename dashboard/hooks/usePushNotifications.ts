@@ -49,19 +49,37 @@ export function usePushNotifications() {
   }, []);
 
   const subscribe = async () => {
-    if (!("serviceWorker" in navigator) || !("Notification" in window) || !PUBLIC_VAPID_KEY) return;
-    setLoading(true);
     setErrorMsg(null);
-    try {
-      // iOS requires an explicit Notification.requestPermission() call
-      // triggered synchronously from a user gesture before pushManager.subscribe()
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        setState("denied");
-        setLoading(false);
-        return;
-      }
 
+    // Diagnose missing build-time env var (NEXT_PUBLIC_VAPID_PUBLIC_KEY not set in Vercel)
+    if (!PUBLIC_VAPID_KEY) {
+      setState("error");
+      setErrorMsg("VAPID key not configured. Add NEXT_PUBLIC_VAPID_PUBLIC_KEY to Vercel env vars.");
+      return;
+    }
+    if (!("serviceWorker" in navigator) || !("Notification" in window) || !("PushManager" in window)) {
+      setState("unsupported");
+      return;
+    }
+
+    // iOS: requestPermission() MUST be the first async call — before setLoading or any awaits
+    // otherwise iOS drops in out of the user gesture context
+    let permission: NotificationPermission;
+    try {
+      permission = await Notification.requestPermission();
+    } catch {
+      setState("error");
+      setErrorMsg("Permission request failed — try again");
+      return;
+    }
+
+    if (permission !== "granted") {
+      setState("denied");
+      return;
+    }
+
+    setLoading(true);
+    try {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
@@ -83,12 +101,8 @@ export function usePushNotifications() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[push] subscribe error:", msg);
-      if (Notification.permission === "denied") {
-        setState("denied");
-      } else {
-        setState("error");
-        setErrorMsg(msg);
-      }
+      setState("error");
+      setErrorMsg(msg);
     } finally {
       setLoading(false);
     }
