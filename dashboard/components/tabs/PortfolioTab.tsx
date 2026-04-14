@@ -728,8 +728,8 @@ export function PortfolioTab({
                     {r.name && <span className="ml-2 text-xs text-gray-500 truncate">{r.name}</span>}
                   </div>
                   <div className="flex-none text-right">
-                    <span className={`text-sm font-bold tabular-nums ${r.final_score >= 0.7 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
-                      {(r.final_score * 100).toFixed(0)}
+                    <span className={`text-sm font-bold tabular-nums ${(r.final_score ?? 0) >= 0.7 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+                      {((r.final_score ?? 0) * 100).toFixed(0)}
                     </span>
                     <span className="text-xs text-gray-400 ml-0.5">/100</span>
                   </div>
