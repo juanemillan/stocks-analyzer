@@ -99,8 +99,8 @@ export function PortfolioTab({
   const hasMore = sorted.length > INITIAL_VISIBLE;
 
   function SortIcon({ col }: { col: SortKey }) {
-    if (sortKey !== col) return <span className="ml-1 text-gray-300">â†•</span>;
-    return <span className="ml-1">{sortDir === "asc" ? "â†‘" : "â†“"}</span>;
+    if (sortKey !== col) return <span className="ml-1 text-gray-300">⬍</span>;
+    return <span className="ml-1">{sortDir === "asc" ? "▲" : "▼"}</span>;
   }
 
   function ColHeader({ col, label }: { col: SortKey; label: string }) {
@@ -348,7 +348,7 @@ export function PortfolioTab({
                   }`}
                 >
                   {label}
-                  {sortKey === key && <span>{sortDir === "asc" ? " ↑" : " ↓"}</span>}
+                  {sortKey === key && <span>{sortDir === "asc" ? " ▲" : " ▼"}</span>}
                 </button>
               ))}
             </div>
