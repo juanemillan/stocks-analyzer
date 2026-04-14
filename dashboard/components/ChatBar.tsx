@@ -220,7 +220,7 @@ export function ChatBar({
         className={[
           // Mobile: full-width bar below nav
           "fixed inset-x-0 bottom-0 z-[19] md:hidden",
-          "bg-white/95 dark:bg-gray-900/98 backdrop-blur-md border-t border-gray-200 dark:border-gray-800",
+          "bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800",
           "px-3 py-3",
         ].join(" ")}
         style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom, 0px))" }}
@@ -291,7 +291,7 @@ export function ChatBar({
 
         {/* Desktop input bar (shown below panel when open, or standalone) */}
         {isOpen && (
-          <div className="w-[380px] bg-white/95 dark:bg-gray-900/98 backdrop-blur-md border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl px-3 py-2">
+          <div className="w-[380px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl px-3 py-2">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center flex-none">
                 <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 20 20" fill="currentColor" aria-hidden>

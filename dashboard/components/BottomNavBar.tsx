@@ -184,7 +184,7 @@ export function BottomNavBar({ viewMode, setViewMode, lang, onSubBarRef }: Props
 
       {/* ── Main nav bar ─────────────────────────────────────────────────── */}
       <nav
-        className="fixed bottom-[56px] inset-x-0 z-20 md:hidden bg-white/95 dark:bg-gray-900/98 backdrop-blur-md border-t dark:border-gray-800 shadow-[0_-2px_12px_rgba(0,0,0,0.06)]"
+        className="fixed bottom-[56px] inset-x-0 z-20 md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-[0_-2px_12px_rgba(0,0,0,0.06)]"
         aria-label="Main navigation"
       >
         <div className="flex h-[92px] max-w-lg mx-auto">
