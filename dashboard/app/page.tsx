@@ -13,7 +13,8 @@ import { AddHoldingModal } from "@/components/modals/AddHoldingModal";
 import { EditProfileModal } from "@/components/modals/EditProfileModal";
 import { ConnectRacionalModal } from "@/components/modals/ConnectRacionalModal";
 import { RequestAssetModal } from "@/components/modals/RequestAssetModal";
-import { requestAsset } from "./actions";
+import { requestAsset, getLatestInsight } from "./actions";
+import type { AiInsight } from "./actions";
 import { StockDetailPanel } from "@/components/detail/StockDetailPanel";
 import { OverviewTab } from "@/components/tabs/OverviewTab";
 import { RankingTab } from "@/components/tabs/RankingTab";
@@ -51,10 +52,17 @@ export default function Dashboard() {
   const chat = useChat(lang);
   const alerts = useAlerts();
 
-  // Build context string for the AI — refreshed whenever holdings or prices change
+  // AI nightly insight
+  const [insight, setInsight] = React.useState<AiInsight | null>(null);
+  React.useEffect(() => {
+    getLatestInsight(lang).then(setInsight).catch(() => {});
+  }, [lang]);
+
+  // Build context string for the AI — refreshed whenever holdings, prices or ranking change
   const chatContext = React.useMemo(() => {
     const parts: string[] = [];
 
+    // Portfolio positions
     if (portfolio.holdings.length > 0) {
       const lines = portfolio.holdings
         .filter((h) => !h.sold_at)
@@ -67,15 +75,37 @@ export default function Dashboard() {
       if (lines.length > 0) parts.push(`Portfolio positions:\n${lines.join("\n")}`);
     }
 
+    // Full ranking context (Alta Convicción + top 20 total)
     if (data.rows.length > 0) {
-      const top5 = data.rows.slice(0, 5).map(
-        (r) => `${r.symbol} score=${r.final_score?.toFixed(2) ?? "?"} bucket=${r.bucket ?? "?"}`
+      const high = data.rows.filter((r) => (r.final_score ?? 0) >= 0.7);
+      const top20 = data.rows.slice(0, 20);
+      // Deduplicate: high conviction first, then fill to 20 with remaining
+      const seen = new Set(high.map((r) => r.symbol));
+      const combined = [...high, ...top20.filter((r) => !seen.has(r.symbol))].slice(0, 25);
+      const lines = combined.map((r) =>
+        `${r.symbol} score=${r.final_score?.toFixed(3) ?? "?"} bucket=${r.bucket ?? "?"} mom1m=${r.mom_1m?.toFixed(2) ?? "?"} mom3m=${r.mom_3m?.toFixed(2) ?? "?"}`
       );
-      parts.push(`Top 5 ranking:\n${top5.join("\n")}`);
+      parts.push(`Ranking (Alta Convicción + top 20):\n${lines.join("\n")}`);
+    }
+
+    // Top turnarounds
+    if (data.turnRows.length > 0) {
+      const turns = data.turnRows.slice(0, 5).map(
+        (r) => `${r.symbol} rebound=${r.rebound_from_low?.toFixed(1) ?? "?"}%`
+      );
+      parts.push(`Top turnarounds:\n${turns.join("\n")}`);
+    }
+
+    // Currently viewed asset
+    if (data.selected) {
+      const s = data.selected;
+      parts.push(
+        `Currently viewing: ${s.symbol} (${s.name ?? ""}), score=${s.final_score?.toFixed(3) ?? "?"}, bucket=${s.bucket ?? "?"}, mom1m=${s.mom_1m?.toFixed(2) ?? "?"}`
+      );
     }
 
     return parts.length > 0 ? parts.join("\n\n") : undefined;
-  }, [portfolio.holdings, portfolio.latestPrices, data.rows]);
+  }, [portfolio.holdings, portfolio.latestPrices, data.rows, data.turnRows, data.selected]);
 
   // Track previous view so profile back-button knows where to go
   useEffect(() => {
@@ -326,6 +356,8 @@ export default function Dashboard() {
             setViewMode={data.setViewMode}
             onOpen={data.handleOpen}
             onOpenFromSymbol={data.openFromSymbol}
+            insight={insight}
+            onAskFollowUp={(text) => { chat.sendMessage(text, chatContext); chat.setIsOpen(true); }}
           />
         )}
 

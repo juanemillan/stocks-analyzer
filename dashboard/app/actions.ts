@@ -402,3 +402,23 @@ export async function updateAssetRequestStatus(id: string, status: AssetRequestS
         [status, id],
     );
 }
+
+export interface AiInsight {
+    date: string;
+    lang: string;
+    content: string;
+}
+
+export async function getLatestInsight(lang: 'es' | 'en'): Promise<AiInsight | null> {
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = createClient();
+    const { data, error } = await (await supabase)
+        .from('ai_insights')
+        .select('date, lang, content')
+        .eq('lang', lang)
+        .order('date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    if (error || !data) return null;
+    return { date: data.date, lang: data.lang, content: data.content };
+}

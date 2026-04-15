@@ -3,6 +3,8 @@ import { t } from "@/app/i18n";
 import type { Lang, RankRow, TurnRow, CompoundRow } from "@/app/types";
 import { InfoBox } from "@/components/ui/InfoBox";
 import { logoSrc, bucketColor, bucketDisplay } from "@/lib/stockUtils";
+import { InsightCard } from "@/components/ui/InsightCard";
+import type { AiInsight } from "@/app/actions";
 
 interface OverviewTabProps {
   rows: RankRow[];
@@ -19,6 +21,8 @@ interface OverviewTabProps {
     racional_url?: string | null,
     extras?: Partial<RankRow>,
   ) => void;
+  insight?: AiInsight | null;
+  onAskFollowUp?: (text: string) => void;
 }
 
 export function OverviewTab({
@@ -30,6 +34,8 @@ export function OverviewTab({
   setViewMode,
   onOpen,
   onOpenFromSymbol,
+  insight,
+  onAskFollowUp,
 }: OverviewTabProps) {
   return (
     <div className="animate-fadeIn">
@@ -40,6 +46,11 @@ export function OverviewTab({
           {new Date().toLocaleDateString(lang === "es" ? "es-ES" : "en-US", { dateStyle: "long" })}
         </p>
       </div>
+
+      {/* AI Nightly Insight */}
+      {insight && (
+        <InsightCard insight={insight} lang={lang} onAskFollowUp={onAskFollowUp} />
+      )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
         {/* Top Ranking */}
