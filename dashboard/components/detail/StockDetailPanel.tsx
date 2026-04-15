@@ -91,6 +91,20 @@ export function StockDetailPanel({
   const [showSma50, setShowSma50] = useState(false);
   const [showVolume, setShowVolume] = useState(false);
 
+  // Track chart container size for the candle SVG overlay
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const [chartSize, setChartSize] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = chartContainerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      setChartSize({ w: entry.contentRect.width, h: entry.contentRect.height });
+    });
+    ro.observe(el);
+    setChartSize({ w: el.clientWidth, h: el.clientHeight });
+    return () => ro.disconnect();
+  }, [open]); // re-observe when panel opens
+
   // Swipe-down-to-dismiss (mobile bottom-sheet)
   const touchStartY = useRef(0);
   function onTouchStart(e: React.TouchEvent) { touchStartY.current = e.touches[0].clientY; }
@@ -113,36 +127,68 @@ export function StockDetailPanel({
 
   if (!open || !selected) return null;
 
-  // Custom candlestick shape — uses yAxisMap["price"].scale to map prices → pixels
-  function CandleShape(props: any) {
-    const { x, width, payload } = props;
-    // Recharts injects yAxisMap (keyed by yAxisId) into Bar shape props
-    const yAxisObj = props.yAxisMap?.["price"] ?? props.yAxis;
-    const yScale = yAxisObj?.scale as ((v: number) => number) | undefined;
-    if (!payload || !yScale) return <g />;
-    const { open, close, high, low } = payload;
-    if (open == null || close == null || high == null || low == null) return <g />;
-    const bullish = close >= open;
-    const color = bullish ? "#10b981" : "#ef4444";
-    const yHigh   = yScale(high);
-    const yLow    = yScale(low);
-    const yTop    = yScale(Math.max(open, close));
-    const yBottom = yScale(Math.min(open, close));
-    const cx = x + width / 2;
-    const bodyW = Math.max(width * 0.7, 3);
+  // Candle SVG overlay — positioned absolutely over the Recharts chart
+  // Margins MUST match the ComposedChart margin + YAxis width below
+  const CHART_MARGIN = { top: 4, right: 32, left: 0, bottom: 0 };
+  const Y_AXIS_W = 60;   // matches <YAxis width={60}>
+  const X_AXIS_H = 30;   // approximate height of the XAxis tick area
+
+  function CandleSvgOverlay({ data, w, h, volActive }: { data: typeof chartData; w: number; h: number; volActive: boolean }) {
+    if (!data.length || w === 0 || h === 0) return null;
+    const rightOffset = CHART_MARGIN.right + (volActive ? 40 : 0); // 40 = vol YAxis width
+    const plotX = CHART_MARGIN.left + Y_AXIS_W;
+    const plotY = CHART_MARGIN.top;
+    const plotW = w - plotX - rightOffset;
+    const plotH = h - plotY - X_AXIS_H;
+    if (plotW <= 0 || plotH <= 0) return null;
+
+    // Compute y domain matching Recharts' "auto" (5% padding)
+    const highs  = data.map((d) => d.high).filter((v): v is number => v != null);
+    const lows   = data.map((d) => d.low).filter((v): v is number => v != null);
+    if (!highs.length) return null;
+    const dataMax = Math.max(...highs);
+    const dataMin = Math.min(...lows);
+    const pad = (dataMax - dataMin) * 0.05 || dataMin * 0.05;
+    const yMin = dataMin - pad;
+    const yMax = dataMax + pad;
+    const toY = (v: number) => plotY + (1 - (v - yMin) / (yMax - yMin)) * plotH;
+
+    const step  = plotW / data.length;
+    const bodyW = Math.max(step * 0.6, 2);
+
     return (
-      <g>
-        <line x1={cx} x2={cx} y1={yHigh} y2={yLow} stroke={color} strokeWidth={1} />
-        <rect
-          x={cx - bodyW / 2}
-          y={yTop}
-          width={bodyW}
-          height={Math.max(yBottom - yTop, 1)}
-          fill={color}
-          stroke={bullish ? "#059669" : "#dc2626"}
-          strokeWidth={0.5}
-        />
-      </g>
+      <svg
+        width={w}
+        height={h}
+        style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none" }}
+      >
+        {data.map((d, i) => {
+          const { open, close, high, low } = d;
+          if (open == null || close == null || high == null || low == null) return null;
+          const bullish = close >= open;
+          const color   = bullish ? "#10b981" : "#ef4444";
+          const sColor  = bullish ? "#059669" : "#dc2626";
+          const cx      = plotX + i * step + step / 2;
+          const yHigh   = toY(high);
+          const yLow    = toY(low);
+          const yTop    = toY(Math.max(open, close));
+          const yBot    = toY(Math.min(open, close));
+          return (
+            <g key={d.date ?? i}>
+              <line x1={cx} x2={cx} y1={yHigh} y2={yLow} stroke={color} strokeWidth={1} />
+              <rect
+                x={cx - bodyW / 2}
+                y={yTop}
+                width={bodyW}
+                height={Math.max(yBot - yTop, 1)}
+                fill={color}
+                stroke={sColor}
+                strokeWidth={0.5}
+              />
+            </g>
+          );
+        })}
+      </svg>
     );
   }
 
@@ -305,13 +351,14 @@ export function StockDetailPanel({
                 </div>
 
                 {/* Main price chart */}
-                <div className="h-52 md:h-64">
+                <div ref={chartContainerRef} className="relative h-52 md:h-64">
                   {pricesLoading ? (
                     <div className="h-full flex flex-col gap-2 pt-2">
                       <div className="h-3 w-24 rounded bg-gray-200 dark:bg-neutral-700 animate-pulse" />
                       <div className="flex-1 rounded-xl bg-gray-200 dark:bg-neutral-700 animate-pulse" />
                     </div>
                   ) : chartData.length ? (
+                    <>
                     <ResponsiveContainer width="100%" height="100%">
                       <ComposedChart data={chartData} margin={{ top: 4, right: 32, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
@@ -368,10 +415,7 @@ export function StockDetailPanel({
                         {showVolume && (
                           <Bar yAxisId="vol" dataKey="volume" fill="#9ca3af" opacity={0.3} barSize={4} isAnimationActive={false} />
                         )}
-                        {/* Candle mode — single Bar per point, CandleShape handles positioning via yAxis.scale */}
-                        {chartMode === "candle" ? (
-                          <Bar yAxisId="price" dataKey="close" barSize={10} shape={<CandleShape />} isAnimationActive={false} fill="transparent" stroke="none" />
-                        ) : (
+                        {chartMode !== "candle" && (
                           <Line yAxisId="price" type="monotone" dataKey="close" dot={false} strokeWidth={2} stroke="#10b981" isAnimationActive={false} />
                         )}
                         {/* SMA overlays */}
@@ -383,6 +427,10 @@ export function StockDetailPanel({
                         )}
                       </ComposedChart>
                     </ResponsiveContainer>
+                    {chartMode === "candle" && (
+                      <CandleSvgOverlay data={chartData} w={chartSize.w} h={chartSize.h} volActive={showVolume} />
+                    )}
+                    </>
                   ) : (
                     <div className="h-full flex items-center justify-center text-gray-500">{t("noPriceData", lang)}</div>
                   )}
