@@ -35,7 +35,7 @@ export function ScoreSparkline({ data, latest }: Props) {
           <Tooltip
             contentStyle={{ fontSize: 11, padding: "2px 6px", borderRadius: 6 }}
             formatter={(v: number) => [v.toFixed(1), "Score"]}
-            labelFormatter={(l: string) => l.slice(0, 10)}
+            labelFormatter={(idx: number) => data[idx]?.date?.slice(0, 10) ?? ""}
           />
         </LineChart>
       </ResponsiveContainer>

@@ -2,7 +2,8 @@
 import { t } from "@/app/i18n";
 import type { Lang, RankRow, TurnRow, CompoundRow } from "@/app/types";
 import { InfoBox } from "@/components/ui/InfoBox";
-import { logoSrc, bucketColor, bucketDisplay } from "@/lib/stockUtils";
+import { bucketColor, bucketDisplay } from "@/lib/stockUtils";
+import { SymbolLogo } from "@/components/ui/SymbolLogo";
 import { InsightCard } from "@/components/ui/InsightCard";
 import type { AiInsight } from "@/app/actions";
 
@@ -65,9 +66,7 @@ export function OverviewTab({
             {rows.slice(0, 5).map((r) => (
               <button key={r.symbol} onClick={() => onOpen(r)}
                 className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors duration-150 text-left">
-                <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
-                  <img src={logoSrc(r.symbol)} alt={r.symbol} className="w-full h-full object-cover" />
-                </div>
+                <SymbolLogo symbol={r.symbol} size={28} />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-sm">{r.symbol}</div>
                   <div className="text-xs text-gray-500 truncate">{r.name ?? "\u2014"}</div>
@@ -101,9 +100,7 @@ export function OverviewTab({
               <button key={r.symbol}
                 onClick={() => onOpenFromSymbol(r.symbol, r.name, r.asset_type, r.racional_url, { mom_1m: r.mom_1m, mom_3m: r.mom_3m, liq_score: r.liq_score })}
                 className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors duration-150 text-left">
-                <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
-                  <img src={logoSrc(r.symbol)} alt={r.symbol} className="w-full h-full object-cover" />
-                </div>
+                <SymbolLogo symbol={r.symbol} size={28} />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-sm">{r.symbol}</div>
                   <div className="text-xs text-gray-500 truncate">{r.name ?? "\u2014"}</div>
@@ -139,9 +136,7 @@ export function OverviewTab({
                 <button key={r.symbol}
                   onClick={() => onOpenFromSymbol(r.symbol, r.name, r.asset_type, r.racional_url)}
                   className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors duration-150 text-left">
-                  <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
-                    <img src={logoSrc(r.symbol)} alt={r.symbol} className="w-full h-full object-cover" />
-                  </div>
+                  <SymbolLogo symbol={r.symbol} size={28} />
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm">{r.symbol}</div>
                     <div className="text-xs text-gray-500 truncate">{r.name ?? "\u2014"}</div>

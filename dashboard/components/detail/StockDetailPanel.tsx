@@ -18,7 +18,8 @@ import {
 import { FundStat } from "@/components/ui/FundStat";
 import { MomStat } from "@/components/ui/MomStat";
 import { DescriptionBlock } from "@/components/ui/DescriptionBlock";
-import { logoSrc, bucketDisplay, fmtBig, RANGE_OPTIONS } from "@/lib/stockUtils";
+import { bucketDisplay, fmtBig, RANGE_OPTIONS } from "@/lib/stockUtils";
+import { SymbolLogo } from "@/components/ui/SymbolLogo";
 import { t } from "@/app/i18n";
 import type { RankRow, PriceRow, Lang, FinnhubData } from "@/app/types";
 import { AlertsModal } from "@/components/modals/AlertsModal";
@@ -112,12 +113,15 @@ export function StockDetailPanel({
 
   if (!open || !selected) return null;
 
-  // Custom candlestick shape — uses yAxis.scale to correctly map prices → pixels
+  // Custom candlestick shape — uses yAxisMap["price"].scale to map prices → pixels
   function CandleShape(props: any) {
     const { x, width, payload } = props;
-    const yScale = props.yAxis?.scale as ((v: number) => number) | undefined;
+    // Recharts injects yAxisMap (keyed by yAxisId) into Bar shape props
+    const yAxisObj = props.yAxisMap?.["price"] ?? props.yAxis;
+    const yScale = yAxisObj?.scale as ((v: number) => number) | undefined;
     if (!payload || !yScale) return <g />;
     const { open, close, high, low } = payload;
+    if (open == null || close == null || high == null || low == null) return <g />;
     const bullish = close >= open;
     const color = bullish ? "#10b981" : "#ef4444";
     const yHigh   = yScale(high);
@@ -140,7 +144,7 @@ export function StockDetailPanel({
         />
       </g>
     );
-}
+  }
 
   // % change for the currently selected range
   const rangeChgPct: number | null = (() => {
@@ -189,9 +193,7 @@ export function StockDetailPanel({
 
         {/* ── Sticky header ── */}
         <div className="flex-none flex items-center gap-3 px-5 py-4 border-b dark:border-neutral-700 bg-white dark:bg-neutral-900">
-          <div className="w-10 h-10 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
-            <img src={logoSrc(selected.symbol)} alt={selected.symbol} className="w-full h-full object-cover" />
-          </div>
+          <SymbolLogo symbol={selected.symbol} size={40} />
           <div className="flex-1 min-w-0">
             <h2 className="text-base font-semibold leading-tight truncate">
               {selected.symbol} — {selected.name ?? "—"}

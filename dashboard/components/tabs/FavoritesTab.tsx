@@ -1,6 +1,7 @@
 "use client";
+import { useState } from "react";
 import type { Lang, RankRow } from "@/app/types";
-import { logoSrc } from "@/lib/stockUtils";
+import { SymbolLogo } from "@/components/ui/SymbolLogo";
 
 interface FavoritesTabProps {
   rows: RankRow[];
@@ -23,7 +24,9 @@ export function FavoritesTab({
   onToggleFavorite,
   onOpen,
   selectedSymbol,
+  lang,
 }: FavoritesTabProps) {
+  const [copied, setCopied] = useState(false);
   const favorites = rows
     .filter((r) => watchlist.has(r.symbol))
     .sort((a, b) => (b.final_score ?? 0) - (a.final_score ?? 0));
@@ -47,6 +50,26 @@ export function FavoritesTab({
         </svg>
         <h2 className="text-base font-semibold">Favorites</h2>
         <span className="text-sm text-gray-500">({favorites.length})</span>
+        <div className="ml-auto">
+          <button
+            onClick={() => {
+              const url = new URL(window.location.href);
+              url.searchParams.set("wl", favorites.map((r) => r.symbol).join(","));
+              navigator.clipboard.writeText(url.toString()).then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              });
+            }}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-neutral-800 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-gray-600 dark:text-gray-400 hover:text-emerald-600 transition-colors"
+            title={lang === "es" ? "Copiar enlace de favoritos" : "Copy favorites link"}
+          >
+            {copied ? (
+              <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>{lang === "es" ? "¡Copiado!" : "Copied!"}</>
+            ) : (
+              <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>{lang === "es" ? "Compartir" : "Share"}</>
+            )}
+          </button>
+        </div>
       </div>
 
       <section className="bg-white border rounded-2xl shadow-sm overflow-hidden">
@@ -89,9 +112,7 @@ export function FavoritesTab({
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
-                        <img src={logoSrc(r.symbol)} alt={r.symbol} className="w-full h-full object-cover" />
-                      </div>
+                      <SymbolLogo symbol={r.symbol} size={28} />
                       <span className="font-semibold">{r.symbol}</span>
                     </div>
                   </td>

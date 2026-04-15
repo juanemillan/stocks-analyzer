@@ -43,5 +43,22 @@ export function useWatchlist() {
     [userId, watchlist]
   );
 
-  return { watchlist, toggle };
+  const bulkAdd = useCallback(
+    async (symbols: string[]) => {
+      if (!userId) return;
+      const toAdd = symbols.filter((s) => !watchlist.has(s));
+      if (!toAdd.length) return;
+      setWatchlist((prev) => new Set([...prev, ...toAdd]));
+      const supabase = createClient();
+      await supabase
+        .from("watchlist")
+        .upsert(
+          toAdd.map((symbol) => ({ user_id: userId, symbol })),
+          { onConflict: "user_id,symbol", ignoreDuplicates: true }
+        );
+    },
+    [userId, watchlist]
+  );
+
+  return { watchlist, toggle, bulkAdd, userId };
 }

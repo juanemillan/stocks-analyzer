@@ -3,7 +3,7 @@ import { t } from "@/app/i18n";
 import type { Lang, CompoundRow, RankRow } from "@/app/types";
 import { InfoBox } from "@/components/ui/InfoBox";
 import { PaginationBar } from "@/components/ui/PaginationBar";
-import { logoSrc } from "@/lib/stockUtils";
+import { SymbolLogo } from "@/components/ui/SymbolLogo";
 
 interface CompoundersTabProps {
   cmpHorizon: "1Y" | "3Y" | "5Y";
@@ -125,9 +125,7 @@ export function CompoundersTab({
                   <tr key={r.symbol} className="border-t hover:bg-gray-50 cursor-pointer" onClick={() => onOpenFromSymbol(r.symbol, r.name, r.asset_type, r.racional_url)}>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
-                          <img src={logoSrc(r.symbol)} alt={r.symbol} className="w-full h-full object-cover" />
-                        </div>
+                        <SymbolLogo symbol={r.symbol} size={28} />
                         <span className="font-semibold">{r.symbol}</span>
                       </div>
                     </td>

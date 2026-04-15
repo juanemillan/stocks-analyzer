@@ -4,6 +4,7 @@ import { t } from "@/app/i18n";
 import type { Lang, RankRow } from "@/app/types";
 import { InfoBox } from "@/components/ui/InfoBox";
 import { logoSrc, type Holding } from "@/lib/stockUtils";
+import { SymbolLogo } from "@/components/ui/SymbolLogo";
 import { CorrelationPanel } from "@/components/portfolio/CorrelationPanel";
 import type { CorrelationResult } from "@/lib/correlation";
 import { computeDiversificationScore } from "@/lib/correlation";
@@ -731,9 +732,7 @@ export function PortfolioTab({
                   className="flex items-center gap-3 px-3 py-2 bg-white dark:bg-neutral-900 border dark:border-neutral-700 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors text-left"
                   onClick={() => onOpen(r)}
                 >
-                  <div className="w-8 h-8 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
-                    <img src={logoSrc(r.symbol)} alt={r.symbol} className="w-full h-full object-cover" />
-                  </div>
+                  <SymbolLogo symbol={r.symbol} size={32} />
                   <div className="flex-1 min-w-0">
                     <span className="font-semibold text-sm">{r.symbol}</span>
                     {r.name && <span className="ml-2 text-xs text-gray-500 truncate">{r.name}</span>}

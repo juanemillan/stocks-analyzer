@@ -34,6 +34,7 @@ import { useWatchlist } from "@/hooks/useWatchlist";
 import { useChat } from "@/hooks/useChat";
 import { useAlerts } from "@/hooks/useAlerts";
 import { ChatBar } from "@/components/ChatBar";
+import { OnboardingScreen } from "@/components/OnboardingScreen";
 
 export default function Dashboard() {
   const { resolvedTheme } = useTheme();
@@ -48,9 +49,41 @@ export default function Dashboard() {
   const data = useDashboardData();
   const portfolio = usePortfolio();
   const auth = useAuth();
-  const { watchlist, toggle: toggleWatchlist } = useWatchlist();
+  const { watchlist, toggle: toggleWatchlist, bulkAdd: bulkAddWatchlist, userId: watchlistUserId } = useWatchlist();
   const chat = useChat(lang);
   const alerts = useAlerts();
+
+  // First-time onboarding
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  useEffect(() => {
+    if (typeof window !== "undefined" && !localStorage.getItem("bullia_onboarded")) {
+      setShowOnboarding(true);
+    }
+  }, []);
+  const handleOnboardingDone = () => {
+    localStorage.setItem("bullia_onboarded", "1");
+    setShowOnboarding(false);
+  };
+
+  // Shareable watchlist — import ?wl=SYM1,SYM2 from URL on first load
+  const pendingWlRef = React.useRef<string[] | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const wl = params.get("wl");
+    if (wl) {
+      pendingWlRef.current = wl.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("wl");
+      history.replaceState(null, "", url.toString());
+    }
+  }, []);
+  useEffect(() => {
+    if (!watchlistUserId || !pendingWlRef.current?.length) return;
+    bulkAddWatchlist(pendingWlRef.current);
+    pendingWlRef.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchlistUserId]);
 
   // AI nightly insight
   const [insight, setInsight] = React.useState<AiInsight | null>(null);
@@ -150,6 +183,10 @@ export default function Dashboard() {
   };
 
   if (!data.viewMode) return null;
+
+  if (showOnboarding) {
+    return <OnboardingScreen lang={lang} onDone={handleOnboardingDone} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-50">

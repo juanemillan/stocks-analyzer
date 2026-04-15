@@ -4,7 +4,8 @@ import { t } from "@/app/i18n";
 import type { Lang, RankRow } from "@/app/types";
 import { InfoBox } from "@/components/ui/InfoBox";
 import { PaginationBar } from "@/components/ui/PaginationBar";
-import { BUCKETS, TYPES, logoSrc, bucketDisplay } from "@/lib/stockUtils";
+import { BUCKETS, TYPES, bucketDisplay } from "@/lib/stockUtils";
+import { SymbolLogo } from "@/components/ui/SymbolLogo";
 
 interface RankingTabProps {
   rows: RankRow[];
@@ -219,9 +220,7 @@ export function RankingTab({
                   )}
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
-                        <img src={logoSrc(r.symbol)} alt={r.symbol} className="w-full h-full object-cover" />
-                      </div>
+                      <SymbolLogo symbol={r.symbol} size={28} />
                       <span className="font-semibold">{r.symbol}</span>
                     </div>
                   </td>
