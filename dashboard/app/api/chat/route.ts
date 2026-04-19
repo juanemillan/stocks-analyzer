@@ -6,12 +6,13 @@ const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const MAX_MESSAGES = 10;
 
 // Fallback chain — tried in order until one succeeds.
-// All are free-tier models on OpenRouter with different rate-limit pools.
+// Avoid reasoning/thinking models: they output chain-of-thought as plain text
+// and cannot reliably be suppressed via system prompt or API flags.
 const FREE_MODELS = [
-  "qwen/qwen3.6-plus:free",
-  "nvidia/nemotron-3-super-120b-a12b:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "mistralai/mistral-small-3.1-24b-instruct:free",
+  "google/gemma-3-12b-it:free",
   "stepfun/step-3.5-flash:free",
-  "arcee-ai/trinity-large-preview:free",
 ];
 
 // Load AGENT.md once at module init (file is in the dashboard root)
