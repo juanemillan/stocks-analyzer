@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Pre-commit hook: run local cache/SELECT * checks
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+cd "$ROOT_DIR"
+
+echo "Running pre-commit checks: check-unwise-caches"
+
+if [ -x "$ROOT_DIR/scripts/check-unwise-caches.sh" ]; then
+  "$ROOT_DIR/scripts/check-unwise-caches.sh"
+  exit_code=$?
+  if [ $exit_code -ne 0 ]; then
+    echo "Pre-commit checks failed (bash). Aborting commit." >&2
+    exit $exit_code
+  fi
+elif command -v pwsh >/dev/null 2>&1; then
+  pwsh -NoProfile -NonInteractive -Command "& '$ROOT_DIR/scripts/check-unwise-caches.ps1'"
+  exit_code=$?
+  if [ $exit_code -ne 0 ]; then
+    echo "Pre-commit checks failed (PowerShell). Aborting commit." >&2
+    exit $exit_code
+  fi
+else
+  echo "No suitable check script found. Skipping checks." >&2
+fi
+
+exit 0

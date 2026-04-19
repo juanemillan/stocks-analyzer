@@ -362,7 +362,17 @@ export function StockDetailPanel({
                     <ResponsiveContainer width="100%" height="100%">
                       <ComposedChart data={chartData} margin={{ top: 4, right: 32, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
-                        <XAxis dataKey="date" tick={{ fontSize: 11 }} minTickGap={28} tickMargin={6} />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fontSize: 11 }}
+                          minTickGap={28}
+                          tickMargin={6}
+                          tickFormatter={(v) =>
+                            rangeKey === "1D"
+                              ? new Date(v).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })
+                              : String(v).slice(0, 10)
+                          }
+                        />
                         <YAxis
                           yAxisId="price"
                           tick={{ fontSize: 11 }}

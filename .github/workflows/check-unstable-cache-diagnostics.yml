@@ -1,0 +1,37 @@
+name: Ensure unstable_cache has size diagnostics
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+
+jobs:
+  check_unstable_cache:
+    name: Check unstable_cache diagnostics
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify `unstable_cache` uses include Buffer.byteLength diagnostic
+        run: |
+          set -euo pipefail
+          echo "Searching for files that use unstable_cache..."
+          files=$(git grep -I -l --exclude-dir=.next --exclude-dir=node_modules -e "unstable_cache\(" -- '*.ts' '*.tsx' '*.js' '*.jsx' || true)
+          if [ -z "$files" ]; then
+            echo "No unstable_cache usages found."
+            exit 0
+          fi
+          echo "$files" | while read -r f; do
+            if [ -z "$f" ]; then continue; fi
+            if git grep -n "Buffer.byteLength" -- "$f" >/dev/null; then
+              echo "OK: $f contains Buffer.byteLength"
+            else
+              echo "ERROR: $f uses unstable_cache but contains no Buffer.byteLength diagnostics."
+              echo "-> Please add a pre-cache size check, e.g.: Buffer.byteLength(JSON.stringify(payload), 'utf8')"
+              echo
+              git --no-pager grep -n "unstable_cache\(|unstable_cache\s*\(" -- "$f" || true
+              exit 1
+            fi
+          done

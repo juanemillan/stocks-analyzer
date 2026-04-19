@@ -88,11 +88,13 @@ interface Props {
   lang: Lang;
   /** Call to let parent register a function that closes the sub-bar. */
   onSubBarRef?: (close: () => void) => void;
+  /** When true, hide the bottom nav (e.g. chat is open) */
+  chatOpen?: boolean;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export function BottomNavBar({ viewMode, setViewMode, lang, onSubBarRef }: Props) {
+export function BottomNavBar({ viewMode, setViewMode, lang, onSubBarRef, chatOpen = false }: Props) {
   const [subOpen, setSubOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -137,7 +139,7 @@ export function BottomNavBar({ viewMode, setViewMode, lang, onSubBarRef }: Props
   return (
     <>
       {/* ── Tap-anywhere overlay: closes sub-bar when user taps main content ── */}
-      {subOpen && (
+      {subOpen && !chatOpen && (
         <div
           className="fixed inset-0 z-[18] md:hidden"
           aria-hidden="true"
@@ -184,7 +186,9 @@ export function BottomNavBar({ viewMode, setViewMode, lang, onSubBarRef }: Props
 
       {/* ── Main nav bar ─────────────────────────────────────────────────── */}
       <nav
-        className="fixed bottom-[56px] inset-x-0 z-20 md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-[0_-2px_12px_rgba(0,0,0,0.06)]"
+        className={`fixed bottom-[56px] inset-x-0 z-20 md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-[0_-2px_12px_rgba(0,0,0,0.06)] ${
+          chatOpen ? "opacity-0 pointer-events-none" : ""
+        }`}
         aria-label="Main navigation"
       >
         <div className="flex h-[92px] max-w-lg mx-auto">

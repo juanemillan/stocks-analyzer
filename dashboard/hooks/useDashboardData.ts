@@ -4,6 +4,7 @@ import {
   getTurnarounds,
   getCompounders,
   getPrices,
+  getIntradayBars,
   getAccumulationZone,
   getFinnhubData,
 } from "@/app/actions";
@@ -158,7 +159,10 @@ export function useDashboardData() {
     setPricesLoading(true);
     setError(null);
     try {
-      setPrices((await getPrices(sym, days)) as PriceRow[]);
+      const data = days === 1
+        ? (await getIntradayBars(sym)) as PriceRow[]
+        : (await getPrices(sym, days)) as PriceRow[];
+      setPrices(data);
     } catch (e: any) {
       setError(e.message || String(e));
     } finally {

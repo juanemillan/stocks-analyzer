@@ -117,18 +117,30 @@ export function useChat(lang: string) {
       // Build the payload — last 10 messages + new user message
       const history = [...messages, userMsg].slice(-10).map(({ role, content }) => ({ role, content }));
 
+      // Detect language from the user input heuristically — prefer prompt language when ambiguous
+      function detectLanguage(s: string) {
+        // Quick heuristics: presence of inverted question/exclamation, common Spanish words, or accented chars
+        const spanishTokens = /\b(que|qué|por qué|por que|hola|gracias|buenos|tardes|mañana|usted|tu|tú)\b/i;
+        if (/[¿¡áéíóúñÁÉÍÓÚÑ]/.test(s)) return "es";
+        if (spanishTokens.test(s)) return "es";
+        return "en";
+      }
+
+      const detectedLang = detectLanguage(trimmed);
+      const langToSend = detectedLang || lang;
+
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: history, context: contextStr, lang }),
+          body: JSON.stringify({ messages: history, context: contextStr, lang: langToSend }),
         });
 
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
           if (res.status === 429 || errData?.error === "rate_limit") {
             const rateLimitMsg =
-              lang === "es"
+              langToSend === "es"
                 ? "⚠️ Demasiadas consultas por ahora. Esperá un momento e intentá de nuevo."
                 : "⚠️ Too many requests right now. Please wait a moment and try again.";
             setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: rateLimitMsg }]);
@@ -146,7 +158,7 @@ export function useChat(lang: string) {
       } catch (err) {
         console.error("[useChat] sendMessage error:", err);
         const networkMsg =
-          lang === "es"
+          lang === "es" || (typeof detectedLang !== "undefined" && detectedLang === "es")
             ? "⚠️ No pude conectarme al asistente. Verificá tu conexión e intentá de nuevo."
             : "⚠️ Couldn't reach the assistant. Check your connection and try again.";
         setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: networkMsg }]);

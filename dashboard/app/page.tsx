@@ -536,6 +536,7 @@ export default function Dashboard() {
         viewMode={data.viewMode}
         setViewMode={data.setViewMode}
         lang={lang}
+        chatOpen={chat.isOpen}
       />
 
       {auth.userEmail && (

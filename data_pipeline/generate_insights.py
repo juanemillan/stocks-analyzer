@@ -126,8 +126,13 @@ def upsert_insight(lang: str, content: str):
         },
         method="POST",
     )
-    with urllib.request.urlopen(req) as resp:
-        print(f"  ✅ Upserted {lang} insight → HTTP {resp.status}")
+    try:
+        with urllib.request.urlopen(req) as resp:
+            print(f"  ✅ Upserted {lang} insight → HTTP {resp.status}")
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode(errors="replace")
+        print(f"  ❌ Upsert failed → HTTP {exc.code}: {body}", file=sys.stderr)
+        raise
 
 
 def main():

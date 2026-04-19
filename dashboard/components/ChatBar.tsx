@@ -97,7 +97,10 @@ export function ChatBar({
 }: ChatBarProps) {
   const threadRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const inputBarRef = useRef<HTMLDivElement>(null);
   const hasMessages = messages.length > 0;
+  const [inputBarHeight, setInputBarHeight] = React.useState<number>(144);
+  const [isMobile, setIsMobile] = React.useState<boolean>(true);
 
   /* Auto-scroll to bottom when messages change */
   useEffect(() => {
@@ -106,15 +109,35 @@ export function ChatBar({
     }
   }, [messages, isThinking]);
 
-  const handleSubmit = useCallback(() => {
-    if (input.trim()) onSend(input, context);
+  /* Measure input bar so panel can reach it even when bottom nav hidden */
+  useEffect(() => {
+    function measure() {
+      const w = typeof window !== "undefined" ? window.innerWidth : 390;
+      setIsMobile(w < 768);
+      const h = inputBarRef.current?.getBoundingClientRect().height ?? 0;
+      // fallback to previous combined offset when measurement fails
+      setInputBarHeight(h > 0 ? Math.round(h) : 144);
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+
+  const handleSubmit = useCallback(async () => {
+    if (!input.trim()) return;
+    try {
+      await onSend(input, context);
+    } finally {
+      // keep input focused so user can continue typing
+      inputRef.current?.focus();
+    }
   }, [input, onSend, context]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        handleSubmit();
+        void handleSubmit();
       }
       if (e.key === "Escape") setIsOpen(false);
     },
@@ -131,7 +154,10 @@ export function ChatBar({
         <>
           {/* Backdrop (mobile only, tapping closes panel) */}
           <div
-            className="fixed inset-0 z-[21] md:hidden"
+            // Keep backdrop above content but above the input bar on mobile
+            // so tapping the input doesn't hit the backdrop and close the panel.
+            className="fixed inset-x-0 top-0 z-[21] md:hidden"
+            style={isMobile ? { bottom: `${inputBarHeight}px` } : undefined}
             onClick={() => setIsOpen(false)}
           />
 
@@ -139,13 +165,14 @@ export function ChatBar({
           <div
             className={[
               "animate-chat-panel",
-              // Mobile: full-width, sits between header and chat-bar+nav
-              "fixed inset-x-0 bottom-[144px] top-[57px]",
+              // Keep panel fixed and full-width on mobile; desktop adjustments follow with md: prefixed classes
+              "fixed inset-x-0",
               "md:bottom-[72px] md:top-auto md:right-6 md:left-auto md:w-[380px] md:h-[480px] md:rounded-2xl md:shadow-2xl",
               "z-[22] flex flex-col",
               "bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700",
               "md:border md:border-gray-200 md:dark:border-gray-700",
             ].join(" ")}
+            style={isMobile ? { bottom: `${inputBarHeight}px`, top: 57 } : undefined}
           >
             {/* Panel header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex-none">
@@ -217,6 +244,7 @@ export function ChatBar({
           Desktop: fixed floating pill bottom-right
       ─────────────────────────────────────────────────────────────────── */}
       <div
+        ref={inputBarRef}
         className={[
           // Mobile: full-width bar below nav
           "fixed inset-x-0 bottom-0 z-[19] md:hidden",
@@ -229,11 +257,8 @@ export function ChatBar({
           {/* Collapse caret when open, bot icon when closed */}
           <button
             onClick={() => {
-              if (isOpen) {
-                setIsOpen(false);
-              } else if (hasMessages) {
-                setIsOpen(true);
-              }
+              // Always toggle open — users expect the caret to open the conversation
+              setIsOpen((v) => !v);
             }}
             className="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-500 text-white flex-none shadow-sm active:scale-95 transition-transform"
             aria-label="Bullia AI"
@@ -255,7 +280,7 @@ export function ChatBar({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            onFocus={() => hasMessages && setIsOpen(true)}
+            onFocus={() => setIsOpen(true)}
             placeholder={t("chatPlaceholder", lang)}
             disabled={isThinking}
             className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full px-4 py-2 text-sm outline-none placeholder:text-gray-400 dark:placeholder:text-gray-500 text-gray-900 dark:text-gray-100 disabled:opacity-50 transition-colors"

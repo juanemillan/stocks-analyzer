@@ -10,7 +10,8 @@ jobs:
   intraday:
     name: Refresh intraday prices
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Increase timeout to handle occasional long-running network/data fetches
+    timeout-minutes: 15
 
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -28,6 +29,24 @@ jobs:
       - name: Install dependencies
         run: pip install psycopg2-binary yfinance python-dotenv numpy pandas
 
-      - name: Fetch intraday prices
+      - name: Fetch intraday prices (with retries)
         working-directory: data_pipeline
-        run: python fetch_intraday.py
+        run: |
+          set -euo pipefail
+          max_attempts=3
+          attempt=1
+          while [ $attempt -le $max_attempts ]; do
+            echo "Fetch attempt $attempt/$max_attempts"
+            if python fetch_intraday.py; then
+              echo "Fetch successful"
+              break
+            fi
+            if [ $attempt -eq $max_attempts ]; then
+              echo "All fetch attempts failed" >&2
+              exit 1
+            fi
+            sleep_time=$((attempt * 5))
+            echo "Attempt $attempt failed — retrying in ${sleep_time}s..."
+            sleep $sleep_time
+            attempt=$((attempt + 1))
+          done

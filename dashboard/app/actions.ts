@@ -66,7 +66,16 @@ export async function requestAsset(
 
 export const getRanking = unstable_cache(
     async () => {
-        const { rows } = await pool.query('SELECT * FROM v_assets_rank ORDER BY final_score DESC NULLS LAST');
+        // Select only the fields needed by the UI to keep the cached payload small.
+        // Avoids caching long text fields (e.g. description) and limits rows.
+        const { rows } = await pool.query(
+            `SELECT symbol, name, asset_type, racional_url, logo_url, website, sector, industry, country,
+                    date, final_score, bucket, mom_1w, mom_1m, mom_3m, mom_6m, mom_1y,
+                    rs_spy, tech_trend, liq_score, prev_score, score_delta
+             FROM v_assets_rank
+             ORDER BY final_score DESC NULLS LAST
+             LIMIT 1000`
+        );
         return rows.map(parseRow);
     },
     ['ranking'],
@@ -75,23 +84,64 @@ export const getRanking = unstable_cache(
 
 export const getTurnarounds = unstable_cache(
     async () => {
-        const { rows } = await pool.query('SELECT * FROM v_turnaround_candidates ORDER BY rebound_from_low DESC NULLS LAST');
-        return rows.map(parseRow);
+        const { rows } = await pool.query(
+            `SELECT symbol, name, asset_type, racional_url, date, close, rebound_from_low,
+                    mom_1m, mom_3m, vol_surge, liq_score
+             FROM v_turnaround_candidates
+             ORDER BY rebound_from_low DESC NULLS LAST
+             LIMIT 500`
+        );
+        const payload = rows.map(parseRow);
+        try {
+            const size = Buffer.byteLength(JSON.stringify(payload), 'utf8');
+            if (size > 1800000) console.warn('[unstable_cache:turnarounds] payload', size, 'bytes');
+        } catch {}
+        return payload;
     },
     ['turnarounds'],
     { revalidate: RANKING_TTL },
 );
 
 const _getCompounders1Y = unstable_cache(
-    async () => { const { rows } = await pool.query('SELECT * FROM v_compounders_1y'); return rows.map(parseRow); },
+    async () => {
+        const { rows } = await pool.query(
+            `SELECT symbol, name, asset_type, racional_url, first_close, last_close,
+                    cagr_1y, cagr_3y, cagr_5y, pos_month_ratio, max_drawdown, days_covered
+             FROM v_compounders_1y
+             LIMIT 500`
+        );
+        const payload = rows.map(parseRow);
+        try { const size = Buffer.byteLength(JSON.stringify(payload), 'utf8'); if (size > 1800000) console.warn('[unstable_cache:compounders-1y]', size, 'bytes'); } catch {}
+        return payload;
+    },
     ['compounders-1y'], { revalidate: RANKING_TTL },
 );
 const _getCompounders3Y = unstable_cache(
-    async () => { const { rows } = await pool.query('SELECT * FROM v_compounders_3y'); return rows.map(parseRow); },
+    async () => {
+        const { rows } = await pool.query(
+            `SELECT symbol, name, asset_type, racional_url, first_close, last_close,
+                    cagr_1y, cagr_3y, cagr_5y, pos_month_ratio, max_drawdown, days_covered
+             FROM v_compounders_3y
+             LIMIT 500`
+        );
+        const payload = rows.map(parseRow);
+        try { const size = Buffer.byteLength(JSON.stringify(payload), 'utf8'); if (size > 1800000) console.warn('[unstable_cache:compounders-3y]', size, 'bytes'); } catch {}
+        return payload;
+    },
     ['compounders-3y'], { revalidate: RANKING_TTL },
 );
 const _getCompounders5Y = unstable_cache(
-    async () => { const { rows } = await pool.query('SELECT * FROM v_compounders_5y'); return rows.map(parseRow); },
+    async () => {
+        const { rows } = await pool.query(
+            `SELECT symbol, name, asset_type, racional_url, first_close, last_close,
+                    cagr_1y, cagr_3y, cagr_5y, pos_month_ratio, max_drawdown, days_covered
+             FROM v_compounders_5y
+             LIMIT 500`
+        );
+        const payload = rows.map(parseRow);
+        try { const size = Buffer.byteLength(JSON.stringify(payload), 'utf8'); if (size > 1800000) console.warn('[unstable_cache:compounders-5y]', size, 'bytes'); } catch {}
+        return payload;
+    },
     ['compounders-5y'], { revalidate: RANKING_TTL },
 );
 
@@ -134,10 +184,55 @@ export async function getPrices(symbol: string, days: number) {
     }));
 }
 
+export async function getIntradayBars(symbol: string) {
+    const key = process.env.MASSIVE_API_KEY;
+    if (!key) throw new Error("MASSIVE_API_KEY not set");
+
+    // Try today first, then walk back up to 5 days to find the last trading day
+    // Free tier only allows previous session bars (no live/delayed today)
+    const dates: string[] = [];
+    const d = new Date();
+    for (let i = 0; i < 5; i++) {
+        // Skip weekends
+        if (d.getDay() !== 0 && d.getDay() !== 6) {
+            dates.push(d.toISOString().slice(0, 10));
+        }
+        d.setDate(d.getDate() - 1);
+    }
+
+    for (const dateStr of dates) {
+        const url = `https://api.massive.com/v2/aggs/ticker/${encodeURIComponent(symbol)}/range/5/minute/${dateStr}/${dateStr}?adjusted=true&sort=asc&limit=390&apiKey=${key}`;
+        const res = await fetch(url, { cache: "no-store" });
+
+        if (!res.ok) continue; // 403 plan limit or no data for that date
+
+        const json = await res.json();
+        if (!json.results?.length) continue; // no bars yet (market closed / holiday)
+
+        return json.results.map((r: any) => ({
+            date: new Date(r.t).toISOString(),
+            open: r.o,
+            high: r.h,
+            low: r.l,
+            close: r.c,
+            volume: r.v,
+        }));
+    }
+
+    return []; // nothing available
+}
+
 export const getAccumulationZone = unstable_cache(
     async () => {
-        const { rows } = await pool.query('SELECT * FROM v_accumulation_zone');
-        return rows.map(parseRow);
+        const { rows } = await pool.query(
+            `SELECT symbol, name, asset_type, racional_url, date, close,
+                    pct_above_52w_low, pct_from_52w_high, mom_1w, mom_1m, mom_3m, vol_surge, liq_score
+             FROM v_accumulation_zone
+             LIMIT 500`
+        );
+        const payload = rows.map(parseRow);
+        try { const size = Buffer.byteLength(JSON.stringify(payload), 'utf8'); if (size > 1800000) console.warn('[unstable_cache:accumulation]', size, 'bytes'); } catch {}
+        return payload;
     },
     ['accumulation'],
     { revalidate: RANKING_TTL },
