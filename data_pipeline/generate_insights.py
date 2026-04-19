@@ -28,11 +28,12 @@ OPENROUTER_API_KEY = os.environ["OPENROUTER_API_KEY"]
 
 TODAY = date.today().isoformat()
 
-# Models to try in order (free tier)
+# Models to try in order — instruction-following only, no reasoning/thinking models
 MODELS = [
-    "qwen/qwen3.6-plus:free",
-    "nvidia/nemotron-3-super-120b-a12b:free",
-    "stepfun/step-3.5-flash:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "mistralai/mistral-small-3.1-24b-instruct:free",
+    "google/gemma-3-12b-it:free",
+    "mistralai/mistral-7b-instruct:free",
 ]
 
 SYSTEM_PROMPT = """You are Bullia AI, a financial analysis assistant embedded in the Bullia stock-screening dashboard.
@@ -43,7 +44,8 @@ Generate a concise nightly market insight (3-5 bullets, 120-180 words) based on 
 - End with a one-line disclaimer
 - Use **bold** for ticker symbols and key terms
 - No markdown tables or numbered lists
-- Write only in the language specified by the user prompt"""
+- Write only in the language specified by the user prompt
+- Never output your reasoning process or thinking steps. Go directly to the final insight."""
 
 
 def fetch_ranking():
@@ -96,7 +98,10 @@ def call_openrouter(user_prompt: str) -> str | None:
                 timeout=30,
             )
             if res.ok:
-                content = res.json()["choices"][0]["message"]["content"].strip()
+                import re
+                raw = res.json()["choices"][0]["message"]["content"].strip()
+                # Strip <think>...</think> reasoning blocks emitted by some models
+                content = re.sub(r"<think>[\s\S]*?</think>", "", raw, flags=re.IGNORECASE).strip()
                 if content:
                     print(f"  ✅ Model {model} responded ({len(content)} chars)")
                     return content
