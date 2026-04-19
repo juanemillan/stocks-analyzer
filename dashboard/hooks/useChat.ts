@@ -60,16 +60,12 @@ export function useChat(lang: string) {
         });
 
         if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          if (res.status === 429 || errData?.error === "rate_limit") {
-            const rateLimitMsg =
-              langToSend === "es"
-                ? "⚠️ Demasiadas consultas por ahora. Esperá un momento e intentá de nuevo."
-                : "⚠️ Too many requests right now. Please wait a moment and try again.";
-            setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: rateLimitMsg }]);
-          } else {
-            throw new Error(`HTTP ${res.status}`);
-          }
+          // 503 = all providers exhausted; any other non-ok is unexpected
+          const unavailableMsg =
+            langToSend === "es"
+              ? "⚠️ El asistente no está disponible en este momento. Intentá de nuevo en unos segundos."
+              : "⚠️ The assistant is temporarily unavailable. Please try again in a few seconds.";
+          setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "assistant", content: unavailableMsg }]);
           return;
         }
 

@@ -16,6 +16,7 @@ function makeProviders(groqKey: string | undefined, orKey: string | undefined): 
       "llama-3.3-70b-versatile",
       "llama3-70b-8192",
       "gemma2-9b-it",
+      "llama-3.1-8b-instant",       // smaller/faster fallback within Groq
     ]) {
       providers.push({
         url: "https://api.groq.com/openai/v1/chat/completions",
@@ -33,6 +34,8 @@ function makeProviders(groqKey: string | undefined, orKey: string | undefined): 
       "meta-llama/llama-3.3-70b-instruct:free",
       "mistralai/mistral-small-3.1-24b-instruct:free",
       "google/gemma-3-12b-it:free",
+      "mistralai/mistral-7b-instruct:free",
+      "huggingfaceh4/zephyr-7b-beta:free",
     ]) {
       providers.push({
         url: "https://openrouter.ai/api/v1/chat/completions",
@@ -140,7 +143,9 @@ export async function POST(req: NextRequest) {
     ...augmentedMessages,
   ];
 
-  // Try each provider/model in the fallback chain (Groq first, OpenRouter second)
+  // Try each provider/model in the fallback chain (Groq first, OpenRouter second).
+  // 429 (rate limit) and 5xx always continue to the next — user never sees a rate limit
+  // error as long as any provider in the chain can respond.
   const providers = makeProviders(groqKey, orKey);
   let lastStatus = 502;
   for (const provider of providers) {
@@ -149,16 +154,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ content: result.content });
     }
     lastStatus = result.status;
-    // Stop on hard auth errors — won't be fixed by switching models
+    // Only hard auth/malformed-request errors are unrecoverable — stop immediately.
+    // Everything else (429, 404, 5xx) — keep trying the next provider.
     if (lastStatus === 401 || lastStatus === 403 || lastStatus === 400) break;
   }
 
-  // All models exhausted
-  if (lastStatus === 429) {
-    return NextResponse.json({ error: "rate_limit" }, { status: 429 });
-  }
+  // Every provider exhausted — surface a generic error, never expose rate limit details
   return NextResponse.json(
-    { error: `All models unavailable (last status: ${lastStatus}).` },
-    { status: 502 }
+    { error: "assistant_unavailable" },
+    { status: 503 }
   );
 }
