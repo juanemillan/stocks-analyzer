@@ -34,3 +34,7 @@ jobs:
       - name: Type-check
         working-directory: dashboard
         run: npx tsc --noEmit
+
+      - name: Unit tests
+        working-directory: dashboard
+        run: npm test
