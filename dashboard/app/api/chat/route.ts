@@ -43,6 +43,7 @@ async function tryModel(
         messages: orMessages,
         max_tokens: 600,
         temperature: 0.4,
+        include_reasoning: false,
       }),
     });
   } catch {
