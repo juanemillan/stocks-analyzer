@@ -258,7 +258,7 @@ export function ChatBar({
           <button
             onClick={() => {
               // Always toggle open — users expect the caret to open the conversation
-              setIsOpen((v) => !v);
+              setIsOpen(!isOpen);
             }}
             className="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-500 text-white flex-none shadow-sm active:scale-95 transition-transform"
             aria-label="Bullia AI"
