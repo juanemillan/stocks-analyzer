@@ -32,7 +32,7 @@ describe("LABELS", () => {
   it("no label has an empty string for either language", () => {
     const empty: string[] = [];
     for (const [key, val] of Object.entries(LABELS)) {
-      if (val.es === "" || val.en === "") empty.push(key);
+      if ((val.es as string) === "" || (val.en as string) === "") empty.push(key);
     }
     expect(empty).toEqual([]);
   });

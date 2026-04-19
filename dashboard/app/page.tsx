@@ -14,6 +14,7 @@ import { EditProfileModal } from "@/components/modals/EditProfileModal";
 import { ConnectRacionalModal } from "@/components/modals/ConnectRacionalModal";
 import { RequestAssetModal } from "@/components/modals/RequestAssetModal";
 import { requestAsset, getLatestInsight } from "./actions";
+import { computeDiversificationScore } from "@/lib/correlation";
 import type { AiInsight } from "./actions";
 import { StockDetailPanel } from "@/components/detail/StockDetailPanel";
 import { OverviewTab } from "@/components/tabs/OverviewTab";
@@ -95,50 +96,148 @@ export default function Dashboard() {
   const chatContext = React.useMemo(() => {
     const parts: string[] = [];
 
-    // Portfolio positions
-    if (portfolio.holdings.length > 0) {
-      const lines = portfolio.holdings
-        .filter((h) => !h.sold_at)
-        .map((h) => {
-          const price = portfolio.latestPrices[h.symbol]?.price;
-          const pnlPct =
-            h.avg_cost && price ? (((price - h.avg_cost) / h.avg_cost) * 100).toFixed(1) : "n/a";
-          return `${h.symbol}: ${h.shares} shares @ $${h.avg_cost ?? "?"}, current $${price ?? "?"}, P&L ${pnlPct}%`;
-        });
-      if (lines.length > 0) parts.push(`Portfolio positions:\n${lines.join("\n")}`);
+    // Active tab — helps the AI understand what the user is looking at
+    if (data.viewMode) {
+      parts.push(`Active tab: ${data.viewMode}`);
     }
 
-    // Full ranking context (Alta Convicción + top 20 total)
+    // Portfolio positions with badges
+    const activeHoldings = portfolio.holdings.filter((h) => !h.sold_at);
+    if (activeHoldings.length > 0) {
+      const lines = activeHoldings.map((h) => {
+        const price = portfolio.latestPrices[h.symbol]?.price;
+        const pnlPct =
+          h.avg_cost && price ? (((price - h.avg_cost) / h.avg_cost) * 100).toFixed(1) : "n/a";
+        const pnlAbs =
+          h.avg_cost && price ? ((price - h.avg_cost) * h.shares).toFixed(0) : "n/a";
+        const week7 = portfolio.weekChanges[h.symbol];
+        const overbought = portfolio.techSignals[h.symbol];
+        const pnlNum = pnlPct !== "n/a" ? parseFloat(pnlPct) : null;
+        const badges: string[] = [];
+        if (pnlNum !== null && pnlNum >= 20 && overbought) badges.push("💰 take-profit-signal");
+        if (pnlNum !== null && pnlNum <= -20) badges.push("👁️ review-signal");
+        if (week7 !== undefined && Math.abs(week7) >= 10) badges.push(`⚡ 7d=${week7.toFixed(1)}%`);
+        const badgeStr = badges.length ? ` [${badges.join(", ")}]` : "";
+        return `${h.symbol}: ${h.shares} shares @ $${h.avg_cost ?? "?"}, price $${price ?? "?"}, P&L ${pnlPct}% ($${pnlAbs})${badgeStr}`;
+      });
+      parts.push(`Portfolio (${activeHoldings.length} positions):\n${lines.join("\n")}`);
+
+      // Diversification score
+      if (portfolio.correlationData) {
+        const divScore = computeDiversificationScore(portfolio.correlationData);
+        parts.push(`Portfolio diversification score: ${divScore}/100 (100=uncorrelated, 0=all move together)`);
+      }
+    }
+
+    // Full ranking context (score_delta + rs_spy + more fields)
     if (data.rows.length > 0) {
       const high = data.rows.filter((r) => (r.final_score ?? 0) >= 0.7);
       const top20 = data.rows.slice(0, 20);
-      // Deduplicate: high conviction first, then fill to 20 with remaining
       const seen = new Set(high.map((r) => r.symbol));
       const combined = [...high, ...top20.filter((r) => !seen.has(r.symbol))].slice(0, 25);
       const lines = combined.map((r) =>
-        `${r.symbol} score=${r.final_score?.toFixed(3) ?? "?"} bucket=${r.bucket ?? "?"} mom1m=${r.mom_1m?.toFixed(2) ?? "?"} mom3m=${r.mom_3m?.toFixed(2) ?? "?"}`
+        [
+          `${r.symbol}`,
+          `score=${r.final_score?.toFixed(3) ?? "?"}`,
+          `Δ=${r.score_delta != null ? (r.score_delta > 0 ? "+" : "") + r.score_delta.toFixed(3) : "?"}`,
+          `bucket=${r.bucket ?? "?"}`,
+          `mom1m=${r.mom_1m?.toFixed(2) ?? "?"}`,
+          `mom3m=${r.mom_3m?.toFixed(2) ?? "?"}`,
+          `rs_spy=${r.rs_spy?.toFixed(2) ?? "?"}`,
+          `tech=${r.tech_trend?.toFixed(1) ?? "?"}`,
+          `liq=${r.liq_score?.toFixed(2) ?? "?"}`,
+        ].join(" ")
       );
-      parts.push(`Ranking (Alta Convicción + top 20):\n${lines.join("\n")}`);
+      parts.push(`Ranking (High Conviction + top 20):\n${lines.join("\n")}`);
     }
 
-    // Top turnarounds
+    // Top turnarounds with more detail
     if (data.turnRows.length > 0) {
-      const turns = data.turnRows.slice(0, 5).map(
-        (r) => `${r.symbol} rebound=${r.rebound_from_low?.toFixed(1) ?? "?"}%`
+      const turns = data.turnRows.slice(0, 8).map(
+        (r) =>
+          `${r.symbol} rebound=${r.rebound_from_low?.toFixed(1) ?? "?"}% mom1m=${r.mom_1m?.toFixed(2) ?? "?"} vol_surge=${r.vol_surge?.toFixed(1) ?? "?"}x`
       );
       parts.push(`Top turnarounds:\n${turns.join("\n")}`);
     }
 
-    // Currently viewed asset
+    // Accumulation zone
+    if (data.accumRows.length > 0) {
+      const accum = data.accumRows.slice(0, 5).map(
+        (r) =>
+          `${r.symbol} above_52w_low=${r.pct_above_52w_low?.toFixed(1) ?? "?"}% from_52w_high=${r.pct_from_52w_high?.toFixed(1) ?? "?"}% mom1m=${r.mom_1m?.toFixed(2) ?? "?"}`
+      );
+      parts.push(`Accumulation zone (top 5):\n${accum.join("\n")}`);
+    }
+
+    // Compounders
+    if (data.compoundRows.length > 0) {
+      const cmps = data.compoundRows.slice(0, 5).map(
+        (r) => {
+          const cagr = r.cagr_1y ?? r.cagr_3y ?? r.cagr_5y;
+          return `${r.symbol} CAGR=${cagr != null ? (cagr * 100).toFixed(1) + "%" : "?"} pos_months=${r.pos_month_ratio != null ? (r.pos_month_ratio * 100).toFixed(0) + "%" : "?"} maxDD=${r.max_drawdown?.toFixed(1) ?? "?"}%`;
+        }
+      );
+      parts.push(`Compounders (${data.cmpHorizon}, top 5):\n${cmps.join("\n")}`);
+    }
+
+    // Currently viewed asset — full detail including Finnhub fundamentals
     if (data.selected) {
       const s = data.selected;
-      parts.push(
-        `Currently viewing: ${s.symbol} (${s.name ?? ""}), score=${s.final_score?.toFixed(3) ?? "?"}, bucket=${s.bucket ?? "?"}, mom1m=${s.mom_1m?.toFixed(2) ?? "?"}`
-      );
+      const fields = [
+        `symbol=${s.symbol}`,
+        `name=${s.name ?? "?"}`,
+        `score=${s.final_score?.toFixed(3) ?? "?"}`,
+        `Δ=${s.score_delta != null ? (s.score_delta > 0 ? "+" : "") + s.score_delta.toFixed(3) : "?"}`,
+        `bucket=${s.bucket ?? "?"}`,
+        `mom1w=${s.mom_1w?.toFixed(2) ?? "?"}`,
+        `mom1m=${s.mom_1m?.toFixed(2) ?? "?"}`,
+        `mom3m=${s.mom_3m?.toFixed(2) ?? "?"}`,
+        `mom6m=${s.mom_6m?.toFixed(2) ?? "?"}`,
+        `mom1y=${s.mom_1y?.toFixed(2) ?? "?"}`,
+        `rs_spy=${s.rs_spy?.toFixed(2) ?? "?"}`,
+        `tech_trend=${s.tech_trend?.toFixed(1) ?? "?"}`,
+        `liq=${s.liq_score?.toFixed(2) ?? "?"}`,
+        s.sector ? `sector=${s.sector}` : null,
+      ].filter(Boolean).join(" ");
+      let detail = `Currently viewing: ${fields}`;
+      if (data.finnhubData?.metrics) {
+        const m = data.finnhubData.metrics;
+        const q = data.finnhubData.quote;
+        const fin = [
+          m.marketCapitalization ? `marketCap=${(m.marketCapitalization / 1e3).toFixed(1)}B` : null,
+          m.peBasicExclExtraTTM ? `P/E=${m.peBasicExclExtraTTM.toFixed(1)}` : null,
+          m.epsBasicExclExtraItemsTTM ? `EPS=${m.epsBasicExclExtraItemsTTM.toFixed(2)}` : null,
+          m.revenueGrowthTTMYoy ? `revGrowth=${(m.revenueGrowthTTMYoy).toFixed(1)}%` : null,
+          m["52WeekHigh"] ? `52wHigh=${m["52WeekHigh"].toFixed(2)}` : null,
+          m["52WeekLow"] ? `52wLow=${m["52WeekLow"].toFixed(2)}` : null,
+          m.dividendYieldIndicatedAnnual ? `divYield=${m.dividendYieldIndicatedAnnual.toFixed(2)}%` : null,
+          q ? `quote=${q.c.toFixed(2)} (${q.dp >= 0 ? "+" : ""}${q.dp.toFixed(2)}% today)` : null,
+        ].filter(Boolean).join(" ");
+        if (fin) detail += `\nFundamentals: ${fin}`;
+        if (data.finnhubData.recommendation) {
+          const r = data.finnhubData.recommendation;
+          detail += `\nAnalyst consensus: strongBuy=${r.strongBuy} buy=${r.buy} hold=${r.hold} sell=${r.sell} strongSell=${r.strongSell} (${r.period})`;
+        }
+      }
+      parts.push(detail);
     }
 
     return parts.length > 0 ? parts.join("\n\n") : undefined;
-  }, [portfolio.holdings, portfolio.latestPrices, data.rows, data.turnRows, data.selected]);
+  }, [
+    data.viewMode,
+    portfolio.holdings,
+    portfolio.latestPrices,
+    portfolio.weekChanges,
+    portfolio.techSignals,
+    portfolio.correlationData,
+    data.rows,
+    data.turnRows,
+    data.accumRows,
+    data.compoundRows,
+    data.cmpHorizon,
+    data.selected,
+    data.finnhubData,
+  ]);
 
   // Track previous view so profile back-button knows where to go
   useEffect(() => {
