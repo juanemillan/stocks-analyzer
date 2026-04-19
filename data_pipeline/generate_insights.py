@@ -132,7 +132,13 @@ def upsert_insight(lang: str, content: str):
     except urllib.error.HTTPError as exc:
         body = exc.read().decode(errors="replace")
         print(f"  ❌ Upsert failed → HTTP {exc.code}: {body}", file=sys.stderr)
-        raise
+        if exc.code == 404 and "PGRST205" in body:
+            print(
+                "  ⚠  Table 'ai_insights' not found in schema cache.\n"
+                "     Run supabase/migrations/007_ai_insights.sql in the Supabase SQL Editor.",
+                file=sys.stderr,
+            )
+        # Non-fatal: log and continue so the rest of the pipeline keeps running
 
 
 def main():
