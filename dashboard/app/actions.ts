@@ -440,22 +440,26 @@ export type PortfolioSnapshot = {
 };
 
 export async function getPortfolioSnapshots(userId: string, days = 90): Promise<PortfolioSnapshot[]> {
-    const { createClient } = await import('@/lib/supabase/server');
-    const supabase = createClient();
-    const since = new Date();
-    since.setDate(since.getDate() - days);
-    const { data, error } = await (await supabase)
-        .from('portfolio_snapshots')
-        .select('date, total_value, total_cost')
-        .eq('user_id', userId)
-        .gte('date', since.toISOString().slice(0, 10))
-        .order('date', { ascending: true });
-    if (error) throw new Error(error.message);
-    return (data ?? []).map((r) => ({
-        date: r.date,
-        total_value: Number(r.total_value),
-        total_cost: Number(r.total_cost),
-    }));
+    try {
+        const { createClient } = await import('@/lib/supabase/server');
+        const supabase = createClient();
+        const since = new Date();
+        since.setDate(since.getDate() - days);
+        const { data, error } = await (await supabase)
+            .from('portfolio_snapshots')
+            .select('date, total_value, total_cost')
+            .eq('user_id', userId)
+            .gte('date', since.toISOString().slice(0, 10))
+            .order('date', { ascending: true });
+        if (error) throw new Error(error.message);
+        return (data ?? []).map((r) => ({
+            date: r.date,
+            total_value: Number(r.total_value),
+            total_cost: Number(r.total_cost),
+        }));
+    } catch {
+        return [];
+    }
 }
 
 export type ScoreHistoryPoint = { date: string; final_score: number };
@@ -505,15 +509,19 @@ export interface AiInsight {
 }
 
 export async function getLatestInsight(lang: 'es' | 'en'): Promise<AiInsight | null> {
-    const { createClient } = await import('@/lib/supabase/server');
-    const supabase = createClient();
-    const { data, error } = await (await supabase)
-        .from('ai_insights')
-        .select('date, lang, content')
-        .eq('lang', lang)
-        .order('date', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-    if (error || !data) return null;
-    return { date: data.date, lang: data.lang, content: data.content };
+    try {
+        const { createClient } = await import('@/lib/supabase/server');
+        const supabase = createClient();
+        const { data, error } = await (await supabase)
+            .from('ai_insights')
+            .select('date, lang, content')
+            .eq('lang', lang)
+            .order('date', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        if (error || !data) return null;
+        return { date: data.date, lang: data.lang, content: data.content };
+    } catch {
+        return null;
+    }
 }
