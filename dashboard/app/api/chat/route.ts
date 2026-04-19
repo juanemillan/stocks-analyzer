@@ -2,18 +2,53 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFileSync } from "fs";
 import path from "path";
 
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const MAX_MESSAGES = 10;
 
-// Fallback chain — tried in order until one succeeds.
-// Avoid reasoning/thinking models: they output chain-of-thought as plain text
-// and cannot reliably be suppressed via system prompt or API flags.
-const FREE_MODELS = [
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "mistralai/mistral-small-3.1-24b-instruct:free",
-  "google/gemma-3-12b-it:free",
-  "stepfun/step-3.5-flash:free",
-];
+// Provider + model pairs tried in order until one succeeds.
+// Groq first: free tier, 30 req/min, extremely fast and reliable.
+// OpenRouter as fallback: shared free-tier pool, less reliable but broader model choice.
+type Provider = { url: string; model: string; headers: (key: string) => Record<string, string> };
+
+function makeProviders(groqKey: string | undefined, orKey: string | undefined): Array<Provider & { key: string }> {
+  const providers = [];
+  if (groqKey) {
+    for (const model of [
+      "llama-3.3-70b-versatile",
+      "llama3-70b-8192",
+      "gemma2-9b-it",
+    ]) {
+      providers.push({
+        url: "https://api.groq.com/openai/v1/chat/completions",
+        model,
+        key: groqKey,
+        headers: (key: string) => ({
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        }),
+      });
+    }
+  }
+  if (orKey) {
+    for (const model of [
+      "meta-llama/llama-3.3-70b-instruct:free",
+      "mistralai/mistral-small-3.1-24b-instruct:free",
+      "google/gemma-3-12b-it:free",
+    ]) {
+      providers.push({
+        url: "https://openrouter.ai/api/v1/chat/completions",
+        model,
+        key: orKey,
+        headers: (key: string) => ({
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://bullia.app",
+          "X-Title": "Bullia AI",
+        }),
+      });
+    }
+  }
+  return providers;
+}
 
 // Load AGENT.md once at module init (file is in the dashboard root)
 let systemPrompt: string;
@@ -24,27 +59,20 @@ try {
     "You are Bullia AI, a financial analysis assistant. Always add a disclaimer that your responses are informational only and not financial advice.";
 }
 
-async function tryModel(
-  model: string,
-  orMessages: object[],
-  apiKey: string
+async function tryProvider(
+  provider: Provider & { key: string },
+  messages: object[],
 ): Promise<{ content: string } | { status: number }> {
   let res: Response;
   try {
-    res = await fetch(OPENROUTER_URL, {
+    res = await fetch(provider.url, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://bullia.app",
-        "X-Title": "Bullia AI",
-      },
+      headers: provider.headers(provider.key),
       body: JSON.stringify({
-        model,
-        messages: orMessages,
+        model: provider.model,
+        messages,
         max_tokens: 600,
         temperature: 0.4,
-        include_reasoning: false,
       }),
     });
   } catch {
@@ -52,7 +80,7 @@ async function tryModel(
   }
 
   if (!res.ok) {
-    console.warn(`[chat/route] model ${model} returned ${res.status}`);
+    console.warn(`[chat/route] ${provider.model} → ${res.status}`);
     return { status: res.status };
   }
   const data = await res.json();
@@ -65,10 +93,12 @@ async function tryModel(
 }
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
+  const groqKey = process.env.GROQ_API_KEY;
+  const orKey = process.env.OPENROUTER_API_KEY;
+
+  if (!groqKey && !orKey) {
     return NextResponse.json(
-      { error: "OPENROUTER_API_KEY is not configured." },
+      { error: "No AI provider configured. Set GROQ_API_KEY or OPENROUTER_API_KEY." },
       { status: 500 }
     );
   }
@@ -110,17 +140,16 @@ export async function POST(req: NextRequest) {
     ...augmentedMessages,
   ];
 
-  // Try each model in the fallback chain
+  // Try each provider/model in the fallback chain (Groq first, OpenRouter second)
+  const providers = makeProviders(groqKey, orKey);
   let lastStatus = 502;
-  for (const model of FREE_MODELS) {
-    const result = await tryModel(model, orMessages, apiKey);
+  for (const provider of providers) {
+    const result = await tryProvider(provider, orMessages);
     if ("content" in result) {
       return NextResponse.json({ content: result.content });
     }
     lastStatus = result.status;
-    // Stop only on hard auth/request errors (401, 403, 400) — these won't be
-    // fixed by switching models. For 404 (model not found), 429 (rate limit),
-    // or any 5xx, always try the next model.
+    // Stop on hard auth errors — won't be fixed by switching models
     if (lastStatus === 401 || lastStatus === 403 || lastStatus === 400) break;
   }
 
