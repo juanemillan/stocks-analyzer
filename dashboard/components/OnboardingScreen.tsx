@@ -30,7 +30,7 @@ export function OnboardingScreen({ lang, onDone }: Props) {
 
         {/* Logo + tagline */}
         <div className="flex flex-col items-center gap-3">
-          <BulliaLogo className="h-10" />
+          <BulliaLogo dark={false} />
           <p className="text-sm text-gray-500 text-center">
             {lang === "es" ? "El dashboard que los inversores independientes merecen." : "The dashboard independent investors deserve."}
           </p>
