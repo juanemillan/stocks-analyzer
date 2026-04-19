@@ -54,7 +54,10 @@ async function tryModel(
     return { status: res.status };
   }
   const data = await res.json();
-  const content: string = data?.choices?.[0]?.message?.content ?? "";
+  const raw: string = data?.choices?.[0]?.message?.content ?? "";
+  if (!raw) return { status: 502 };
+  // Strip <think>...</think> reasoning blocks emitted by some models (e.g. Qwen3)
+  const content = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
   if (!content) return { status: 502 };
   return { content };
 }
