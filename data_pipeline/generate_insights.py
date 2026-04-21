@@ -16,6 +16,8 @@ import json
 import psycopg2
 import requests
 from datetime import date
+from supabase import create_client, Client
+import os
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 from dotenv import load_dotenv
@@ -46,6 +48,9 @@ Generate a concise nightly market insight (3-5 bullets, 120-180 words) based on 
 - No markdown tables or numbered lists
 - Write only in the language specified by the user prompt
 - Never output your reasoning process or thinking steps. Go directly to the final insight."""
+
+# Initialize Supabase client (service role key required)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
 def fetch_ranking():
@@ -112,38 +117,84 @@ def call_openrouter(user_prompt: str) -> str | None:
     return None
 
 
-def upsert_insight(lang: str, content: str):
-    import urllib.request
-    url = f"{SUPABASE_URL}/rest/v1/ai_insights"
-    payload = json.dumps({
-        "date": TODAY,
-        "lang": lang,
-        "content": content,
-    }).encode()
-    req = urllib.request.Request(
-        url,
-        data=payload,
-        headers={
-            "apikey": SUPABASE_KEY,
-            "Authorization": f"Bearer {SUPABASE_KEY}",
-            "Content-Type": "application/json",
-            "Prefer": "resolution=merge-duplicates",
-        },
-        method="POST",
-    )
+def upsert_insight(lang: str, content: str, rows):
+    """Upsert both the legacy `ai_insights` and the new `daily_insights` record.
+
+    `rows` is the ranking rows used to compute simple aggregates stored in `daily_insights`.
+    """
+    # Legacy: keep existing REST upsert to `ai_insights` for compatibility
     try:
+        import urllib.request
+        url = f"{SUPABASE_URL}/rest/v1/ai_insights"
+        payload = json.dumps({
+            "date": TODAY,
+            "lang": lang,
+            "content": content,
+        }).encode()
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}",
+                "Content-Type": "application/json",
+                "Prefer": "resolution=merge-duplicates",
+            },
+            method="POST",
+        )
         with urllib.request.urlopen(req) as resp:
-            print(f"  ✅ Upserted {lang} insight → HTTP {resp.status}")
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode(errors="replace")
-        print(f"  ❌ Upsert failed → HTTP {exc.code}: {body}", file=sys.stderr)
-        if exc.code == 404 and "PGRST205" in body:
-            print(
-                "  ⚠  Table 'ai_insights' not found in schema cache.\n"
-                "     Run supabase/migrations/007_ai_insights.sql in the Supabase SQL Editor.",
-                file=sys.stderr,
-            )
-        # Non-fatal: log and continue so the rest of the pipeline keeps running
+            print(f"  ✅ Upserted {lang} insight (legacy ai_insights) → HTTP {resp.status}")
+    except Exception as exc:
+        print(f"  ⚠ Legacy ai_insights upsert failed: {exc}", file=sys.stderr)
+
+    # Compute simple aggregate scores from ranking rows
+    try:
+        scores = [r[2] for r in rows if r[2] is not None]
+        avg_score = float(sum(scores) / len(scores)) if scores else None
+    except Exception:
+        avg_score = None
+
+    if avg_score is None:
+        sentiment_score = None
+        sentiment_label = None
+    else:
+        sentiment_score = avg_score
+        if sentiment_score >= 0.6:
+            sentiment_label = "Bullish"
+        elif sentiment_score <= 0.4:
+            sentiment_label = "Bearish"
+        else:
+            sentiment_label = "Neutral"
+
+    # Short summary: first non-empty line or first 160 chars
+    first_line = next((ln for ln in (l.strip() for l in content.splitlines()) if ln), "")
+    sentiment_summary = (first_line[:180] + "...") if first_line and len(first_line) > 180 else first_line
+
+    record = {
+        "date": TODAY,
+        "sentiment_score": sentiment_score,
+        "sentiment_label": sentiment_label,
+        "sentiment_summary": sentiment_summary,
+        "top_news": None,
+        "aggregate_scores": {"avg_score": sentiment_score, "count": len(rows)},
+        "notable_events": None,
+        "ai_insight": content,
+        "whale_activity": None,
+        "reviewer_feedback": None,
+        "raw_data": {"ranking_text": build_ranking_text(rows)},
+        "version": "v1",
+    }
+
+    # Upsert into Supabase `daily_insights` using the service role key
+    try:
+        res = supabase.table("daily_insights").upsert(record).execute()
+        # supabase-py returns a tuple-like response; check for error
+        if hasattr(res, "status_code") and res.status_code >= 400:
+            print(f"  ❌ daily_insights upsert failed → HTTP {res.status_code}", file=sys.stderr)
+        else:
+            print("  ✅ Upserted daily_insights record via Supabase client")
+    except Exception as exc:
+        print(f"  ❌ daily_insights upsert error: {exc}", file=sys.stderr)
 
 
 def main():
