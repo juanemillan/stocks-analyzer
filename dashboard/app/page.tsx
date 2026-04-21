@@ -13,9 +13,8 @@ import { AddHoldingModal } from "@/components/modals/AddHoldingModal";
 import { EditProfileModal } from "@/components/modals/EditProfileModal";
 import { ConnectRacionalModal } from "@/components/modals/ConnectRacionalModal";
 import { RequestAssetModal } from "@/components/modals/RequestAssetModal";
-import { requestAsset, getLatestInsight } from "./actions";
+import { requestAsset } from "./actions";
 import { computeDiversificationScore } from "@/lib/correlation";
-import type { AiInsight } from "./actions";
 import { StockDetailPanel } from "@/components/detail/StockDetailPanel";
 import { OverviewTab } from "@/components/tabs/OverviewTab";
 import { RankingTab } from "@/components/tabs/RankingTab";
@@ -86,11 +85,70 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watchlistUserId]);
 
-  // AI nightly insight
-  const [insight, setInsight] = React.useState<AiInsight | null>(null);
+  // Warm shared server caches after sign-in (non-blocking).
+  const warmedRef = React.useRef(false);
   React.useEffect(() => {
-    getLatestInsight(lang).then(setInsight).catch(() => {});
-  }, [lang]);
+    if (!auth.userEmail || warmedRef.current) return;
+    warmedRef.current = true;
+    fetch("/api/warm-cache", { method: "POST" }).catch(() => {});
+  }, [auth.userEmail]);
+
+  // Global "jump to symbol" search (works beyond top-1000 ranking list).
+  const [jumpQ, setJumpQ] = useState("");
+  const [jumpErr, setJumpErr] = useState<string | null>(null);
+  const [jumpBusy, setJumpBusy] = useState(false);
+  const [jumpMobileOpen, setJumpMobileOpen] = useState(false);
+  const [jumpDropOpen, setJumpDropOpen] = useState(false);
+  const [jumpResults, setJumpResults] = useState<any[]>([]);
+  const jumpBlurRef = React.useRef<number | null>(null);
+  async function jumpToSymbol(raw: string) {
+    const q = raw.trim().toUpperCase();
+    if (!q) return;
+    setJumpBusy(true);
+    setJumpErr(null);
+    try {
+      const res = await fetch(`/api/asset/${encodeURIComponent(q)}`);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) {
+        setJumpErr(res.status === 404 ? "Not found" : "Error");
+        return;
+      }
+      const a = json.asset as any;
+      data.openFromSymbol(a.symbol, a.name ?? null, a.asset_type ?? null, a.racional_url ?? null, a);
+    } catch {
+      setJumpErr("Error");
+    } finally {
+      setJumpBusy(false);
+    }
+  }
+
+  // Live dropdown: search beyond the top-1000 list.
+  React.useEffect(() => {
+    const q = jumpQ.trim();
+    if (!q) { setJumpResults([]); return; }
+
+    // Local suggestions first (within loaded top-1000).
+    const ql = q.toLowerCase();
+    const local = data.rows
+      .filter((r) => r.symbol.toLowerCase().includes(ql) || (r.name ?? "").toLowerCase().includes(ql))
+      .slice(0, 8);
+    setJumpResults(local as any[]);
+
+    // Remote suggestions (debounced) for anything beyond loaded list.
+    const t = window.setTimeout(() => {
+      fetch(`/api/assets/search?q=${encodeURIComponent(q)}`)
+        .then((r) => r.json())
+        .then((j) => {
+          if (!j?.ok || !Array.isArray(j.results)) return;
+          // Merge by symbol; keep local order first.
+          const seen = new Set(local.map((x) => x.symbol));
+          const merged = [...local, ...j.results.filter((x: any) => !seen.has(x.symbol))].slice(0, 8);
+          setJumpResults(merged);
+        })
+        .catch(() => {});
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [jumpQ, data.rows]);
 
   // Build context string for the AI — refreshed whenever holdings, prices or ranking change
   const chatContext = React.useMemo(() => {
@@ -394,6 +452,61 @@ export default function Dashboard() {
             <div className="hidden md:block">
               <SlidingTabBar viewMode={data.viewMode} setViewMode={data.setViewMode} lang={lang} />
             </div>
+            {/* Global symbol search (desktop) */}
+            <div className="hidden md:block">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  jumpToSymbol(jumpQ);
+                }}
+                className="relative"
+              >
+                <input
+                  value={jumpQ}
+                  onChange={(e) => setJumpQ(e.target.value)}
+                  placeholder={lang === "es" ? "Buscar símbolo…" : "Search symbol…"}
+                  className="w-44 lg:w-56 rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-neutral-900 dark:border-neutral-700"
+                  onFocus={() => {
+                    if (jumpBlurRef.current) window.clearTimeout(jumpBlurRef.current);
+                    setJumpDropOpen(true);
+                  }}
+                  onBlur={() => {
+                    jumpBlurRef.current = window.setTimeout(() => setJumpDropOpen(false), 150);
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={jumpBusy}
+                  title={lang === "es" ? "Ir" : "Go"}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-50"
+                >
+                  ↵
+                </button>
+                {jumpDropOpen && jumpResults.length > 0 && (
+                  <ul className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-xl shadow-lg max-h-56 overflow-y-auto origin-top transition duration-150 animate-fadeIn">
+                    {jumpResults.map((r: any) => (
+                      <li
+                        key={r.symbol}
+                        onMouseDown={() => {
+                          setJumpQ(r.symbol);
+                          setJumpDropOpen(false);
+                          jumpToSymbol(r.symbol);
+                        }}
+                        className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-neutral-800 first:rounded-t-xl last:rounded-b-xl transition-colors duration-100"
+                      >
+                        <span className="font-mono font-semibold w-16 shrink-0 text-xs">{r.symbol}</span>
+                        <span className="text-gray-500 truncate text-xs">{r.name ?? "—"}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {jumpErr && (
+                  <div className="absolute left-0 top-full mt-1 text-[11px] text-red-500">
+                    {jumpErr}
+                  </div>
+                )}
+              </form>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {/* All controls — desktop only */}
@@ -422,6 +535,18 @@ export default function Dashboard() {
                 ?
               </button>
             </div>
+            {/* Mobile: symbol search toggle */}
+            <button
+              onClick={() => setJumpMobileOpen((v) => !v)}
+              title={lang === "es" ? "Buscar símbolo" : "Search symbol"}
+              className="md:hidden w-8 h-8 flex items-center justify-center rounded-lg border dark:border-neutral-600 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-all duration-150 active:scale-95 text-gray-600 dark:text-gray-300"
+              aria-label={lang === "es" ? "Buscar símbolo" : "Search symbol"}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M21 21l-4.3-4.3" />
+              </svg>
+            </button>
             {/* Profile avatar — mobile: navigate to profile view | desktop: dropdown */}
             {auth.userEmail && (
               <div className="relative md:block" ref={auth.userMenuRef}>
@@ -489,6 +614,66 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+
+        {/* Mobile: expanded symbol search row (animated) */}
+        <div
+          className={`md:hidden grid transition-all duration-200 ease-out ${jumpMobileOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+        >
+          <div className={`overflow-hidden max-w-6xl mx-auto px-4 ${jumpMobileOpen ? "py-3" : "py-0"} transition-all duration-200 ease-out`}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                jumpToSymbol(jumpQ);
+              }}
+              className="flex items-center gap-2 relative"
+            >
+              <input
+                value={jumpQ}
+                onChange={(e) => setJumpQ(e.target.value)}
+                placeholder={lang === "es" ? "Buscar símbolo…" : "Search symbol…"}
+                className="flex-1 rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-neutral-900 dark:border-neutral-700"
+                autoCapitalize="characters"
+                onFocus={() => {
+                  if (jumpBlurRef.current) window.clearTimeout(jumpBlurRef.current);
+                  setJumpDropOpen(true);
+                }}
+                onBlur={() => {
+                  jumpBlurRef.current = window.setTimeout(() => setJumpDropOpen(false), 150);
+                }}
+              />
+              <button
+                type="submit"
+                disabled={jumpBusy}
+                className="rounded-xl px-3 py-2 text-sm font-semibold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-60 transition-colors"
+              >
+                {lang === "es" ? "Ir" : "Go"}
+              </button>
+              {jumpDropOpen && jumpResults.length > 0 && (
+                <div className="fixed flex flex-1 z-50 left-0 right-0 top-24 mt-6 bg-transparent pointer-events-none">
+                  <div className="max-w-6xl mx-auto px-4 pointer-events-auto">
+                    <ul className="bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-xl shadow-lg max-h-70 overflow-y-auto origin-top transition duration-150 animate-fadeIn">
+                      {jumpResults.map((r: any) => (
+                        <li
+                          key={r.symbol}
+                          onMouseDown={() => {
+                            setJumpQ(r.symbol);
+                            setJumpDropOpen(false);
+                            jumpToSymbol(r.symbol);
+                          }}
+                          className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-neutral-800 first:rounded-t-xl last:rounded-b-xl transition-colors duration-100"
+                        >
+                          <span className="font-mono font-semibold w-16 shrink-0 text-xs">{r.symbol}</span>
+                          <span className="text-gray-500 truncate text-xs">{r.name ?? "—"}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </form>
+            {jumpErr && <div className="mt-1 text-[11px] text-red-500">{jumpErr}</div>}
+          </div>
+        </div>
       </header>
 
       {/* Main */}
@@ -510,7 +695,6 @@ export default function Dashboard() {
             setViewMode={data.setViewMode}
             onOpen={data.handleOpen}
             onOpenFromSymbol={data.openFromSymbol}
-            insight={insight}
             onAskFollowUp={(text) => { chat.sendMessage(text, chatContext); chat.setIsOpen(true); }}
           />
         )}
