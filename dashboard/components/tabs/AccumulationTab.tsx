@@ -2,7 +2,7 @@
 import { t } from "@/app/i18n";
 import type { Lang, AccumRow, RankRow } from "@/app/types";
 import { PaginationBar } from "@/components/ui/PaginationBar";
-import { logoSrc } from "@/lib/stockUtils";
+import { SymbolLogo } from "@/components/ui/SymbolLogo";
 
 interface AccumulationTabProps {
   accumRows: AccumRow[];
@@ -93,9 +93,7 @@ export function AccumulationTab({
                 >
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
-                        <img src={logoSrc(ar.symbol)} alt={ar.symbol} className="w-full h-full object-cover" />
-                      </div>
+                      <SymbolLogo symbol={ar.symbol} size={28} />
                       <span className="font-semibold">{ar.symbol}</span>
                     </div>
                   </td>

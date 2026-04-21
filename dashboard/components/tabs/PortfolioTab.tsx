@@ -3,7 +3,7 @@ import { useState, useMemo } from "react";
 import { t } from "@/app/i18n";
 import type { Lang, RankRow } from "@/app/types";
 import { InfoBox } from "@/components/ui/InfoBox";
-import { logoSrc, type Holding } from "@/lib/stockUtils";
+import type { Holding } from "@/lib/stockUtils";
 import { SymbolLogo } from "@/components/ui/SymbolLogo";
 import { CorrelationPanel } from "@/components/portfolio/CorrelationPanel";
 import type { CorrelationResult } from "@/lib/correlation";
@@ -452,9 +452,7 @@ export function PortfolioTab({
                   {/* Row 1: logo + symbol + tags | P&L% + delete */}
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <div className="w-8 h-8 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
-                        <img src={logoSrc(h.symbol)} alt={h.symbol} className="w-full h-full object-cover" />
-                      </div>
+                      <SymbolLogo symbol={h.symbol} size={32} />
                       <button
                         className="font-bold text-sm hover:underline flex-none"
                         onClick={() => {
@@ -603,9 +601,7 @@ export function PortfolioTab({
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full border border-gray-200 bg-white overflow-hidden flex-none">
-                            <img src={logoSrc(h.symbol)} alt={h.symbol} className="w-full h-full object-cover" />
-                          </div>
+                          <SymbolLogo symbol={h.symbol} size={28} />
                           <button
                             className="font-semibold hover:underline"
                             onClick={() => {
