@@ -135,19 +135,29 @@ export default function Dashboard() {
       const top20 = data.rows.slice(0, 20);
       const seen = new Set(high.map((r) => r.symbol));
       const combined = [...high, ...top20.filter((r) => !seen.has(r.symbol))].slice(0, 25);
-      const lines = combined.map((r) =>
-        [
+      // Build a CAGR lookup from compounders so ranking rows can show long-term returns
+      const cagrMap = new Map(
+        data.compoundRows.map((c) => [c.symbol, { cagr_1y: c.cagr_1y, cagr_3y: c.cagr_3y, cagr_5y: c.cagr_5y }])
+      );
+      const lines = combined.map((r) => {
+        const cagr = cagrMap.get(r.symbol);
+        return [
           `${r.symbol}`,
           `score=${r.final_score?.toFixed(3) ?? "?"}`,
           `Δ=${r.score_delta != null ? (r.score_delta > 0 ? "+" : "") + r.score_delta.toFixed(3) : "?"}`,
           `bucket=${r.bucket ?? "?"}`,
           `mom1m=${r.mom_1m?.toFixed(2) ?? "?"}`,
           `mom3m=${r.mom_3m?.toFixed(2) ?? "?"}`,
+          `mom6m=${r.mom_6m?.toFixed(2) ?? "?"}`,
+          `mom1y=${r.mom_1y?.toFixed(2) ?? "?"}`,
           `rs_spy=${r.rs_spy?.toFixed(2) ?? "?"}`,
           `tech=${r.tech_trend?.toFixed(1) ?? "?"}`,
           `liq=${r.liq_score?.toFixed(2) ?? "?"}`,
-        ].join(" ")
-      );
+          cagr?.cagr_1y != null ? `cagr1y=${(cagr.cagr_1y * 100).toFixed(1)}%` : null,
+          cagr?.cagr_3y != null ? `cagr3y=${(cagr.cagr_3y * 100).toFixed(1)}%` : null,
+          cagr?.cagr_5y != null ? `cagr5y=${(cagr.cagr_5y * 100).toFixed(1)}%` : null,
+        ].filter(Boolean).join(" ");
+      });
       parts.push(`Ranking (High Conviction + top 20):\n${lines.join("\n")}`);
     }
 
@@ -155,29 +165,31 @@ export default function Dashboard() {
     if (data.turnRows.length > 0) {
       const turns = data.turnRows.slice(0, 8).map(
         (r) =>
-          `${r.symbol} rebound=${r.rebound_from_low?.toFixed(1) ?? "?"}% mom1m=${r.mom_1m?.toFixed(2) ?? "?"} vol_surge=${r.vol_surge?.toFixed(1) ?? "?"}x`
+          `${r.symbol} rebound=${r.rebound_from_low?.toFixed(1) ?? "?"}% mom1m=${r.mom_1m?.toFixed(2) ?? "?"} mom3m=${r.mom_3m?.toFixed(2) ?? "?"} vol_surge=${r.vol_surge?.toFixed(1) ?? "?"}x`
       );
       parts.push(`Top turnarounds:\n${turns.join("\n")}`);
     }
 
     // Accumulation zone
     if (data.accumRows.length > 0) {
-      const accum = data.accumRows.slice(0, 5).map(
+      const accum = data.accumRows.slice(0, 8).map(
         (r) =>
-          `${r.symbol} above_52w_low=${r.pct_above_52w_low?.toFixed(1) ?? "?"}% from_52w_high=${r.pct_from_52w_high?.toFixed(1) ?? "?"}% mom1m=${r.mom_1m?.toFixed(2) ?? "?"}`
+          `${r.symbol} above_52w_low=${r.pct_above_52w_low?.toFixed(1) ?? "?"}% from_52w_high=${r.pct_from_52w_high?.toFixed(1) ?? "?"}% mom1m=${r.mom_1m?.toFixed(2) ?? "?"} mom3m=${r.mom_3m?.toFixed(2) ?? "?"}`
       );
-      parts.push(`Accumulation zone (top 5):\n${accum.join("\n")}`);
+      parts.push(`Accumulation zone (top 8):\n${accum.join("\n")}`);
     }
 
-    // Compounders
+    // Compounders — show all three CAGR horizons and top 15
     if (data.compoundRows.length > 0) {
-      const cmps = data.compoundRows.slice(0, 5).map(
-        (r) => {
-          const cagr = r.cagr_1y ?? r.cagr_3y ?? r.cagr_5y;
-          return `${r.symbol} CAGR=${cagr != null ? (cagr * 100).toFixed(1) + "%" : "?"} pos_months=${r.pos_month_ratio != null ? (r.pos_month_ratio * 100).toFixed(0) + "%" : "?"} maxDD=${r.max_drawdown?.toFixed(1) ?? "?"}%`;
-        }
-      );
-      parts.push(`Compounders (${data.cmpHorizon}, top 5):\n${cmps.join("\n")}`);
+      const cmps = data.compoundRows.slice(0, 15).map((r) => {
+        const cagrParts = [
+          r.cagr_1y != null ? `cagr1y=${(r.cagr_1y * 100).toFixed(1)}%` : null,
+          r.cagr_3y != null ? `cagr3y=${(r.cagr_3y * 100).toFixed(1)}%` : null,
+          r.cagr_5y != null ? `cagr5y=${(r.cagr_5y * 100).toFixed(1)}%` : null,
+        ].filter(Boolean).join(" ");
+        return `${r.symbol} ${cagrParts} pos_months=${r.pos_month_ratio != null ? (r.pos_month_ratio * 100).toFixed(0) + "%" : "?"} maxDD=${r.max_drawdown?.toFixed(1) ?? "?"}%`;
+      });
+      parts.push(`Compounders (${data.cmpHorizon}, top 15):\n${cmps.join("\n")}`);
     }
 
     // Currently viewed asset — full detail including Finnhub fundamentals
@@ -217,6 +229,12 @@ export default function Dashboard() {
         if (data.finnhubData.recommendation) {
           const r = data.finnhubData.recommendation;
           detail += `\nAnalyst consensus: strongBuy=${r.strongBuy} buy=${r.buy} hold=${r.hold} sell=${r.sell} strongSell=${r.strongSell} (${r.period})`;
+        }
+        if (data.finnhubData.ownership && data.finnhubData.ownership.length > 0) {
+          const holders = data.finnhubData.ownership
+            .map((h) => `${h.name} ${h.sharePercent.toFixed(2)}% (${h.change >= 0 ? "+" : ""}${h.change.toLocaleString()} shares, ${h.filingDate})`)
+            .join("; ");
+          detail += `\nTop institutional holders (whales): ${holders}`;
         }
       }
       parts.push(detail);

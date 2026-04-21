@@ -104,4 +104,5 @@ export type FinnhubData = {
     "52WeekHigh": number | null;
     "52WeekLow": number | null;
   } | null;
+  ownership: { name: string; sharePercent: number; change: number; filingDate: string }[] | null;
 };

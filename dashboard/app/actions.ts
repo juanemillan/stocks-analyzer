@@ -300,9 +300,10 @@ export async function getFinnhubData(symbol: string): Promise<{
     recommendation: FinnhubRec | null;
     quote: FinnhubQuote | null;
     metrics: FinnhubMetrics | null;
+    ownership: { name: string; sharePercent: number; change: number; filingDate: string }[] | null;
 }> {
     const key = process.env.FINNHUB_API_KEY;
-    if (!key) return { news: [], recommendation: null, quote: null, metrics: null };
+    if (!key) return { news: [], recommendation: null, quote: null, metrics: null, ownership: null };
 
     const to = new Date();
     const from = new Date();
@@ -310,7 +311,7 @@ export async function getFinnhubData(symbol: string): Promise<{
     const fromStr = from.toISOString().slice(0, 10);
     const toStr = to.toISOString().slice(0, 10);
 
-    const [newsRes, recRes, quoteRes, metricRes] = await Promise.all([
+    const [newsRes, recRes, quoteRes, metricRes, ownerRes] = await Promise.all([
         fetch(
             `https://finnhub.io/api/v1/company-news?symbol=${encodeURIComponent(symbol)}&from=${fromStr}&to=${toStr}&token=${key}`,
             { next: { revalidate: 300 } }
@@ -327,6 +328,10 @@ export async function getFinnhubData(symbol: string): Promise<{
             `https://finnhub.io/api/v1/stock/metric?symbol=${encodeURIComponent(symbol)}&metric=all&token=${key}`,
             { next: { revalidate: 3600 } }
         ),
+        fetch(
+            `https://finnhub.io/api/v1/stock/ownership?symbol=${encodeURIComponent(symbol)}&limit=5&token=${key}`,
+            { next: { revalidate: 86400 } }  // 13F filings are quarterly — cache 24h
+        ),
     ]);
 
     const news: FinnhubNewsItem[] = newsRes.ok ? (await newsRes.json()).slice(0, 5) : [];
@@ -340,8 +345,11 @@ export async function getFinnhubData(symbol: string): Promise<{
     const quote: FinnhubQuote | null = quoteData && quoteData.c ? quoteData : null;
     const metricData = metricRes.ok ? await metricRes.json() : null;
     const metrics: FinnhubMetrics | null = metricData?.metric ?? null;
+    const ownerData = ownerRes.ok ? await ownerRes.json() : null;
+    const ownership: { name: string; sharePercent: number; change: number; filingDate: string }[] | null =
+        Array.isArray(ownerData?.data) && ownerData.data.length > 0 ? ownerData.data : null;
 
-    return { news, recommendation, quote, metrics };
+    return { news, recommendation, quote, metrics, ownership };
 }
 
 // ===== Racional Portfolio Sync =====
