@@ -46,3 +46,9 @@ data_pipeline/logs/
 data-2/
 data/
 download_binance_data.py
+
+# SpecStory
+.specstory/
+
+# Cursor
+.cursor/
