@@ -186,7 +186,7 @@ export function useDashboardData() {
   // Tab persistence via URL hash
   useEffect(() => {
     const hash = window.location.hash.slice(1) as ViewMode;
-    const valid: ViewMode[] = ["overview", "ranking", "turnarounds", "accumulation", "compounders", "portfolio"];
+    const valid: ViewMode[] = ["overview", "diary", "ranking", "turnarounds", "accumulation", "compounders", "portfolio"];
     setViewMode(valid.includes(hash) ? hash : "overview");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

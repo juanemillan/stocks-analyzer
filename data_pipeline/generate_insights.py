@@ -17,7 +17,6 @@ import psycopg2
 import requests
 from datetime import date
 from supabase import create_client, Client
-import os
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 from dotenv import load_dotenv
@@ -185,9 +184,10 @@ def upsert_insight(lang: str, content: str, rows):
         "version": "v1",
     }
 
-    # Upsert into Supabase `daily_insights` using the service role key
+    # Upsert into Supabase `daily_insights` keyed by date and language.
     try:
-        res = supabase.table("daily_insights").upsert(record).execute()
+        record["lang"] = lang
+        res = supabase.table("daily_insights").upsert(record, on_conflict="date,lang").execute()
         # supabase-py returns a tuple-like response; check for error
         if hasattr(res, "status_code") and res.status_code >= 400:
             print(f"  ❌ daily_insights upsert failed → HTTP {res.status_code}", file=sys.stderr)
@@ -216,7 +216,7 @@ def main():
         user_prompt = f"{lang_instruction}\n\nToday's ranking data ({TODAY}):\n{ranking_text}"
         content = call_openrouter(user_prompt)
         if content:
-            upsert_insight(lang, content)
+            upsert_insight(lang, content, rows)
         else:
             print(f"  ❌ Failed to generate {lang} insight")
 

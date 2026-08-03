@@ -1,4 +1,22 @@
-export type ViewMode = "overview" | "ranking" | "turnarounds" | "accumulation" | "compounders" | "portfolio" | "profile" | "favorites";
+export type ViewMode = "overview" | "diary" | "ranking" | "turnarounds" | "accumulation" | "compounders" | "portfolio" | "profile" | "favorites";
+
+export type DailyInsight = {
+  id?: number;
+  date: string;
+  lang: Lang;
+  sentiment_score: number | null;
+  sentiment_label: string | null;
+  sentiment_summary: string | null;
+  top_news: unknown | null;
+  aggregate_scores: { avg_score?: number | null; count?: number | null } | null;
+  notable_events: string | null;
+  ai_insight: string | null;
+  whale_activity: unknown | null;
+  reviewer_feedback: string | null;
+  raw_data: { ranking_text?: string | null } | null;
+  version: string | null;
+  created_at?: string | null;
+};
 
 export type RankRow = {
   symbol: string;

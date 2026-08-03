@@ -6,6 +6,7 @@ import type { Lang, ViewMode } from "@/app/types";
 type TabDef = { key: ViewMode; label: (lang: Lang) => string };
 const TAB_DEFS: TabDef[] = [
   { key: "overview",     label: (lang) => t("tabOverview", lang) },
+  { key: "diary",        label: (lang) => t("tabDiary", lang) },
   { key: "ranking",      label: () => "Ranking" },
   { key: "turnarounds",  label: () => "Turnarounds" },
   { key: "accumulation", label: (lang) => lang === "es" ? "Acumulación" : "Accumulation" },

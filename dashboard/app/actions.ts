@@ -9,6 +9,29 @@ import { unstable_cache } from 'next/cache';
 // Data updates once daily via the pipeline; 2h TTL = ≤12 DB hits/day worst case.
 const RANKING_TTL = 7200; // 2 hours in seconds
 
+async function requireUser(expectedUserId?: string) {
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || (expectedUserId && user.id !== expectedUserId)) {
+        throw new Error('Unauthorized');
+    }
+    return user;
+}
+
+async function requireAdmin() {
+    const user = await requireUser();
+    const adminEmail = process.env.ADMIN_EMAIL ?? process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+    if (!adminEmail || user.email?.toLowerCase() !== adminEmail.toLowerCase()) {
+        throw new Error('Forbidden');
+    }
+}
+
+function escapeHtml(value: string) {
+    const replacements: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+    return value.replace(/[&<>"]/g, (char) => replacements[char]);
+}
+
 // pg returns numeric columns as strings; coerce them back to numbers
 function parseRow(row: Record<string, unknown>) {
     const result: Record<string, unknown> = {};
@@ -23,11 +46,15 @@ export async function requestAsset(
     symbol: string,
     reason: string,
 ): Promise<void> {
+    await requireUser(userId);
+    const normalizedSymbol = symbol.trim().toUpperCase();
+    if (!/^[A-Z0-9._-]{1,15}$/.test(normalizedSymbol)) throw new Error('Invalid symbol');
+    const normalizedReason = reason.trim().slice(0, 1000);
     await pool.query(
         `INSERT INTO asset_requests (user_id, symbol, reason)
          VALUES ($1, $2, $3)
          ON CONFLICT DO NOTHING`,
-        [userId, symbol.toUpperCase(), reason || null],
+        [userId, normalizedSymbol, normalizedReason || null],
     );
 
     // Send email notification to the admin if Resend is configured
@@ -43,11 +70,11 @@ export async function requestAsset(
             const result = await resend.emails.send({
                 from: 'Stocks Analyzer <onboarding@resend.dev>',
                 to: adminEmail,
-                subject: `[Stocks Analyzer] Asset request: ${symbol.toUpperCase()}`,
+                subject: `[Stocks Analyzer] Asset request: ${normalizedSymbol}`,
                 html: `
                     <h2>New asset request</h2>
-                    <p><strong>Symbol:</strong> ${symbol.toUpperCase()}</p>
-                    <p><strong>Reason:</strong> ${reason || '(no reason provided)'}</p>
+                    <p><strong>Symbol:</strong> ${normalizedSymbol}</p>
+                    <p><strong>Reason:</strong> ${escapeHtml(normalizedReason) || '(no reason provided)'}</p>
                     <p><strong>User ID:</strong> ${userId}</p>
                     <hr/>
                     <p style="color:#888;font-size:12px">Submitted via Stocks Analyzer dashboard</p>
@@ -359,6 +386,7 @@ export async function syncRacionalPortfolio(
     _password?: string,
     _replaceSold?: boolean,
 ): Promise<{ synced: number; holdings: unknown[]; queued: true }> {
+    await requireUser(userId);
     const githubToken = process.env.GITHUB_TOKEN;
     const githubRepo  = process.env.GITHUB_REPO ?? 'juanemillan/stocks-analyzer';
 
@@ -400,6 +428,7 @@ export type AlertRule = {
 };
 
 export async function getAlertRules(userId: string): Promise<AlertRule[]> {
+    await requireUser(userId);
     const { createClient } = await import('@/lib/supabase/server');
     const supabase = createClient();
     const { data, error } = await (await supabase)
@@ -417,6 +446,7 @@ export async function upsertAlertRule(
     type: AlertRule['type'],
     threshold: number,
 ): Promise<void> {
+    await requireUser(userId);
     const { createClient } = await import('@/lib/supabase/server');
     const supabase = createClient();
     const { error } = await (await supabase)
@@ -429,6 +459,7 @@ export async function upsertAlertRule(
 }
 
 export async function deleteAlertRule(userId: string, ruleId: string): Promise<void> {
+    await requireUser(userId);
     const { createClient } = await import('@/lib/supabase/server');
     const supabase = createClient();
     const { error } = await (await supabase)
@@ -448,6 +479,7 @@ export type PortfolioSnapshot = {
 };
 
 export async function getPortfolioSnapshots(userId: string, days = 90): Promise<PortfolioSnapshot[]> {
+    await requireUser(userId);
     try {
         const { createClient } = await import('@/lib/supabase/server');
         const supabase = createClient();
@@ -494,6 +526,7 @@ export interface AssetRequest {
 }
 
 export async function getAssetRequests(): Promise<AssetRequest[]> {
+    await requireAdmin();
     const { rows } = await pool.query<AssetRequest>(
         `SELECT id::text, user_id, symbol, reason, status, created_at::text
          FROM asset_requests
@@ -504,32 +537,10 @@ export async function getAssetRequests(): Promise<AssetRequest[]> {
 }
 
 export async function updateAssetRequestStatus(id: string, status: AssetRequestStatus): Promise<void> {
+    await requireAdmin();
+    if (!['pending', 'added', 'rejected'].includes(status)) throw new Error('Invalid status');
     await pool.query(
         `UPDATE asset_requests SET status = $1 WHERE id = $2`,
         [status, id],
     );
-}
-
-export interface AiInsight {
-    date: string;
-    lang: string;
-    content: string;
-}
-
-export async function getLatestInsight(lang: 'es' | 'en'): Promise<AiInsight | null> {
-    try {
-        const { createClient } = await import('@/lib/supabase/server');
-        const supabase = createClient();
-        const { data, error } = await (await supabase)
-            .from('ai_insights')
-            .select('date, lang, content')
-            .eq('lang', lang)
-            .order('date', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-        if (error || !data) return null;
-        return { date: data.date, lang: data.lang, content: data.content };
-    } catch {
-        return null;
-    }
 }

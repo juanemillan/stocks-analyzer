@@ -27,6 +27,16 @@ function IconRanking({ bold }: { bold?: boolean }) {
   );
 }
 
+function IconDiary({ bold }: { bold?: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={bold ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 4h9l3 3v13H6z" />
+      <path d="M15 4v3h3" />
+      <path d="M9 11h6M9 15h6" />
+    </svg>
+  );
+}
+
 function IconStrategies({ bold }: { bold?: boolean }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={bold ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
@@ -210,6 +220,15 @@ export function BottomNavBar({ viewMode, setViewMode, lang, onSubBarRef, chatOpe
             </span>
             <span className={`text-xs leading-none ${isRanking && !subOpen ? "font-semibold" : "font-medium"}`}>
               Ranking
+            </span>
+          </button>
+
+          <button onClick={() => { closeSubBar(); setViewMode("diary"); }} className={btnCls(viewMode === "diary")}>
+            <span className={`flex items-center justify-center w-12 h-9 rounded-xl transition-colors ${viewMode === "diary" ? activePill : ""}`}>
+              <IconDiary bold={viewMode === "diary"} />
+            </span>
+            <span className={`text-xs leading-none ${viewMode === "diary" ? "font-semibold" : "font-medium"}`}>
+              {lang === "es" ? "Diario" : "Diary"}
             </span>
           </button>
 
