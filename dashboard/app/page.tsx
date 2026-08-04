@@ -17,6 +17,7 @@ import { requestAsset } from "./actions";
 import { computeDiversificationScore } from "@/lib/correlation";
 import { StockDetailPanel } from "@/components/detail/StockDetailPanel";
 import { OverviewTab } from "@/components/tabs/OverviewTab";
+import { DiaryTab } from "@/components/tabs/DiaryTab";
 import { RankingTab } from "@/components/tabs/RankingTab";
 import { TurnaroundsTab } from "@/components/tabs/TurnaroundsTab";
 import { AccumulationTab } from "@/components/tabs/AccumulationTab";
@@ -696,6 +697,12 @@ export default function Dashboard() {
             onOpen={data.handleOpen}
             onOpenFromSymbol={data.openFromSymbol}
             onAskFollowUp={(text) => { chat.sendMessage(text, chatContext); chat.setIsOpen(true); }}
+          />
+        )}
+
+        {data.viewMode === "diary" && (
+          <DiaryTab
+            lang={lang}
           />
         )}
 

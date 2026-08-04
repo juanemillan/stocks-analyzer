@@ -25,7 +25,6 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // Refresh the session (important — do not remove)
   const {
     data: { user },
   } = await supabase.auth.getUser();

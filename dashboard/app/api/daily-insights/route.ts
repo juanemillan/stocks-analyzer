@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(_req: NextRequest) {
-  const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export async function GET(req: NextRequest) {
+  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
+  const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const lang = req.nextUrl.searchParams.get("lang") === "en" ? "en" : "es";
 
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     return NextResponse.json({ error: "supabase_not_configured" }, { status: 500 });
   }
 
-  const url = `${SUPABASE_URL}/rest/v1/daily_insights?select=*&order=date.desc&limit=100`;
+  const params = new URLSearchParams({
+    select: "date,lang,sentiment_score,sentiment_label,sentiment_summary,aggregate_scores,ai_insight,version,created_at",
+    lang: `eq.${lang}`,
+    order: "date.desc",
+    limit: "100",
+  });
+  const url = `${SUPABASE_URL}/rest/v1/daily_insights?${params}`;
   try {
     const res = await fetch(url, {
       headers: {
