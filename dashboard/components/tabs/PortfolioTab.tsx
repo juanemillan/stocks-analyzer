@@ -31,6 +31,7 @@ interface PortfolioTabProps {
   weekChanges: Record<string, number>;
   techSignals: Record<string, boolean>;
   onShowConnectRacional: () => void;
+  canSyncRacional: boolean;
   onShowRequestAsset: () => void;
   racionalSyncing: boolean;
   racionalSyncError: string | null;
@@ -57,6 +58,7 @@ export function PortfolioTab({
   weekChanges,
   techSignals,
   onShowConnectRacional,
+  canSyncRacional,
   onShowRequestAsset,
   racionalSyncing,
   racionalSyncError,
@@ -246,8 +248,7 @@ export function PortfolioTab({
               </svg>
               {t("portRequestAsset", lang)}
             </button>
-            {/* Racional connect */}
-            <button
+            {canSyncRacional && <button
               onClick={onShowConnectRacional}
               disabled={racionalSyncing}
               title={lastRacionalSync ? `Ãšltimo sync: ${lastRacionalSync.toLocaleTimeString()}` : "Importar desde Racional"}
@@ -271,7 +272,7 @@ export function PortfolioTab({
                 onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
               />
               <span className="sr-only">Racional</span>
-            </button>
+            </button>}
             <button
               onClick={onShowAddHolding}
               className="rounded-xl px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm transition-colors duration-150"
@@ -284,13 +285,13 @@ export function PortfolioTab({
         {/* Mobile: collapsible action buttons */}
         <div className={`grid transition-all duration-300 ease-in-out md:hidden ${actionsOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
           <div className="overflow-hidden">
-            <div className="grid grid-cols-3 gap-2 pt-3">
-              <button
+            <div className={`grid ${canSyncRacional ? "grid-cols-3" : "grid-cols-2"} gap-2 pt-3`}>
+              {canSyncRacional && <button
                 onClick={() => { setActionsOpen(false); onShowAddHolding(); }}
                 className="flex items-center justify-center gap-1 rounded-2xl px-2 py-3 text-xs font-medium bg-emerald-500 hover:bg-emerald-600 text-white transition-colors duration-150"
               >
                 {t("portAddHolding", lang)}
-              </button>
+              </button>}
               <button
                 onClick={() => { setActionsOpen(false); onShowConnectRacional(); }}
                 disabled={racionalSyncing}

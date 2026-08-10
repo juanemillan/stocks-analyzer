@@ -25,6 +25,7 @@ async function requireAdmin() {
     if (!adminEmail || user.email?.toLowerCase() !== adminEmail.toLowerCase()) {
         throw new Error('Forbidden');
     }
+    return user;
 }
 
 function escapeHtml(value: string) {
@@ -454,7 +455,8 @@ export async function syncRacionalPortfolio(
     _password?: string,
     _replaceSold?: boolean,
 ): Promise<{ synced: number; holdings: unknown[]; queued: true }> {
-    await requireUser(userId);
+    const admin = await requireAdmin();
+    if (admin.id !== userId) throw new Error('Forbidden');
     const githubToken = process.env.GITHUB_TOKEN;
     const githubRepo  = process.env.GITHUB_REPO ?? 'juanemillan/stocks-analyzer';
 

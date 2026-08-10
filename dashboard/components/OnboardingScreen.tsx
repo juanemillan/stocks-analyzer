@@ -12,13 +12,13 @@ const STEPS = {
   es: [
     { icon: "📊", title: "Ranking inteligente", desc: "Más de 500 activos ordenados por score compuesto de momentum, liquidez y tendencia técnica." },
     { icon: "⚡", title: "Turnarounds & Compounders", desc: "Detectamos rebotes desde mínimos de 52 semanas y activos con crecimiento compuesto históricamente sostenido." },
-    { icon: "💼", title: "Tu cartera en tiempo real", desc: "Añade tus posiciones, conecta Racional y sigue tu P&L actualizado con precios de mercado." },
+    { icon: "💼", title: "Tu cartera en tiempo real", desc: "Añade tus posiciones y sigue tu P&L actualizado con precios de mercado." },
     { icon: "🔔", title: "Alertas personalizadas", desc: "Configura stop-loss, take-profit o alertas de precio para cualquier activo. Recibirás push notifications." },
   ],
   en: [
     { icon: "📊", title: "Smart ranking", desc: "500+ assets ranked by a composite score of momentum, liquidity, and technical trend." },
     { icon: "⚡", title: "Turnarounds & Compounders", desc: "We detect bounces from 52-week lows and assets with historically sustained compound growth." },
-    { icon: "💼", title: "Your portfolio, live", desc: "Add your positions, connect Racional, and track your P&L updated with live market prices." },
+    { icon: "💼", title: "Your portfolio, live", desc: "Add your positions and track your P&L updated with live market prices." },
     { icon: "🔔", title: "Custom alerts", desc: "Set stop-loss, take-profit, or price alerts for any asset. You'll receive push notifications." },
   ],
 };

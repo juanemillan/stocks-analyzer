@@ -51,6 +51,7 @@ export default function Dashboard() {
   const data = useDashboardData();
   const portfolio = usePortfolio();
   const auth = useAuth();
+  const isAdmin = !!process.env.NEXT_PUBLIC_ADMIN_EMAIL && auth.userEmail === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
   const { watchlist, toggle: toggleWatchlist, bulkAdd: bulkAddWatchlist, userId: watchlistUserId } = useWatchlist();
   const chat = useChat(lang);
   const alerts = useAlerts();
@@ -369,13 +370,13 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-50">
       <LegendModal open={showLegend} onClose={() => setShowLegend(false)} lang={lang} />
 
-      <ConnectRacionalModal
+      {isAdmin && <ConnectRacionalModal
         open={portfolio.showConnectRacional}
         syncing={portfolio.racionalSyncing}
         error={portfolio.racionalSyncError}
         onClose={() => portfolio.setShowConnectRacional(false)}
         onConnect={portfolio.syncFromRacional}
-      />
+      />}
 
       <RequestAssetModal
         open={showRequestAsset}
@@ -843,6 +844,7 @@ export default function Dashboard() {
             weekChanges={portfolio.weekChanges}
             techSignals={portfolio.techSignals}
             onShowConnectRacional={() => portfolio.setShowConnectRacional(true)}
+            canSyncRacional={isAdmin}
             onShowRequestAsset={() => setShowRequestAsset(true)}
             racionalSyncing={portfolio.racionalSyncing}
             racionalSyncError={portfolio.racionalSyncError}
@@ -877,7 +879,7 @@ export default function Dashboard() {
             onShowLegend={() => setShowLegend(true)}
             onReload={handleReload}
             loading={data.loading}
-            isAdmin={!!process.env.NEXT_PUBLIC_ADMIN_EMAIL && auth.userEmail === process.env.NEXT_PUBLIC_ADMIN_EMAIL}
+            isAdmin={isAdmin}
           />
         )}
 
