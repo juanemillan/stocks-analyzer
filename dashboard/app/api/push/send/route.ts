@@ -3,18 +3,25 @@ import webpush from "web-push";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
+  const vapidSubject = process.env.VAPID_SUBJECT;
+  const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+  if (!vapidSubject || !vapidPublicKey || !vapidPrivateKey) {
+    return NextResponse.json({ error: "push_not_configured" }, { status: 503 });
+  }
+
   // Set VAPID details here (not at module level) so env vars are available at runtime
   webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT!,
-    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-    process.env.VAPID_PRIVATE_KEY!
+    vapidSubject,
+    vapidPublicKey,
+    vapidPrivateKey
   );
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const title = body.title ?? "Bullia Test";
+  const title = typeof body.title === "string" ? body.title.slice(0, 120) : "Bullia Test";
   const message = body.body ?? "Push notifications are working! 🎉";
 
   const { data: subs, error } = await supabase

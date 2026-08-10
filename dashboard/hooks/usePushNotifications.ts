@@ -19,6 +19,7 @@ export function usePushNotifications() {
   const [state, setState] = useState<PushState>("unsubscribed");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [testStatus, setTestStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -128,6 +129,20 @@ export function usePushNotifications() {
     }
   };
 
-  return { state, loading, errorMsg, subscribe, unsubscribe };
+  const sendTest = async () => {
+    setErrorMsg(null);
+    setTestStatus("sending");
+    try {
+      const res = await fetch("/api/push/send", { method: "POST" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.sent) throw new Error(body.error ?? "No se pudo enviar la prueba.");
+      setTestStatus("sent");
+    } catch (err) {
+      setTestStatus("error");
+      setErrorMsg(err instanceof Error ? err.message : "No se pudo enviar la prueba.");
+    }
+  };
+
+  return { state, loading, errorMsg, testStatus, subscribe, unsubscribe, sendTest };
 }
 
