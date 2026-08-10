@@ -14,7 +14,7 @@ jobs:
   typecheck:
     name: tsc --noEmit
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -35,6 +35,18 @@ jobs:
         working-directory: dashboard
         run: npx tsc --noEmit
 
+      - name: Lint
+        working-directory: dashboard
+        run: npm run lint
+
       - name: Unit tests
         working-directory: dashboard
         run: npm test
+
+      - name: Production build
+        working-directory: dashboard
+        env:
+          # Public build-time placeholders. Vercel supplies the real values at runtime.
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+        run: npm run build

@@ -1,9 +1,12 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
+import ThemeToggle from "@/components/ThemeToggle";
 
 // Password rules (signup only)
 const RULES = [
@@ -172,14 +175,17 @@ export default function LoginPage() {
           />
         </>
       )}  
-      {/* subtle darkening overlay so the card stays readable over any photo */}
-      <div className="absolute inset-0 bg-black/10 dark:bg-black/50" aria-hidden />
-      <div className="relative w-full max-w-sm bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-2xl shadow-xl p-8">
+      {/* Neutralize busy areas of the image so text remains readable. */}
+      <div className="absolute inset-0 bg-slate-950/20 dark:bg-black/60" aria-hidden />
+      <div className="relative w-full max-w-sm rounded-2xl border border-white/40 bg-white/95 p-8 shadow-2xl backdrop-blur-md dark:border-white/10 dark:bg-gray-950/95">
+        <div className="absolute right-4 top-4">
+          <ThemeToggle />
+        </div>
         {/* Logo / title */}
         <div className="mb-6 text-center">
           <BulliaLogo dark={mounted && resolvedTheme === "dark"} />
           <h1 className="text-2xl font-bold tracking-tight">BULLIA</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
             {mode === "login" ? "Sign in to your account"
              : mode === "signup" ? "Create a new account"
              : "Reset your password"}
@@ -213,7 +219,7 @@ export default function LoginPage() {
                 type="button"
                 tabIndex={-1}
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white text-xs"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? "Hide" : "Show"}
@@ -226,7 +232,7 @@ export default function LoginPage() {
             <div className="text-right -mt-1">
               <button
                 type="button"
-                className="text-xs text-gray-400 hover:text-gray-700 underline"
+                className="text-xs text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white underline"
                 onClick={() => { setError(null); setInfo(null); setMode("forgot"); }}
               >
                 Forgot your password?
@@ -344,27 +350,27 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading || (mode === "signup" && !allRulesPassed)}
-            className="mt-1 w-full rounded-xl py-2 bg-black text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity duration-200"
+            className="mt-1 w-full rounded-xl bg-black py-2 text-sm font-medium text-white transition-opacity duration-200 hover:opacity-90 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:opacity-100 dark:disabled:bg-gray-700 dark:disabled:text-gray-300"
           >
             {loading ? "…" : mode === "login" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link"}
           </button>
         </form>
 
-        <p className="text-center text-xs text-gray-500 mt-5">
+        <p className="mt-5 text-center text-xs text-gray-600 dark:text-gray-300">
           {mode === "forgot" ? (
             <>
               Remember it?{" "}
-              <button className="underline hover:text-gray-800" onClick={() => { setError(null); setInfo(null); setMode("login"); }}>Back to sign in</button>
+              <button className="underline hover:text-gray-900 dark:hover:text-white" onClick={() => { setError(null); setInfo(null); setMode("login"); }}>Back to sign in</button>
             </>
           ) : mode === "login" ? (
             <>
               No account?{" "}
-              <button className="underline hover:text-gray-800" onClick={() => { setError(null); setInfo(null); setMode("signup"); }}>Sign up</button>
+              <button className="underline hover:text-gray-900 dark:hover:text-white" onClick={() => { setError(null); setInfo(null); setMode("signup"); }}>Sign up</button>
             </>
           ) : (
             <>
               Already have one?{" "}
-              <button className="underline hover:text-gray-800" onClick={() => { setError(null); setInfo(null); setMode("login"); }}>Sign in</button>
+              <button className="underline hover:text-gray-900 dark:hover:text-white" onClick={() => { setError(null); setInfo(null); setMode("login"); }}>Sign in</button>
             </>
           )}
         </p>

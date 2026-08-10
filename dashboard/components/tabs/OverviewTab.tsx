@@ -50,7 +50,7 @@ export function OverviewTab({
         <div className="bg-white border rounded-2xl overflow-hidden shadow-sm">
           <div className="flex items-center justify-between px-4 py-3 border-b bg-emerald-50 dark:bg-emerald-950/40">
             <span className="font-semibold text-emerald-900 dark:text-emerald-300">{t("topRanking", lang)}</span>
-            <button onClick={() => setViewMode("ranking")} className="text-xs text-emerald-600 hover:underline">
+            <button onClick={() => setViewMode("ranking")} className="text-xs text-emerald-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded dark:text-emerald-300">
               {t("seeAll", lang)}
             </button>
           </div>
@@ -83,7 +83,7 @@ export function OverviewTab({
         <div className="bg-white border rounded-2xl overflow-hidden shadow-sm">
           <div className="flex items-center justify-between px-4 py-3 border-b bg-amber-50 dark:bg-amber-950/40">
             <span className="font-semibold text-amber-900 dark:text-amber-300">{t("topTurnarounds", lang)}</span>
-            <button onClick={() => setViewMode("turnarounds")} className="text-xs text-amber-600 hover:underline">
+            <button onClick={() => setViewMode("turnarounds")} className="text-xs text-amber-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded dark:text-amber-300">
               {t("seeAll", lang)}
             </button>
           </div>
@@ -117,7 +117,7 @@ export function OverviewTab({
         <div className="bg-white border rounded-2xl overflow-hidden shadow-sm">
           <div className="flex items-center justify-between px-4 py-3 border-b bg-emerald-50 dark:bg-emerald-950/40">
             <span className="font-semibold text-emerald-900 dark:text-emerald-300">{t("topCompounders", lang)}</span>
-            <button onClick={() => setViewMode("compounders")} className="text-xs text-emerald-600 hover:underline">
+            <button onClick={() => setViewMode("compounders")} className="text-xs text-emerald-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded dark:text-emerald-300">
               {t("seeAll", lang)}
             </button>
           </div>

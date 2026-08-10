@@ -9,6 +9,7 @@ import {
   ReferenceLine,
   CartesianGrid,
 } from "recharts";
+import { useTheme } from "next-themes";
 import type { PortfolioSnapshot } from "@/app/actions";
 import type { Lang } from "@/app/types";
 
@@ -29,6 +30,8 @@ function fmtDate(dateStr: string, lang: Lang) {
 }
 
 export function PortfolioPerformanceChart({ snapshots, lang }: Props) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
   if (!snapshots.length) return null;
 
   const cost = snapshots[0]?.total_cost ?? 0;
@@ -74,7 +77,7 @@ export function PortfolioPerformanceChart({ snapshots, lang }: Props) {
 
       {/* Chart */}
       <div className="h-40">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <AreaChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="portGrad" x1="0" y1="0" x2="0" y2="1">
@@ -82,7 +85,7 @@ export function PortfolioPerformanceChart({ snapshots, lang }: Props) {
                 <stop offset="95%" stopColor={positive ? "#10b981" : "#ef4444"} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#374151" : "#f3f4f6"} vertical={false} />
             <XAxis
               dataKey="date"
               tickFormatter={(v) => fmtDate(v, lang)}
@@ -103,8 +106,9 @@ export function PortfolioPerformanceChart({ snapshots, lang }: Props) {
               contentStyle={{
                 fontSize: 12,
                 borderRadius: 8,
-                border: "1px solid #e5e7eb",
-                background: "#fff",
+                border: `1px solid ${isDark ? "#4b5563" : "#e5e7eb"}`,
+                background: isDark ? "#1f2937" : "#fff",
+                color: isDark ? "#f9fafb" : "#111827",
               }}
               formatter={(val: number, name: string) => [
                 fmt(val),

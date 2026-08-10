@@ -1,8 +1,8 @@
 "use client";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import type { Lang, ViewMode } from "@/app/types";
 
-const STRATEGY_KEYS: ViewMode[] = ["turnarounds", "accumulation", "compounders"];
+const STRATEGY_KEYS: ViewMode[] = ["turnarounds", "accumulation", "compounders", "value"];
 
 // ── Icons ────────────────────────────────────────────────────────────────────
 
@@ -88,6 +88,7 @@ const STRATEGY_ITEMS = [
   { key: "turnarounds"  as ViewMode, labelEs: "Turnarounds",  labelEn: "Turnarounds",  Icon: IconTurnarounds  },
   { key: "accumulation" as ViewMode, labelEs: "Acumulaci\u00f3n",  labelEn: "Accumulation", Icon: IconAccumulation },
   { key: "compounders"  as ViewMode, labelEs: "Compounders",  labelEn: "Compounders",  Icon: IconCompounders  },
+  { key: "value"        as ViewMode, labelEs: "Calidad y Valor", labelEn: "Quality & Value", Icon: IconCompounders },
 ];
 
 // ── Sub-bar close trigger (exposed for external use e.g. tap on main content) ─
@@ -106,14 +107,12 @@ interface Props {
 
 export function BottomNavBar({ viewMode, setViewMode, lang, onSubBarRef, chatOpen = false }: Props) {
   const [subOpen, setSubOpen] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isStrategy = STRATEGY_KEYS.includes(viewMode);
   const isRanking   = viewMode === "ranking";
 
   // Expose close fn to parent
   const closeSubBar = useCallback(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
     setSubOpen(false);
   }, []);
 
@@ -121,22 +120,13 @@ export function BottomNavBar({ viewMode, setViewMode, lang, onSubBarRef, chatOpe
     onSubBarRef?.(closeSubBar);
   }, [onSubBarRef, closeSubBar]);
 
-  // Auto-close after 2 s; clear timer on unmount
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
-
-  function scheduleClose() {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setSubOpen(false), 2000);
-  }
-
   function handleStrategiesBtn() {
-    if (timerRef.current) clearTimeout(timerRef.current);
     setSubOpen((v) => !v);
   }
 
   function handleStrategySelect(key: ViewMode) {
     setViewMode(key);
-    scheduleClose();
+    closeSubBar();
   }
 
   const stratLabel = lang === "es" ? "Estrategias" : "Strategies";
@@ -168,8 +158,6 @@ export function BottomNavBar({ viewMode, setViewMode, lang, onSubBarRef, chatOpe
             ? "bottom-[148px] opacity-100 translate-y-0"
             : "bottom-[148px] opacity-0 translate-y-full pointer-events-none"
           }`}
-        // Tapping inside sub-bar resets the 2-s timer so user has time to read
-        onClick={() => { if (subOpen) scheduleClose(); }}
       >
         <div className="flex h-[88px] max-w-lg mx-auto">
           {STRATEGY_ITEMS.map(({ key, labelEs, labelEn, Icon }) => {
@@ -178,6 +166,7 @@ export function BottomNavBar({ viewMode, setViewMode, lang, onSubBarRef, chatOpe
               <button
                 key={key}
                 onClick={(e) => { e.stopPropagation(); handleStrategySelect(key); }}
+                aria-current={active ? "page" : undefined}
                 className={`flex-1 flex flex-col items-center justify-center gap-1.5 py-2 transition-all duration-150 active:scale-95 ${
                   active ? "text-emerald-600 dark:text-emerald-400" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                 }`}
@@ -204,7 +193,7 @@ export function BottomNavBar({ viewMode, setViewMode, lang, onSubBarRef, chatOpe
         <div className="flex h-[92px] max-w-lg mx-auto">
 
           {/* Dashboard */}
-          <button onClick={() => { closeSubBar(); setViewMode("overview"); }} className={btnCls(viewMode === "overview")}>
+          <button onClick={() => { closeSubBar(); setViewMode("overview"); }} aria-current={viewMode === "overview" ? "page" : undefined} className={btnCls(viewMode === "overview")}>
             <span className={`flex items-center justify-center w-12 h-9 rounded-xl transition-colors ${viewMode === "overview" ? activePill : ""}`}>
               <IconDashboard bold={viewMode === "overview"} />
             </span>
@@ -214,7 +203,7 @@ export function BottomNavBar({ viewMode, setViewMode, lang, onSubBarRef, chatOpe
           </button>
 
           {/* Ranking */}
-          <button onClick={() => { closeSubBar(); setViewMode("ranking"); }} className={btnCls(isRanking && !subOpen)}>
+          <button onClick={() => { closeSubBar(); setViewMode("ranking"); }} aria-current={isRanking ? "page" : undefined} className={btnCls(isRanking && !subOpen)}>
             <span className={`flex items-center justify-center w-12 h-9 rounded-xl transition-colors ${isRanking && !subOpen ? activePill : ""}`}>
               <IconRanking bold={isRanking && !subOpen} />
             </span>
@@ -223,7 +212,7 @@ export function BottomNavBar({ viewMode, setViewMode, lang, onSubBarRef, chatOpe
             </span>
           </button>
 
-          <button onClick={() => { closeSubBar(); setViewMode("diary"); }} className={btnCls(viewMode === "diary")}>
+          <button onClick={() => { closeSubBar(); setViewMode("diary"); }} aria-current={viewMode === "diary" ? "page" : undefined} className={btnCls(viewMode === "diary")}>
             <span className={`flex items-center justify-center w-12 h-9 rounded-xl transition-colors ${viewMode === "diary" ? activePill : ""}`}>
               <IconDiary bold={viewMode === "diary"} />
             </span>
@@ -233,7 +222,7 @@ export function BottomNavBar({ viewMode, setViewMode, lang, onSubBarRef, chatOpe
           </button>
 
           {/* Strategies */}
-          <button onClick={handleStrategiesBtn} className={btnCls(isStrategy || subOpen)}>
+          <button onClick={handleStrategiesBtn} aria-expanded={subOpen} className={btnCls(isStrategy || subOpen)}>
             <span className={`flex items-center justify-center w-12 h-9 rounded-xl transition-colors ${isStrategy || subOpen ? activePill : ""}`}>
               <IconStrategies bold={isStrategy || subOpen} />
             </span>
@@ -243,7 +232,7 @@ export function BottomNavBar({ viewMode, setViewMode, lang, onSubBarRef, chatOpe
           </button>
 
           {/* Portfolio */}
-          <button onClick={() => { closeSubBar(); setViewMode("portfolio"); }} className={btnCls(viewMode === "portfolio")}>
+          <button onClick={() => { closeSubBar(); setViewMode("portfolio"); }} aria-current={viewMode === "portfolio" ? "page" : undefined} className={btnCls(viewMode === "portfolio")}>
             <span className={`flex items-center justify-center w-12 h-9 rounded-xl transition-colors ${viewMode === "portfolio" ? activePill : ""}`}>
               <IconPortfolio bold={viewMode === "portfolio"} />
             </span>

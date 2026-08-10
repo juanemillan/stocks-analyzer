@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readFileSync } from "fs";
 import path from "path";
+import { createClient } from "@/lib/supabase/server";
 
 const MAX_MESSAGES = 10;
+const MAX_MESSAGE_CHARS = 4_000;
+const MAX_CONTEXT_CHARS = 12_000;
+const MAX_REQUESTS_PER_MINUTE = 12;
+const requestWindows = new Map<string, { startedAt: number; count: number }>();
 
 // Provider + model pairs tried in order until one succeeds.
 // Groq first: free tier, 30 req/min, extremely fast and reliable.
@@ -71,6 +76,7 @@ async function tryProvider(
     res = await fetch(provider.url, {
       method: "POST",
       headers: provider.headers(provider.key),
+      signal: AbortSignal.timeout(20_000),
       body: JSON.stringify({
         model: provider.model,
         messages,
@@ -96,6 +102,20 @@ async function tryProvider(
 }
 
 export async function POST(req: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const now = Date.now();
+  const window = requestWindows.get(user.id);
+  if (!window || now - window.startedAt >= 60_000) {
+    requestWindows.set(user.id, { startedAt: now, count: 1 });
+  } else if (window.count >= MAX_REQUESTS_PER_MINUTE) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  } else {
+    window.count += 1;
+  }
+
   const groqKey = process.env.GROQ_API_KEY;
   const orKey = process.env.OPENROUTER_API_KEY;
 
@@ -120,8 +140,11 @@ export async function POST(req: NextRequest) {
 
   const { messages, context, lang = "en" } = body;
 
-  if (!Array.isArray(messages) || messages.length === 0) {
-    return NextResponse.json({ error: "messages array is required." }, { status: 400 });
+  if (!Array.isArray(messages) || messages.length === 0 || messages.length > MAX_MESSAGES ||
+      messages.some((message) => !message || !["user", "assistant"].includes(message.role) ||
+        typeof message.content !== "string" || message.content.length > MAX_MESSAGE_CHARS) ||
+      (context != null && (typeof context !== "string" || context.length > MAX_CONTEXT_CHARS))) {
+    return NextResponse.json({ error: "invalid_request" }, { status: 400 });
   }
 
   const recentMessages = messages.slice(-MAX_MESSAGES);

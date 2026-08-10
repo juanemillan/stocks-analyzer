@@ -31,6 +31,7 @@ interface PortfolioTabProps {
   weekChanges: Record<string, number>;
   techSignals: Record<string, boolean>;
   onShowConnectRacional: () => void;
+  canSyncRacional: boolean;
   onShowRequestAsset: () => void;
   racionalSyncing: boolean;
   racionalSyncError: string | null;
@@ -57,6 +58,7 @@ export function PortfolioTab({
   weekChanges,
   techSignals,
   onShowConnectRacional,
+  canSyncRacional,
   onShowRequestAsset,
   racionalSyncing,
   racionalSyncError,
@@ -246,8 +248,7 @@ export function PortfolioTab({
               </svg>
               {t("portRequestAsset", lang)}
             </button>
-            {/* Racional connect */}
-            <button
+            {canSyncRacional && <button
               onClick={onShowConnectRacional}
               disabled={racionalSyncing}
               title={lastRacionalSync ? `Ãšltimo sync: ${lastRacionalSync.toLocaleTimeString()}` : "Importar desde Racional"}
@@ -271,7 +272,7 @@ export function PortfolioTab({
                 onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
               />
               <span className="sr-only">Racional</span>
-            </button>
+            </button>}
             <button
               onClick={onShowAddHolding}
               className="rounded-xl px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm transition-colors duration-150"
@@ -284,13 +285,13 @@ export function PortfolioTab({
         {/* Mobile: collapsible action buttons */}
         <div className={`grid transition-all duration-300 ease-in-out md:hidden ${actionsOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
           <div className="overflow-hidden">
-            <div className="grid grid-cols-3 gap-2 pt-3">
-              <button
+            <div className={`grid ${canSyncRacional ? "grid-cols-3" : "grid-cols-2"} gap-2 pt-3`}>
+              {canSyncRacional && <button
                 onClick={() => { setActionsOpen(false); onShowAddHolding(); }}
                 className="flex items-center justify-center gap-1 rounded-2xl px-2 py-3 text-xs font-medium bg-emerald-500 hover:bg-emerald-600 text-white transition-colors duration-150"
               >
                 {t("portAddHolding", lang)}
-              </button>
+              </button>}
               <button
                 onClick={() => { setActionsOpen(false); onShowConnectRacional(); }}
                 disabled={racionalSyncing}
@@ -545,7 +546,7 @@ export function PortfolioTab({
                         <span className="tabular-nums font-medium text-gray-800 dark:text-gray-200">${h.lp.price.toFixed(2)}</span>
                       ) : null}
                       <span className="text-gray-300 dark:text-neutral-600">&middot;</span>
-                      <span>{h.shares} {lang === "es" ? "acc." : "sh."}</span>
+                      <span>{h.shares.toLocaleString(lang === "es" ? "es-CL" : "en-US", { maximumFractionDigits: 4 })} {lang === "es" ? "acc." : "sh."}</span>
                       {h.marketValue != null && (
                         <>
                           <span className="text-gray-300 dark:text-neutral-600">&middot;</span>

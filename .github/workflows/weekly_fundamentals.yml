@@ -1,0 +1,26 @@
+name: Weekly Fundamentals Refresh
+
+on:
+  schedule:
+    # Sunday, before the next US trading week.
+    - cron: "0 8 * * 0"
+  workflow_dispatch:
+
+jobs:
+  enrich:
+    name: Refresh valuation fundamentals
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Refresh asset fundamentals and valuation view
+        working-directory: data_pipeline
+        run: python main.py --enrich

@@ -25,6 +25,7 @@ async function requireAdmin() {
     if (!adminEmail || user.email?.toLowerCase() !== adminEmail.toLowerCase()) {
         throw new Error('Forbidden');
     }
+    return user;
 }
 
 function escapeHtml(value: string) {
@@ -91,7 +92,7 @@ export async function requestAsset(
     }
 }
 
-export const getRanking = unstable_cache(
+const getCachedRanking = unstable_cache(
     async () => {
         // Select only the fields needed by the UI to keep the cached payload small.
         // Avoids caching long text fields (e.g. description) and limits rows.
@@ -109,7 +110,12 @@ export const getRanking = unstable_cache(
     { revalidate: RANKING_TTL },
 );
 
-export const getTurnarounds = unstable_cache(
+export async function getRanking() {
+    await requireUser();
+    return getCachedRanking();
+}
+
+const getCachedTurnarounds = unstable_cache(
     async () => {
         const { rows } = await pool.query(
             `SELECT symbol, name, asset_type, racional_url, date, close, rebound_from_low,
@@ -173,12 +179,14 @@ const _getCompounders5Y = unstable_cache(
 );
 
 export async function getCompounders(horizon: '1Y' | '3Y' | '5Y') {
+    await requireUser();
     if (horizon === '1Y') return _getCompounders1Y();
     if (horizon === '3Y') return _getCompounders3Y();
     return _getCompounders5Y();
 }
 
 export async function getLatestPrices(symbols: string[]): Promise<Record<string, { price: number; date: string }>> {
+    await requireUser();
     if (!symbols.length) return {};
     const { rows } = await pool.query(
         `SELECT DISTINCT ON (symbol) symbol, date::text AS date, close
@@ -194,7 +202,8 @@ export async function getLatestPrices(symbols: string[]): Promise<Record<string,
     return result;
 }
 
-export async function getPrices(symbol: string, days: number) {
+const getCachedPrices = unstable_cache(
+    async (symbol: string, days: number) => {
     const since = new Date();
     since.setDate(since.getDate() - days);
     const { rows } = await pool.query(
@@ -209,9 +218,62 @@ export async function getPrices(symbol: string, days: number) {
         close: Number(r.close),
         volume: Number(r.volume),
     }));
+    },
+    ['daily-prices'],
+    { revalidate: 86400 },
+);
+
+export async function getTurnarounds() {
+    await requireUser();
+    return getCachedTurnarounds();
+}
+
+export async function getPrices(symbol: string, days: number) {
+    await requireUser();
+    return getCachedPrices(symbol, days);
+}
+
+const getCachedValueQuality = unstable_cache(
+    async () => {
+        const { rows } = await pool.query(
+            `SELECT symbol, name, asset_type, racional_url, sector, market_cap, trailing_pe,
+                    forward_pe, enterprise_to_ebitda, free_cashflow, total_debt, total_cash,
+                    return_on_equity, profit_margins, revenue_growth, value_quality_score
+             FROM v_value_quality_candidates
+             ORDER BY value_quality_score DESC, return_on_equity DESC NULLS LAST
+             LIMIT 500`
+        );
+        return rows.map(parseRow);
+    },
+    ['value-quality'], { revalidate: RANKING_TTL },
+);
+
+export async function getValueQuality() {
+    await requireUser();
+    return getCachedValueQuality();
+}
+
+const getCachedAssetValuation = unstable_cache(
+    async (symbol: string) => {
+        const { rows } = await pool.query(
+            `SELECT market_cap, trailing_pe, forward_pe, enterprise_to_ebitda,
+                    free_cashflow, total_debt, total_cash, return_on_equity,
+                    profit_margins, revenue_growth, valuation_updated_at::text
+             FROM assets WHERE symbol = $1 LIMIT 1`,
+            [symbol],
+        );
+        return rows[0] ? parseRow(rows[0]) : null;
+    },
+    ['asset-valuation'], { revalidate: RANKING_TTL },
+);
+
+export async function getAssetValuation(symbol: string) {
+    await requireUser();
+    return getCachedAssetValuation(symbol);
 }
 
 export async function getIntradayBars(symbol: string) {
+    await requireUser();
     const key = process.env.MASSIVE_API_KEY;
     if (!key) throw new Error("MASSIVE_API_KEY not set");
 
@@ -229,7 +291,7 @@ export async function getIntradayBars(symbol: string) {
 
     for (const dateStr of dates) {
         const url = `https://api.massive.com/v2/aggs/ticker/${encodeURIComponent(symbol)}/range/5/minute/${dateStr}/${dateStr}?adjusted=true&sort=asc&limit=390&apiKey=${key}`;
-        const res = await fetch(url, { cache: "no-store" });
+        const res = await fetch(url, { next: { revalidate: 300 } });
 
         if (!res.ok) continue; // 403 plan limit or no data for that date
 
@@ -249,7 +311,7 @@ export async function getIntradayBars(symbol: string) {
     return []; // nothing available
 }
 
-export const getAccumulationZone = unstable_cache(
+const getCachedAccumulationZone = unstable_cache(
     async () => {
         const { rows } = await pool.query(
             `SELECT symbol, name, asset_type, racional_url, date, close,
@@ -265,10 +327,16 @@ export const getAccumulationZone = unstable_cache(
     { revalidate: RANKING_TTL },
 );
 
+export async function getAccumulationZone() {
+    await requireUser();
+    return getCachedAccumulationZone();
+}
+
 export async function getPricesMulti(
     symbols: string[],
     days: number
 ): Promise<Record<string, { date: string; close: number }[]>> {
+    await requireUser();
     if (!symbols.length) return {};
     const since = new Date();
     since.setDate(since.getDate() - days);
@@ -329,6 +397,7 @@ export async function getFinnhubData(symbol: string): Promise<{
     metrics: FinnhubMetrics | null;
     ownership: { name: string; sharePercent: number; change: number; filingDate: string }[] | null;
 }> {
+    await requireUser();
     const key = process.env.FINNHUB_API_KEY;
     if (!key) return { news: [], recommendation: null, quote: null, metrics: null, ownership: null };
 
@@ -386,7 +455,8 @@ export async function syncRacionalPortfolio(
     _password?: string,
     _replaceSold?: boolean,
 ): Promise<{ synced: number; holdings: unknown[]; queued: true }> {
-    await requireUser(userId);
+    const admin = await requireAdmin();
+    if (admin.id !== userId) throw new Error('Forbidden');
     const githubToken = process.env.GITHUB_TOKEN;
     const githubRepo  = process.env.GITHUB_REPO ?? 'juanemillan/stocks-analyzer';
 
@@ -505,6 +575,7 @@ export async function getPortfolioSnapshots(userId: string, days = 90): Promise<
 export type ScoreHistoryPoint = { date: string; final_score: number };
 
 export async function getScoreHistory(symbol: string, days = 60): Promise<ScoreHistoryPoint[]> {
+    await requireUser();
     const since = new Date();
     since.setDate(since.getDate() - days);
     const { rows } = await pool.query<{ date: string; final_score: string }>(

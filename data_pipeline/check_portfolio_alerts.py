@@ -26,7 +26,6 @@ Environment variables (GitHub Secrets):
     RESEND_API_KEY
     OPENROUTER_API_KEY      — for AI analysis (optional; skips AI block if missing)
     FROM_EMAIL              — e.g. "Bullia <onboarding@resend.dev>"
-    ALERT_EMAIL             — fallback destination if user email lookup fails
     DASHBOARD_URL           — link shown in email
 """
 
@@ -55,7 +54,6 @@ RESEND_API_KEY   = os.environ.get("RESEND_API_KEY", "")
 OPENROUTER_KEY   = os.environ.get("OPENROUTER_API_KEY", "")
 FINNHUB_KEY      = os.environ.get("FINNHUB_API_KEY", "")
 FROM_EMAIL       = os.environ.get("FROM_EMAIL", "Bullia Alerts <onboarding@resend.dev>")
-FALLBACK_EMAIL   = os.environ.get("ALERT_EMAIL", "")
 DASHBOARD_URL    = os.environ.get("DASHBOARD_URL", "https://bullia.app")
 VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
 VAPID_SUBJECT    = os.environ.get("VAPID_SUBJECT", "mailto:jmillanstudio@gmail.com")
@@ -85,6 +83,17 @@ FREE_MODELS          = [
     "microsoft/phi-4-reasoning-plus:free",
 ]
 OPPORTUNITY_TTL_DAYS = 7   # re-alert at most once per week per signal type
+
+
+def get_user_email(sb, user_id: str) -> str | None:
+    """Return only the alert owner's email; never fall back to another account."""
+    try:
+        response = sb.auth.admin.get_user_by_id(user_id)
+        email = getattr(getattr(response, "user", None), "email", None)
+        return email if isinstance(email, str) and email else None
+    except Exception as exc:
+        print(f"  [warn] could not resolve alert owner {user_id[:8]}: {exc}")
+        return None
 
 
 # ── CockroachDB queries ───────────────────────────────────────────────────────
@@ -909,9 +918,9 @@ def main() -> None:
                 print(f"User {user_id[:8]}: no new alerts, digest already sent today — skipping")
                 continue
 
-            to_email = FALLBACK_EMAIL
+            to_email = get_user_email(sb, user_id)
             if not to_email:
-                print(f"  [warn] ALERT_EMAIL secret not set — skipping user {user_id[:8]}")
+                print(f"  [warn] no email for alert owner {user_id[:8]} — skipping digest")
                 continue
 
             # Build holdings_data for AI digest
@@ -948,19 +957,13 @@ def main() -> None:
             for o in opp_triggered:
                 o["ai"] = ai_results.get(o["symbol"], "")
 
-        # Resolve destination email.
-        # Always use ALERT_EMAIL for now — avoids Resend's test-domain restriction
-        # (onboarding@resend.dev can only send to the Resend account owner's address).
-        # When you verify a domain at resend.com/domains and update FROM_EMAIL,
-        # replace this with: sb.auth.admin.get_user_by_id(user_id).user.email
-        to_email = FALLBACK_EMAIL
-        if not to_email:
-            print(f"  [warn] ALERT_EMAIL secret not set — skipping user {user_id[:8]}")
-            continue
-
-        print(f"User {user_id[:8]}: {len(opp_triggered)} opportunity / {len(pnl_triggered)} P&L → {to_email}")
-
-        email_ok = send_email(to_email, opp_triggered, pnl_triggered)
+        to_email = get_user_email(sb, user_id)
+        email_ok = False
+        if to_email:
+            print(f"User {user_id[:8]}: {len(opp_triggered)} opportunity / {len(pnl_triggered)} P&L")
+            email_ok = send_email(to_email, opp_triggered, pnl_triggered)
+        else:
+            print(f"  [warn] no email for alert owner {user_id[:8]} — sending push only")
 
         # Build a concise push notification body
         symbols_preview = ", ".join(

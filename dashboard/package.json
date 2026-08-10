@@ -10,10 +10,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "prepare": "node -e \"require('child_process').execFileSync(process.platform === 'win32' ? 'powershell.exe' : 'sh', process.platform === 'win32' ? ['-ExecutionPolicy', 'Bypass', '-File', '../scripts/setup-git-hooks.ps1'] : ['../scripts/setup-git-hooks.sh'], { stdio: 'inherit' })\""
+    "prepare": "node -e \"if (!process.env.CI) require('child_process').execFileSync(process.platform === 'win32' ? 'powershell.exe' : 'sh', process.platform === 'win32' ? ['-ExecutionPolicy', 'Bypass', '-File', '../scripts/setup-git-hooks.ps1'] : ['../scripts/setup-git-hooks.sh'], { stdio: 'inherit' })\""
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.0",

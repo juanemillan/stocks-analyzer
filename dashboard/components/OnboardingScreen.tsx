@@ -1,6 +1,7 @@
 "use client";
 import { BulliaLogo } from "@/components/BulliaLogo";
 import type { Lang } from "@/app/types";
+import { useTheme } from "next-themes";
 
 interface Props {
   lang: Lang;
@@ -11,26 +12,27 @@ const STEPS = {
   es: [
     { icon: "📊", title: "Ranking inteligente", desc: "Más de 500 activos ordenados por score compuesto de momentum, liquidez y tendencia técnica." },
     { icon: "⚡", title: "Turnarounds & Compounders", desc: "Detectamos rebotes desde mínimos de 52 semanas y activos con crecimiento compuesto históricamente sostenido." },
-    { icon: "💼", title: "Tu cartera en tiempo real", desc: "Añade tus posiciones, conecta Racional y sigue tu P&L actualizado con precios de mercado." },
+    { icon: "💼", title: "Tu cartera en tiempo real", desc: "Añade tus posiciones y sigue tu P&L actualizado con precios de mercado." },
     { icon: "🔔", title: "Alertas personalizadas", desc: "Configura stop-loss, take-profit o alertas de precio para cualquier activo. Recibirás push notifications." },
   ],
   en: [
     { icon: "📊", title: "Smart ranking", desc: "500+ assets ranked by a composite score of momentum, liquidity, and technical trend." },
     { icon: "⚡", title: "Turnarounds & Compounders", desc: "We detect bounces from 52-week lows and assets with historically sustained compound growth." },
-    { icon: "💼", title: "Your portfolio, live", desc: "Add your positions, connect Racional, and track your P&L updated with live market prices." },
+    { icon: "💼", title: "Your portfolio, live", desc: "Add your positions and track your P&L updated with live market prices." },
     { icon: "🔔", title: "Custom alerts", desc: "Set stop-loss, take-profit, or price alerts for any asset. You'll receive push notifications." },
   ],
 };
 
 export function OnboardingScreen({ lang, onDone }: Props) {
   const steps = STEPS[lang];
+  const { resolvedTheme } = useTheme();
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-950 px-6 animate-fadeIn">
       <div className="w-full max-w-sm flex flex-col items-center gap-8">
 
         {/* Logo + tagline */}
         <div className="flex flex-col items-center gap-3">
-          <BulliaLogo dark={false} />
+          <BulliaLogo dark={resolvedTheme === "dark"} />
           <p className="text-sm text-gray-500 text-center">
             {lang === "es" ? "El dashboard que los inversores independientes merecen." : "The dashboard independent investors deserve."}
           </p>
