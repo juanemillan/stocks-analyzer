@@ -545,7 +545,7 @@ export function PortfolioTab({
                         <span className="tabular-nums font-medium text-gray-800 dark:text-gray-200">${h.lp.price.toFixed(2)}</span>
                       ) : null}
                       <span className="text-gray-300 dark:text-neutral-600">&middot;</span>
-                      <span>{h.shares} {lang === "es" ? "acc." : "sh."}</span>
+                      <span>{h.shares.toLocaleString(lang === "es" ? "es-CL" : "en-US", { maximumFractionDigits: 4 })} {lang === "es" ? "acc." : "sh."}</span>
                       {h.marketValue != null && (
                         <>
                           <span className="text-gray-300 dark:text-neutral-600">&middot;</span>

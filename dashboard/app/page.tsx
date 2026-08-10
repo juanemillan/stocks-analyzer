@@ -22,6 +22,7 @@ import { RankingTab } from "@/components/tabs/RankingTab";
 import { TurnaroundsTab } from "@/components/tabs/TurnaroundsTab";
 import { AccumulationTab } from "@/components/tabs/AccumulationTab";
 import { CompoundersTab } from "@/components/tabs/CompoundersTab";
+import { ValueQualityTab } from "@/components/tabs/ValueQualityTab";
 import { PortfolioTab } from "@/components/tabs/PortfolioTab";
 import { ProfileTab } from "@/components/tabs/ProfileTab";
 import { FavoritesTab } from "@/components/tabs/FavoritesTab";
@@ -431,6 +432,7 @@ export default function Dashboard() {
         selected={data.selected}
         finnhubData={data.finnhubData}
         finnhubLoading={data.finnhubLoading}
+        valuationData={data.valuationData}
         prices={data.prices}
         pricesLoading={data.pricesLoading}
         rangeKey={data.rangeKey}
@@ -443,8 +445,8 @@ export default function Dashboard() {
 
       {/* Header */}
       <header className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/85 backdrop-blur border-b dark:border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-row justify-between gap-2 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-2 overflow-x-auto">
+        <div className="max-w-[1400px] mx-auto px-4 py-3 flex flex-row justify-between gap-2 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex items-center gap-2 flex-none mr-1">
               <BulliaLogo dark={mounted && resolvedTheme === "dark"} />
               <span className="font-semibold text-2xl hidden sm:block">BULLIA</span>
@@ -466,6 +468,11 @@ export default function Dashboard() {
                   value={jumpQ}
                   onChange={(e) => setJumpQ(e.target.value)}
                   placeholder={lang === "es" ? "Buscar símbolo…" : "Search symbol…"}
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-label={lang === "es" ? "Buscar símbolo" : "Search symbol"}
+                  aria-expanded={jumpDropOpen && jumpResults.length > 0}
+                  aria-controls="desktop-symbol-results"
                   className="w-44 lg:w-56 rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-neutral-900 dark:border-neutral-700"
                   onFocus={() => {
                     if (jumpBlurRef.current) window.clearTimeout(jumpBlurRef.current);
@@ -479,24 +486,34 @@ export default function Dashboard() {
                   type="submit"
                   disabled={jumpBusy}
                   title={lang === "es" ? "Ir" : "Go"}
+                  aria-label={lang === "es" ? "Buscar" : "Search"}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-50"
                 >
                   ↵
                 </button>
                 {jumpDropOpen && jumpResults.length > 0 && (
-                  <ul className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-xl shadow-lg max-h-56 overflow-y-auto origin-top transition duration-150 animate-fadeIn">
+                  <ul id="desktop-symbol-results" className="absolute z-50 left-0 right-0 mt-1 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-xl shadow-lg max-h-56 overflow-y-auto origin-top transition duration-150 animate-fadeIn">
                     {jumpResults.map((r: any) => (
-                      <li
-                        key={r.symbol}
-                        onMouseDown={() => {
-                          setJumpQ(r.symbol);
-                          setJumpDropOpen(false);
-                          jumpToSymbol(r.symbol);
-                        }}
-                        className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-neutral-800 first:rounded-t-xl last:rounded-b-xl transition-colors duration-100"
-                      >
-                        <span className="font-mono font-semibold w-16 shrink-0 text-xs">{r.symbol}</span>
-                        <span className="text-gray-500 truncate text-xs">{r.name ?? "—"}</span>
+                      <li key={r.symbol}>
+                        <button
+                          type="button"
+                          onMouseDown={() => {
+                            setJumpQ(r.symbol);
+                            setJumpDropOpen(false);
+                            jumpToSymbol(r.symbol);
+                          }}
+                          onClick={(event) => {
+                            if (event.detail === 0) {
+                              setJumpQ(r.symbol);
+                              setJumpDropOpen(false);
+                              jumpToSymbol(r.symbol);
+                            }
+                          }}
+                          className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-gray-100 focus-visible:bg-emerald-50 dark:hover:bg-neutral-800 dark:focus-visible:bg-emerald-950/40"
+                        >
+                          <span className="font-mono font-semibold w-16 shrink-0 text-xs">{r.symbol}</span>
+                          <span className="text-gray-500 truncate text-xs">{r.name ?? "—"}</span>
+                        </button>
                       </li>
                     ))}
                   </ul>
@@ -517,6 +534,7 @@ export default function Dashboard() {
               <button
                 onClick={handleReload}
                 title={t("reloadBtn", lang)}
+                aria-label={t("reloadBtn", lang)}
                 className="w-8 h-8 flex items-center justify-center rounded-lg border dark:border-neutral-600 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-all duration-150 active:scale-95"
               >
                 <svg
@@ -531,6 +549,7 @@ export default function Dashboard() {
               <button
                 onClick={() => setShowLegend(true)}
                 title={t("legendTitle", lang)}
+                aria-label={t("legendTitle", lang)}
                 className="w-8 h-8 rounded-lg border dark:border-neutral-600 text-sm font-bold hover:bg-gray-100 dark:hover:bg-neutral-800 transition-all duration-150 active:scale-95 flex items-center justify-center"
               >
                 ?
@@ -542,6 +561,8 @@ export default function Dashboard() {
               title={lang === "es" ? "Buscar símbolo" : "Search symbol"}
               className="md:hidden w-8 h-8 flex items-center justify-center rounded-lg border dark:border-neutral-600 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-all duration-150 active:scale-95 text-gray-600 dark:text-gray-300"
               aria-label={lang === "es" ? "Buscar símbolo" : "Search symbol"}
+              aria-expanded={jumpMobileOpen}
+              aria-controls="mobile-symbol-search"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="7" />
@@ -569,6 +590,7 @@ export default function Dashboard() {
                       : "bg-black text-white dark:bg-white dark:text-black hover:opacity-75"
                   }`}
                   aria-label="Profile"
+                  aria-expanded={auth.showUserMenu}
                 >
                   {(auth.userDisplayName || auth.userEmail).charAt(0).toUpperCase()}
                 </button>
@@ -583,6 +605,7 @@ export default function Dashboard() {
                             auth.setShowEditProfile(true);
                           }}
                           title={t("editProfile", lang)}
+                          aria-label={t("editProfile", lang)}
                           className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-neutral-800 transition-colors duration-150"
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -618,9 +641,10 @@ export default function Dashboard() {
 
         {/* Mobile: expanded symbol search row (animated) */}
         <div
+          id="mobile-symbol-search"
           className={`md:hidden grid transition-all duration-200 ease-out ${jumpMobileOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
         >
-          <div className={`overflow-hidden max-w-6xl mx-auto px-4 ${jumpMobileOpen ? "py-3" : "py-0"} transition-all duration-200 ease-out`}>
+          <div className={`overflow-hidden max-w-[1400px] mx-auto px-4 ${jumpMobileOpen ? "py-3" : "py-0"} transition-all duration-200 ease-out`}>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -632,6 +656,11 @@ export default function Dashboard() {
                 value={jumpQ}
                 onChange={(e) => setJumpQ(e.target.value)}
                 placeholder={lang === "es" ? "Buscar símbolo…" : "Search symbol…"}
+                role="combobox"
+                aria-autocomplete="list"
+                aria-label={lang === "es" ? "Buscar símbolo" : "Search symbol"}
+                aria-expanded={jumpDropOpen && jumpResults.length > 0}
+                aria-controls="mobile-symbol-results"
                 className="flex-1 rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-neutral-900 dark:border-neutral-700"
                 autoCapitalize="characters"
                 onFocus={() => {
@@ -645,26 +674,36 @@ export default function Dashboard() {
               <button
                 type="submit"
                 disabled={jumpBusy}
+                aria-label={lang === "es" ? "Buscar" : "Search"}
                 className="rounded-xl px-3 py-2 text-sm font-semibold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-60 transition-colors"
               >
                 {lang === "es" ? "Ir" : "Go"}
               </button>
               {jumpDropOpen && jumpResults.length > 0 && (
                 <div className="fixed flex flex-1 z-50 left-0 right-0 top-24 mt-6 bg-transparent pointer-events-none">
-                  <div className="max-w-6xl mx-auto px-4 pointer-events-auto">
-                    <ul className="bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-xl shadow-lg max-h-70 overflow-y-auto origin-top transition duration-150 animate-fadeIn">
+                  <div className="max-w-[1400px] mx-auto px-4 pointer-events-auto">
+                    <ul id="mobile-symbol-results" className="bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-xl shadow-lg max-h-70 overflow-y-auto origin-top transition duration-150 animate-fadeIn">
                       {jumpResults.map((r: any) => (
-                        <li
-                          key={r.symbol}
-                          onMouseDown={() => {
-                            setJumpQ(r.symbol);
-                            setJumpDropOpen(false);
-                            jumpToSymbol(r.symbol);
-                          }}
-                          className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-neutral-800 first:rounded-t-xl last:rounded-b-xl transition-colors duration-100"
-                        >
-                          <span className="font-mono font-semibold w-16 shrink-0 text-xs">{r.symbol}</span>
-                          <span className="text-gray-500 truncate text-xs">{r.name ?? "—"}</span>
+                        <li key={r.symbol}>
+                          <button
+                            type="button"
+                            onMouseDown={() => {
+                              setJumpQ(r.symbol);
+                              setJumpDropOpen(false);
+                              jumpToSymbol(r.symbol);
+                            }}
+                            onClick={(event) => {
+                              if (event.detail === 0) {
+                                setJumpQ(r.symbol);
+                                setJumpDropOpen(false);
+                                jumpToSymbol(r.symbol);
+                              }
+                            }}
+                            className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-gray-100 focus-visible:bg-emerald-50 dark:hover:bg-neutral-800 dark:focus-visible:bg-emerald-950/40"
+                          >
+                            <span className="font-mono font-semibold w-16 shrink-0 text-xs">{r.symbol}</span>
+                            <span className="text-gray-500 truncate text-xs">{r.name ?? "—"}</span>
+                          </button>
                         </li>
                       ))}
                     </ul>
@@ -678,10 +717,16 @@ export default function Dashboard() {
       </header>
 
       {/* Main */}
-      <main className="max-w-6xl mx-auto px-4 py-6 pb-[164px] md:pb-6" style={{ paddingBottom: "calc(164px + env(safe-area-inset-bottom))" }}>
+      <main className="max-w-[1400px] mx-auto px-4 py-6 pb-[164px] md:pb-6" style={{ paddingBottom: "calc(164px + env(safe-area-inset-bottom))" }}>
         {data.error && (
-          <div className="mb-4 rounded-xl border border-red-300 bg-red-50 text-red-800 px-4 py-3 text-sm">
-            Error: {data.error}
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+            <span>Error: {data.error}</span>
+            <button
+              onClick={handleReload}
+              className="shrink-0 rounded-lg border border-current px-2.5 py-1 text-xs font-semibold hover:bg-red-100 dark:hover:bg-red-900/30"
+            >
+              {lang === "es" ? "Reintentar" : "Retry"}
+            </button>
           </div>
         )}
 
@@ -774,6 +819,14 @@ export default function Dashboard() {
           />
         )}
 
+        {data.viewMode === "value" && (
+          <ValueQualityTab
+            rows={data.valueRows}
+            lang={lang}
+            onOpenFromSymbol={data.openFromSymbol}
+          />
+        )}
+
         {data.viewMode === "portfolio" && (
           <PortfolioTab
             holdings={portfolio.holdings}
@@ -834,6 +887,7 @@ export default function Dashboard() {
             watchlist={watchlist}
             onToggleFavorite={toggleWatchlist}
             onOpen={data.handleOpen}
+            onBrowseRanking={() => data.setViewMode("ranking")}
             selectedSymbol={data.selected?.symbol}
             lang={lang}
           />
@@ -862,7 +916,7 @@ export default function Dashboard() {
         />
       )}
 
-      <footer className="max-w-6xl mx-auto px-4 py-10 text-xs text-gray-500">
+      <footer className="max-w-[1400px] mx-auto px-4 py-10 text-xs text-gray-500">
         {t("footer", lang)}
       </footer>
     </div>

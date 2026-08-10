@@ -11,6 +11,7 @@ const TAB_DEFS: TabDef[] = [
   { key: "turnarounds",  label: () => "Turnarounds" },
   { key: "accumulation", label: (lang) => lang === "es" ? "Acumulación" : "Accumulation" },
   { key: "compounders",  label: () => "Compounders" },
+  { key: "value",        label: (lang) => lang === "es" ? "Calidad & Valor" : "Quality & Value" },
   { key: "portfolio",    label: (lang) => t("tabPortfolio", lang) },
 ];
 

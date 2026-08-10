@@ -6,6 +6,8 @@ import {
   getPrices,
   getIntradayBars,
   getAccumulationZone,
+  getValueQuality,
+  getAssetValuation,
   getFinnhubData,
 } from "@/app/actions";
 import { cacheGet, cacheSet } from "@/lib/dailyCache";
@@ -16,8 +18,10 @@ import type {
   TurnRow,
   AccumRow,
   CompoundRow,
+  ValueQualityRow,
   PriceRow,
   FinnhubData,
+  AssetValuation,
 } from "@/app/types";
 
 export function useDashboardData() {
@@ -54,6 +58,7 @@ export function useDashboardData() {
 
   // Compounders
   const [compoundRows, setCompoundRows] = useState<CompoundRow[]>([]);
+  const [valueRows, setValueRows] = useState<ValueQualityRow[]>([]);
   const [cmpHorizon, setCmpHorizon] = useState<"1Y" | "3Y" | "5Y">("1Y");
   const [cagrMin, setCagrMin] = useState<number>(0.15);
   const [posMonthsMin, setPosMonthsMin] = useState<number>(0.55);
@@ -75,13 +80,14 @@ export function useDashboardData() {
   // Finnhub
   const [finnhubData, setFinnhubData] = useState<FinnhubData | null>(null);
   const [finnhubLoading, setFinnhubLoading] = useState(false);
+  const [valuationData, setValuationData] = useState<AssetValuation | null>(null);
 
   // ---------- Loaders ----------
   async function loadRanking(force = false) {
     const KEY = "bullia_ranking";
     if (!force) {
       const cached = cacheGet<RankRow[]>(KEY);
-      if (cached) { setRows(cached); if (!selected && cached.length) setSelected(cached[0]); return; }
+      if (cached) { setRows(cached); return; }
     }
     setLoading(true);
     setError(null);
@@ -89,7 +95,6 @@ export function useDashboardData() {
       const list = (await getRanking()) as RankRow[];
       setRows(list);
       cacheSet(KEY, list);
-      if (!selected && list.length) setSelected(list[0]);
     } catch (e: any) {
       setError(e.message || String(e));
     } finally {
@@ -154,7 +159,34 @@ export function useDashboardData() {
     }
   }
 
+  async function loadValueQuality(force = false) {
+    const KEY = "bullia_value_quality";
+    if (!force) {
+      const cached = cacheGet<ValueQualityRow[]>(KEY);
+      if (cached?.length) { setValueRows(cached); return; }
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const list = (await getValueQuality()) as ValueQualityRow[];
+      setValueRows(list);
+      if (list.length) cacheSet(KEY, list);
+    } catch (e: any) {
+      setError(e.message || String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function loadPrices(sym: string, days: number) {
+    const key = `bullia_prices_${sym}_${days}`;
+    const maxAgeMs = days === 1 ? 5 * 60_000 : 24 * 60 * 60_000;
+    const cached = cacheGet<PriceRow[]>(key, maxAgeMs);
+    if (cached) {
+      setPrices(cached);
+      setPricesLoading(false);
+      return;
+    }
     setPrices([]);
     setPricesLoading(true);
     setError(null);
@@ -163,6 +195,7 @@ export function useDashboardData() {
         ? (await getIntradayBars(sym)) as PriceRow[]
         : (await getPrices(sym, days)) as PriceRow[];
       setPrices(data);
+      cacheSet(key, data);
     } catch (e: any) {
       setError(e.message || String(e));
     } finally {
@@ -172,21 +205,28 @@ export function useDashboardData() {
 
   // ---------- Effects ----------
   useEffect(() => {
-    if (!selected?.symbol) { setFinnhubData(null); return; }
+    if (!detailOpen || !selected?.symbol) { setFinnhubData(null); return; }
     const CACHE_KEY = `finnhub_${selected.symbol}`;
-    const cached = cacheGet<FinnhubData>(CACHE_KEY);
+    const cached = cacheGet<FinnhubData>(CACHE_KEY, 15 * 60_000);
     if (cached) { setFinnhubData(cached); return; }
     setFinnhubLoading(true);
     getFinnhubData(selected.symbol)
       .then((data) => { setFinnhubData(data); cacheSet(CACHE_KEY, data); })
       .catch(() => setFinnhubData(null))
       .finally(() => setFinnhubLoading(false));
-  }, [selected?.symbol]);
+  }, [detailOpen, selected?.symbol]);
+
+  useEffect(() => {
+    if (!detailOpen || !selected?.symbol) { setValuationData(null); return; }
+    getAssetValuation(selected.symbol)
+      .then((data) => setValuationData(data as AssetValuation | null))
+      .catch(() => setValuationData(null));
+  }, [detailOpen, selected?.symbol]);
 
   // Tab persistence via URL hash
   useEffect(() => {
     const hash = window.location.hash.slice(1) as ViewMode;
-    const valid: ViewMode[] = ["overview", "diary", "ranking", "turnarounds", "accumulation", "compounders", "portfolio"];
+    const valid: ViewMode[] = ["overview", "diary", "ranking", "turnarounds", "accumulation", "compounders", "value", "portfolio"];
     setViewMode(valid.includes(hash) ? hash : "overview");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -197,11 +237,11 @@ export function useDashboardData() {
 
   // Reload prices when symbol or range changes
   useEffect(() => {
-    if (!selected) return;
+    if (!detailOpen || !selected) return;
     const cfg = RANGE_OPTIONS.find((x) => x.key === rangeKey) || RANGE_OPTIONS[2];
     loadPrices(selected.symbol, cfg.days);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.symbol, rangeKey]);
+  }, [detailOpen, selected?.symbol, rangeKey]);
 
   // Load data when tab changes ("portfolio" handled by page.tsx)
   useEffect(() => {
@@ -210,6 +250,7 @@ export function useDashboardData() {
     if (viewMode === "turnarounds") loadTurnarounds();
     if (viewMode === "accumulation") loadAccumulation();
     if (viewMode === "compounders") loadCompounders(cmpHorizon);
+    if (viewMode === "value") loadValueQuality();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode]);
 
@@ -325,7 +366,7 @@ export function useDashboardData() {
 
   return {
     viewMode, setViewMode,
-    rows, turnRows, accumRows, compoundRows,
+    rows, turnRows, accumRows, compoundRows, valueRows,
     q, setQ, bucket, setBucket, atype, setAtype, minScore, setMinScore,
     sortKey, setSortKey, sortDir, setSortDir,
     pageSize, setPageSize, page, setPage,
@@ -339,10 +380,10 @@ export function useDashboardData() {
     selected, setSelected,
     prices, pricesLoading,
     rangeKey, setRangeKey,
-    finnhubData, finnhubLoading,
+    finnhubData, finnhubLoading, valuationData,
     loading, error,
     handleOpen, openFromSymbol,
     detailOpen, closeDetail,
-    loadRanking, loadTurnarounds, loadAccumulation, loadCompounders,
+    loadRanking, loadTurnarounds, loadAccumulation, loadCompounders, loadValueQuality,
   };
 }

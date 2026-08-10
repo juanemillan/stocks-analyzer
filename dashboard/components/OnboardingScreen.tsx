@@ -1,6 +1,7 @@
 "use client";
 import { BulliaLogo } from "@/components/BulliaLogo";
 import type { Lang } from "@/app/types";
+import { useTheme } from "next-themes";
 
 interface Props {
   lang: Lang;
@@ -24,13 +25,14 @@ const STEPS = {
 
 export function OnboardingScreen({ lang, onDone }: Props) {
   const steps = STEPS[lang];
+  const { resolvedTheme } = useTheme();
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-950 px-6 animate-fadeIn">
       <div className="w-full max-w-sm flex flex-col items-center gap-8">
 
         {/* Logo + tagline */}
         <div className="flex flex-col items-center gap-3">
-          <BulliaLogo dark={false} />
+          <BulliaLogo dark={resolvedTheme === "dark"} />
           <p className="text-sm text-gray-500 text-center">
             {lang === "es" ? "El dashboard que los inversores independientes merecen." : "The dashboard independent investors deserve."}
           </p>

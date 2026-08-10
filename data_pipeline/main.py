@@ -191,6 +191,7 @@ def main():
         apply_sql_file("sql/02_views.sql")
         apply_sql_file("sql/04_turnaround_explosives.sql")
         apply_sql_file("sql/06_accumulation_zone.sql")
+        apply_sql_file("sql/07_value_quality.sql")
         print("🏁 Vistas actualizadas.")
 
     elif args.add_asset:
@@ -199,6 +200,7 @@ def main():
     elif args.enrich:
         print("📚 Enriqueciendo metadata de activos (yfinance)...")
         apply_sql_file("sql/05_enrich_assets.sql")   # ensure columns exist
+        apply_sql_file("sql/07_value_quality.sql")   # valuation columns + screen view
         enrich_assets(
             symbol_filter=getattr(args, "symbol", None),
             missing_only=getattr(args, "missing_only", False),

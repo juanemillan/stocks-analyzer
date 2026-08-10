@@ -8,6 +8,7 @@ interface FavoritesTabProps {
   watchlist: Set<string>;
   onToggleFavorite: (symbol: string) => void;
   onOpen: (row: RankRow) => void;
+  onBrowseRanking: () => void;
   selectedSymbol?: string | null;
   lang: Lang;
 }
@@ -23,6 +24,7 @@ export function FavoritesTab({
   watchlist,
   onToggleFavorite,
   onOpen,
+  onBrowseRanking,
   selectedSymbol,
   lang,
 }: FavoritesTabProps) {
@@ -33,11 +35,25 @@ export function FavoritesTab({
 
   if (favorites.length === 0) {
     return (
-      <div className="animate-fadeIn flex flex-col items-center justify-center py-24 gap-4 text-gray-400">
+      <div className="animate-fadeIn flex flex-col items-center justify-center py-24 gap-3 text-center text-gray-500 dark:text-gray-400">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-30">
           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
         </svg>
-        <p className="text-sm">No favorites yet — tap the heart on any symbol to add it here.</p>
+        <h2 className="text-base font-semibold text-gray-800 dark:text-gray-100">
+          {lang === "es" ? "Aún no tienes favoritos" : "No favorites yet"}
+        </h2>
+        <p className="max-w-sm text-sm">
+          {lang === "es"
+            ? "Guarda activos para seguirlos y encontrarlos rápidamente aquí."
+            : "Save symbols to follow them and find them quickly here."}
+        </p>
+        <button
+          type="button"
+          onClick={onBrowseRanking}
+          className="mt-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-neutral-950"
+        >
+          {lang === "es" ? "Ver ranking" : "Browse ranking"}
+        </button>
       </div>
     );
   }

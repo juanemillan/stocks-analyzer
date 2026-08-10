@@ -194,7 +194,8 @@ export async function getLatestPrices(symbols: string[]): Promise<Record<string,
     return result;
 }
 
-export async function getPrices(symbol: string, days: number) {
+const getCachedPrices = unstable_cache(
+    async (symbol: string, days: number) => {
     const since = new Date();
     since.setDate(since.getDate() - days);
     const { rows } = await pool.query(
@@ -209,6 +210,46 @@ export async function getPrices(symbol: string, days: number) {
         close: Number(r.close),
         volume: Number(r.volume),
     }));
+    },
+    ['daily-prices'],
+    { revalidate: 86400 },
+);
+
+export async function getPrices(symbol: string, days: number) {
+    return getCachedPrices(symbol, days);
+}
+
+export const getValueQuality = unstable_cache(
+    async () => {
+        const { rows } = await pool.query(
+            `SELECT symbol, name, asset_type, racional_url, sector, market_cap, trailing_pe,
+                    forward_pe, enterprise_to_ebitda, free_cashflow, total_debt, total_cash,
+                    return_on_equity, profit_margins, revenue_growth, value_quality_score
+             FROM v_value_quality_candidates
+             ORDER BY value_quality_score DESC, return_on_equity DESC NULLS LAST
+             LIMIT 500`
+        );
+        return rows.map(parseRow);
+    },
+    ['value-quality'], { revalidate: RANKING_TTL },
+);
+
+const getCachedAssetValuation = unstable_cache(
+    async (symbol: string) => {
+        const { rows } = await pool.query(
+            `SELECT market_cap, trailing_pe, forward_pe, enterprise_to_ebitda,
+                    free_cashflow, total_debt, total_cash, return_on_equity,
+                    profit_margins, revenue_growth, valuation_updated_at::text
+             FROM assets WHERE symbol = $1 LIMIT 1`,
+            [symbol],
+        );
+        return rows[0] ? parseRow(rows[0]) : null;
+    },
+    ['asset-valuation'], { revalidate: RANKING_TTL },
+);
+
+export async function getAssetValuation(symbol: string) {
+    return getCachedAssetValuation(symbol);
 }
 
 export async function getIntradayBars(symbol: string) {
@@ -229,7 +270,7 @@ export async function getIntradayBars(symbol: string) {
 
     for (const dateStr of dates) {
         const url = `https://api.massive.com/v2/aggs/ticker/${encodeURIComponent(symbol)}/range/5/minute/${dateStr}/${dateStr}?adjusted=true&sort=asc&limit=390&apiKey=${key}`;
-        const res = await fetch(url, { cache: "no-store" });
+        const res = await fetch(url, { next: { revalidate: 300 } });
 
         if (!res.ok) continue; // 403 plan limit or no data for that date
 

@@ -45,6 +45,7 @@ python -m compileall -q data_pipeline
 ## Documentación
 
 - [Proceso completo del proyecto](docs/PROJECT_PROCESS.md)
+- [Roadmap de producto](docs/PRODUCT_ROADMAP.md)
 - [Diseño visual](DESIGN.md)
 - [Diagnóstico de cachés](docs/DEV_GUIDE.md)
 - [Dashboard](dashboard/README.md)

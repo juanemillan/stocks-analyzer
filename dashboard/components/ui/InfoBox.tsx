@@ -2,11 +2,15 @@ import React from "react";
 
 export function InfoBox({ text, label, children }: { text: string; label: string; children?: React.ReactNode }) {
   const [open, setOpen] = React.useState(false);
+  const contentId = React.useId();
   return (
     <div className="mb-4">
       <button
+        type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+        aria-expanded={open}
+        aria-controls={contentId}
+        className="flex items-center gap-1.5 rounded text-xs text-gray-500 transition-colors hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:hover:text-gray-300"
       >
         <svg
           width="13"
@@ -32,7 +36,7 @@ export function InfoBox({ text, label, children }: { text: string; label: string
         </span>
       </button>
       {open && (
-        <div className="mt-2 px-4 py-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded-xl text-sm text-gray-700 dark:text-gray-300 leading-relaxed animate-fadeIn">
+        <div id={contentId} className="mt-2 px-4 py-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded-xl text-sm text-gray-700 dark:text-gray-300 leading-relaxed animate-fadeIn">
           {text}
           {children}
         </div>

@@ -21,7 +21,7 @@ import { DescriptionBlock } from "@/components/ui/DescriptionBlock";
 import { bucketDisplay, fmtBig, RANGE_OPTIONS } from "@/lib/stockUtils";
 import { SymbolLogo } from "@/components/ui/SymbolLogo";
 import { t } from "@/app/i18n";
-import type { RankRow, PriceRow, Lang, FinnhubData } from "@/app/types";
+import type { RankRow, PriceRow, Lang, FinnhubData, AssetValuation } from "@/app/types";
 import { AlertsModal } from "@/components/modals/AlertsModal";
 import type { AlertRule, AlertType } from "@/hooks/useAlerts";
 import { ScoreSparkline } from "@/components/detail/ScoreSparkline";
@@ -34,6 +34,7 @@ type Props = {
   selected: RankRow | null;
   finnhubData: FinnhubData | null;
   finnhubLoading: boolean;
+  valuationData: AssetValuation | null;
   prices: PriceRow[];
   pricesLoading: boolean;
   rangeKey: string;
@@ -50,6 +51,7 @@ export function StockDetailPanel({
   selected,
   finnhubData,
   finnhubLoading,
+  valuationData,
   prices,
   pricesLoading,
   rangeKey,
@@ -125,6 +127,23 @@ export function StockDetailPanel({
     });
   }, [prices]);
 
+  // Keep the line and candle views on the same price scale. Candles need the
+  // full OHLC range, while a line chart otherwise only considers close prices.
+  const priceDomain = useMemo((): [number, number] => {
+    let min = Infinity;
+    let max = -Infinity;
+    for (const point of chartData) {
+      for (const value of [point.low, point.high, point.close]) {
+        if (typeof value !== "number") continue;
+        min = Math.min(min, value);
+        max = Math.max(max, value);
+      }
+    }
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return [0, 1];
+    const padding = max > min ? (max - min) * 0.05 : Math.max(Math.abs(max) * 0.05, 1);
+    return [min - padding, max + padding];
+  }, [chartData]);
+
   if (!open || !selected) return null;
 
   // Candle SVG overlay — positioned absolutely over the Recharts chart
@@ -133,7 +152,7 @@ export function StockDetailPanel({
   const Y_AXIS_W = 60;   // matches <YAxis width={60}>
   const X_AXIS_H = 30;   // approximate height of the XAxis tick area
 
-  function CandleSvgOverlay({ data, w, h, volActive }: { data: typeof chartData; w: number; h: number; volActive: boolean }) {
+  function CandleSvgOverlay({ data, w, h, volActive, domain }: { data: typeof chartData; w: number; h: number; volActive: boolean; domain: [number, number] }) {
     if (!data.length || w === 0 || h === 0) return null;
     const rightOffset = CHART_MARGIN.right + (volActive ? 40 : 0); // 40 = vol YAxis width
     const plotX = CHART_MARGIN.left + Y_AXIS_W;
@@ -142,15 +161,7 @@ export function StockDetailPanel({
     const plotH = h - plotY - X_AXIS_H;
     if (plotW <= 0 || plotH <= 0) return null;
 
-    // Compute y domain matching Recharts' "auto" (5% padding)
-    const highs  = data.map((d) => d.high).filter((v): v is number => v != null);
-    const lows   = data.map((d) => d.low).filter((v): v is number => v != null);
-    if (!highs.length) return null;
-    const dataMax = Math.max(...highs);
-    const dataMin = Math.min(...lows);
-    const pad = (dataMax - dataMin) * 0.05 || dataMin * 0.05;
-    const yMin = dataMin - pad;
-    const yMax = dataMax + pad;
+    const [yMin, yMax] = domain;
     const toY = (v: number) => plotY + (1 - (v - yMin) / (yMax - yMin)) * plotH;
 
     const step  = plotW / data.length;
@@ -226,6 +237,7 @@ export function StockDetailPanel({
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
       aria-modal="true"
       role="dialog"
+      aria-labelledby="stock-detail-title"
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-backdropIn" onClick={onClose} />
@@ -241,7 +253,7 @@ export function StockDetailPanel({
         <div className="flex-none flex items-center gap-3 px-5 py-4 border-b dark:border-neutral-700 bg-white dark:bg-neutral-900">
           <SymbolLogo symbol={selected.symbol} size={40} />
           <div className="flex-1 min-w-0">
-            <h2 className="text-base font-semibold leading-tight truncate">
+            <h2 id="stock-detail-title" className="text-base font-semibold leading-tight truncate">
               {selected.symbol} — {selected.name ?? "—"}
             </h2>
             {finnhubData?.quote && (
@@ -276,7 +288,7 @@ export function StockDetailPanel({
           <button
             onClick={onClose}
             className="flex-none w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-neutral-800 transition-colors"
-            aria-label="Close"
+            aria-label={lang === "es" ? "Cerrar detalle" : "Close details"}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <path d="M18 6 6 18M6 6l12 12" />
@@ -376,7 +388,8 @@ export function StockDetailPanel({
                         <YAxis
                           yAxisId="price"
                           tick={{ fontSize: 11 }}
-                          domain={["auto", "auto"]}
+                          domain={priceDomain}
+                          tickFormatter={(value) => Number(value).toFixed(2)}
                           width={60}
                           tickMargin={4}
                         />
@@ -391,6 +404,7 @@ export function StockDetailPanel({
                         )}
                         <Tooltip
                           contentStyle={{ fontSize: "12px", borderRadius: "8px", padding: "6px 10px" }}
+                          wrapperStyle={{ zIndex: 10, pointerEvents: "none" }}
                           content={({ active, payload, label }) => {
                             if (!active || !payload?.length) return null;
                             const d = payload[0]?.payload;
@@ -438,7 +452,7 @@ export function StockDetailPanel({
                       </ComposedChart>
                     </ResponsiveContainer>
                     {chartMode === "candle" && (
-                      <CandleSvgOverlay data={chartData} w={chartSize.w} h={chartSize.h} volActive={showVolume} />
+                      <CandleSvgOverlay data={chartData} w={chartSize.w} h={chartSize.h} volActive={showVolume} domain={priceDomain} />
                     )}
                     </>
                   ) : (
@@ -479,6 +493,14 @@ export function StockDetailPanel({
                         <FundStat label={t("eps", lang)} value={finnhubData.metrics.epsBasicExclExtraItemsTTM != null ? finnhubData.metrics.epsBasicExclExtraItemsTTM.toFixed(2) : "—"} />
                         <FundStat label={t("divYield", lang)} value={finnhubData.metrics.dividendYieldIndicatedAnnual != null ? finnhubData.metrics.dividendYieldIndicatedAnnual.toFixed(2) + "%" : "—"} />
                         <FundStat label={t("revenueGrowth", lang)} value={finnhubData.metrics.revenueGrowthTTMYoy != null ? finnhubData.metrics.revenueGrowthTTMYoy.toFixed(1) + "%" : "—"} />
+                      </>)}
+                      {valuationData && (<>
+                        <FundStat label={lang === "es" ? "P/E (TTM)" : "P/E (TTM)"} value={valuationData.trailing_pe != null ? valuationData.trailing_pe.toFixed(1) : "—"} />
+                        <FundStat label={lang === "es" ? "ROE" : "ROE"} value={valuationData.return_on_equity != null ? `${(valuationData.return_on_equity * 100).toFixed(1)}%` : "—"} />
+                        <FundStat label={lang === "es" ? "EV / EBITDA" : "EV / EBITDA"} value={valuationData.enterprise_to_ebitda != null ? valuationData.enterprise_to_ebitda.toFixed(1) : "—"} />
+                        <FundStat label={lang === "es" ? "Margen neto" : "Profit margin"} value={valuationData.profit_margins != null ? `${(valuationData.profit_margins * 100).toFixed(1)}%` : "—"} />
+                        <FundStat label={lang === "es" ? "Flujo de caja libre" : "Free cash flow"} value={valuationData.free_cashflow != null ? fmtBig(valuationData.free_cashflow) : "—"} />
+                        <FundStat label={lang === "es" ? "Deuda total" : "Total debt"} value={valuationData.total_debt != null ? fmtBig(valuationData.total_debt) : "—"} />
                       </>)}
                     </div>
                   )}

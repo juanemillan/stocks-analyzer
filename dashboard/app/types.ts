@@ -1,4 +1,4 @@
-export type ViewMode = "overview" | "diary" | "ranking" | "turnarounds" | "accumulation" | "compounders" | "portfolio" | "profile" | "favorites";
+export type ViewMode = "overview" | "diary" | "ranking" | "turnarounds" | "accumulation" | "compounders" | "value" | "portfolio" | "profile" | "favorites";
 
 export type DailyInsight = {
   id?: number;
@@ -88,6 +88,39 @@ export type CompoundRow = {
   pos_month_ratio: number | null;
   max_drawdown: number | null;
   days_covered: number | null;
+};
+
+export type ValueQualityRow = {
+  symbol: string;
+  name: string | null;
+  asset_type: string | null;
+  racional_url: string | null;
+  sector: string | null;
+  market_cap: number | null;
+  trailing_pe: number | null;
+  forward_pe: number | null;
+  enterprise_to_ebitda: number | null;
+  free_cashflow: number | null;
+  total_debt: number | null;
+  total_cash: number | null;
+  return_on_equity: number | null;
+  profit_margins: number | null;
+  revenue_growth: number | null;
+  value_quality_score: number;
+};
+
+export type AssetValuation = {
+  market_cap: number | null;
+  trailing_pe: number | null;
+  forward_pe: number | null;
+  enterprise_to_ebitda: number | null;
+  free_cashflow: number | null;
+  total_debt: number | null;
+  total_cash: number | null;
+  return_on_equity: number | null;
+  profit_margins: number | null;
+  revenue_growth: number | null;
+  valuation_updated_at: string | null;
 };
 
 export type PriceRow = {
