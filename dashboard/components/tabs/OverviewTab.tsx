@@ -43,6 +43,7 @@ export function OverviewTab({
   onOpenFromSymbol,
   onAskFollowUp,
 }: OverviewTabProps) {
+  const marketDate = rows.find((row) => row.date)?.date;
   const activeHoldings = holdings.filter((holding) => !holding.sold_at);
   const portfolioStats = activeHoldings.reduce(
     (acc, holding) => {
@@ -71,7 +72,9 @@ export function OverviewTab({
       <div className="mb-4">
         <h2 className="text-lg font-bold">{t("tabOverview", lang)}</h2>
         <p className="text-sm text-gray-500">
-          {new Date().toLocaleDateString(lang === "es" ? "es-ES" : "en-US", { dateStyle: "long" })}
+          {marketDate
+            ? `${lang === "es" ? "Datos al" : "Data as of"} ${new Date(`${marketDate}T12:00:00`).toLocaleDateString(lang === "es" ? "es-ES" : "en-US", { dateStyle: "long" })}`
+            : (lang === "es" ? "Cargando datos de mercado…" : "Loading market data…")}
         </p>
       </div>
 
