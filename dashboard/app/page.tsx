@@ -323,11 +323,14 @@ export default function Dashboard() {
     if (data.viewMode && data.viewMode !== "profile" && data.viewMode !== "favorites") prevViewMode.current = data.viewMode;
   }, [data.viewMode]);
 
-  // Load portfolio when portfolio tab is active; also ensure ranking rows are
-  // loaded (needed for the Add Holding symbol search dropdown)
+  // Load the lightweight portfolio snapshot on Dashboard. Historical correlation
+  // data is deferred until the user opens the full portfolio.
   useEffect(() => {
+    if (data.viewMode === "overview") {
+      portfolio.loadHoldings(false, false);
+    }
     if (data.viewMode === "portfolio") {
-      portfolio.loadHoldings();
+      portfolio.loadHoldings(false, true);
       if (data.rows.length === 0) data.loadRanking();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -738,6 +741,10 @@ export default function Dashboard() {
             turnRows={data.turnRows}
             filteredCompounders={data.filteredCompounders}
             cmpHorizon={data.cmpHorizon}
+            holdings={portfolio.holdings}
+            latestPrices={portfolio.latestPrices}
+            weekChanges={portfolio.weekChanges}
+            techSignals={portfolio.techSignals}
             lang={lang}
             setViewMode={data.setViewMode}
             onOpen={data.handleOpen}
