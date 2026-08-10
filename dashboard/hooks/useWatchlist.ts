@@ -2,9 +2,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+export type WatchlistDetails = { thesis: string | null; target_price: number | null; review_date: string | null; status: "watching" | "researching" | "ready" | "passed" };
+
 export function useWatchlist() {
   const [userId, setUserId] = useState<string | null>(null);
   const [watchlist, setWatchlist] = useState<Set<string>>(new Set());
+  const [details, setDetails] = useState<Record<string, WatchlistDetails>>({});
 
   useEffect(() => {
     const supabase = createClient();
@@ -18,9 +21,10 @@ export function useWatchlist() {
     const supabase = createClient();
     supabase
       .from("watchlist")
-      .select("symbol")
+      .select("symbol, thesis, target_price, review_date, status")
       .then(({ data }) => {
         setWatchlist(new Set((data ?? []).map((r: { symbol: string }) => r.symbol)));
+        setDetails(Object.fromEntries((data ?? []).map((r: any) => [r.symbol, { ...r, target_price: r.target_price == null ? null : Number(r.target_price) }])));
       });
   }, [userId]);
 
@@ -60,5 +64,13 @@ export function useWatchlist() {
     [userId, watchlist]
   );
 
-  return { watchlist, toggle, bulkAdd, userId };
+  const saveDetails = useCallback(async (symbol: string, values: WatchlistDetails) => {
+    if (!userId) return;
+    const supabase = createClient();
+    const next = { ...values, thesis: values.thesis?.trim() || null };
+    setDetails((prev) => ({ ...prev, [symbol]: next }));
+    await supabase.from("watchlist").upsert({ user_id: userId, symbol, ...next }, { onConflict: "user_id,symbol" });
+  }, [userId]);
+
+  return { watchlist, details, toggle, bulkAdd, saveDetails, userId };
 }

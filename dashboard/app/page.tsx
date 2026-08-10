@@ -52,7 +52,7 @@ export default function Dashboard() {
   const portfolio = usePortfolio();
   const auth = useAuth();
   const isAdmin = !!process.env.NEXT_PUBLIC_ADMIN_EMAIL && auth.userEmail === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
-  const { watchlist, toggle: toggleWatchlist, bulkAdd: bulkAddWatchlist, userId: watchlistUserId } = useWatchlist();
+  const { watchlist, details: watchlistDetails, toggle: toggleWatchlist, bulkAdd: bulkAddWatchlist, saveDetails: saveWatchlistDetails, userId: watchlistUserId } = useWatchlist();
   const chat = useChat(lang);
   const alerts = useAlerts();
 
@@ -922,6 +922,8 @@ export default function Dashboard() {
           <FavoritesTab
             rows={data.rows}
             watchlist={watchlist}
+            details={watchlistDetails}
+            onSaveDetails={saveWatchlistDetails}
             onToggleFavorite={toggleWatchlist}
             onOpen={data.handleOpen}
             onBrowseRanking={() => data.setViewMode("ranking")}
