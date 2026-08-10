@@ -41,5 +41,5 @@ jobs:
           VAPID_PRIVATE_KEY:         ${{ secrets.VAPID_PRIVATE_KEY }}
           VAPID_SUBJECT:             ${{ secrets.VAPID_SUBJECT }}
           FROM_EMAIL:                ${{ secrets.FROM_EMAIL }}
-          DASHBOARD_URL:             "https://bullia.vercel.app"
+          DASHBOARD_URL:             "https://www.bullia.app"
         run: python data_pipeline/check_portfolio_alerts.py
