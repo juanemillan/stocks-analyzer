@@ -45,4 +45,8 @@ jobs:
 
       - name: Production build
         working-directory: dashboard
+        env:
+          # Public build-time placeholders. Vercel supplies the real values at runtime.
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
         run: npm run build
