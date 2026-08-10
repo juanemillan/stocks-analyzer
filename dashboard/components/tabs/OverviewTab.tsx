@@ -6,6 +6,7 @@ import { bucketColor, bucketDisplay } from "@/lib/stockUtils";
 import { SymbolLogo } from "@/components/ui/SymbolLogo";
 import type { Holding } from "@/lib/stockUtils";
 import type { AlertRule } from "@/hooks/useAlerts";
+import type { WatchlistDetails } from "@/hooks/useWatchlist";
 
 interface OverviewTabProps {
   rows: RankRow[];
@@ -18,6 +19,7 @@ interface OverviewTabProps {
   techSignals: Record<string, boolean>;
   alertRules: AlertRule[];
   watchlist: Set<string>;
+  watchlistDetails: Record<string, WatchlistDetails>;
   lang: Lang;
   setViewMode: (v: import("@/app/types").ViewMode) => void;
   onOpen: (row: RankRow) => void;
@@ -42,6 +44,7 @@ export function OverviewTab({
   techSignals,
   alertRules,
   watchlist,
+  watchlistDetails,
   lang,
   setViewMode,
   onOpen,
@@ -81,6 +84,9 @@ export function OverviewTab({
   const scoreMove = rows
     .filter((row) => trackedSymbols.has(row.symbol) && row.score_delta != null)
     .sort((a, b) => Math.abs(b.score_delta ?? 0) - Math.abs(a.score_delta ?? 0))[0];
+  const reviewsDue = Object.entries(watchlistDetails)
+    .filter(([, detail]) => detail.review_date && detail.review_date <= new Date().toISOString().slice(0, 10) && detail.status !== "passed")
+    .map(([symbol]) => symbol);
 
   return (
     <div className="animate-fadeIn">
@@ -130,7 +136,8 @@ export function OverviewTab({
             {scoreMove && scoreMove.score_delta != null && (
               <button onClick={() => onOpen(scoreMove)} className="flex w-full items-start gap-2 text-left hover:underline"><span aria-hidden="true">📊</span><span><b>{scoreMove.symbol}</b> · {lang === "es" ? "cambio de score:" : "score change:"} <span className={scoreMove.score_delta >= 0 ? "font-semibold text-emerald-700 dark:text-emerald-300" : "font-semibold text-red-700 dark:text-red-300"}>{scoreMove.score_delta >= 0 ? "+" : ""}{scoreMove.score_delta.toFixed(3)}</span></span></button>
             )}
-            {!firedAlert && !biggestWeeklyMove && !scoreMove && <p className="text-gray-500 dark:text-gray-400">{lang === "es" ? "Sin señales relevantes por ahora. Agrega activos a tu cartera o favoritos para personalizar este resumen." : "No material signals yet. Add holdings or favorites to personalize this summary."}</p>}
+            {reviewsDue.length > 0 && <button onClick={() => setViewMode("favorites")} className="flex w-full items-start gap-2 text-left hover:underline"><span aria-hidden="true">🗓️</span><span>{lang === "es" ? `Tienes ${reviewsDue.length} ${reviewsDue.length === 1 ? "activo pendiente de revisión" : "activos pendientes de revisión"}: ` : `You have ${reviewsDue.length} ${reviewsDue.length === 1 ? "asset due for review" : "assets due for review"}: `}<b>{reviewsDue.slice(0, 3).join(", ")}</b>{reviewsDue.length > 3 ? "…" : ""}</span></button>}
+            {!firedAlert && !biggestWeeklyMove && !scoreMove && reviewsDue.length === 0 && <p className="text-gray-500 dark:text-gray-400">{lang === "es" ? "Sin señales relevantes por ahora. Agrega activos a tu cartera o favoritos para personalizar este resumen." : "No material signals yet. Add holdings or favorites to personalize this summary."}</p>}
           </div>
         </div>
       </section>

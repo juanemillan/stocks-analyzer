@@ -773,6 +773,7 @@ export default function Dashboard() {
             techSignals={portfolio.techSignals}
             alertRules={alerts.rules}
             watchlist={watchlist}
+            watchlistDetails={watchlistDetails}
             lang={lang}
             setViewMode={data.setViewMode}
             onOpen={data.handleOpen}
