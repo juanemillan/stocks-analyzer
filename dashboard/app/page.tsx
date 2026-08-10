@@ -104,6 +104,8 @@ export default function Dashboard() {
   const [jumpDropOpen, setJumpDropOpen] = useState(false);
   const [jumpResults, setJumpResults] = useState<any[]>([]);
   const jumpBlurRef = React.useRef<number | null>(null);
+  const desktopSearchRef = React.useRef<HTMLInputElement>(null);
+  const mobileSearchRef = React.useRef<HTMLInputElement>(null);
   async function jumpToSymbol(raw: string) {
     const q = raw.trim().toUpperCase();
     if (!q) return;
@@ -152,6 +154,27 @@ export default function Dashboard() {
     }, 120);
     return () => window.clearTimeout(t);
   }, [jumpQ, data.rows]);
+
+  // Familiar shortcut on desktop; on mobile it opens and focuses the search row.
+  React.useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        if (window.innerWidth < 768) {
+          setJumpMobileOpen(true);
+          requestAnimationFrame(() => mobileSearchRef.current?.focus());
+        } else {
+          desktopSearchRef.current?.focus();
+        }
+      }
+      if (event.key === "Escape") {
+        setJumpDropOpen(false);
+        setJumpMobileOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   // Build context string for the AI — refreshed whenever holdings, prices or ranking change
   const chatContext = React.useMemo(() => {
@@ -469,6 +492,7 @@ export default function Dashboard() {
                 className="relative"
               >
                 <input
+                  ref={desktopSearchRef}
                   value={jumpQ}
                   onChange={(e) => setJumpQ(e.target.value)}
                   placeholder={lang === "es" ? "Buscar símbolo…" : "Search symbol…"}
@@ -477,7 +501,7 @@ export default function Dashboard() {
                   aria-label={lang === "es" ? "Buscar símbolo" : "Search symbol"}
                   aria-expanded={jumpDropOpen && jumpResults.length > 0}
                   aria-controls="desktop-symbol-results"
-                  className="w-44 lg:w-56 rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-neutral-900 dark:border-neutral-700"
+                  className="w-44 lg:w-56 rounded-xl border px-3 py-2 pr-16 text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-neutral-900 dark:border-neutral-700"
                   onFocus={() => {
                     if (jumpBlurRef.current) window.clearTimeout(jumpBlurRef.current);
                     setJumpDropOpen(true);
@@ -486,6 +510,7 @@ export default function Dashboard() {
                     jumpBlurRef.current = window.setTimeout(() => setJumpDropOpen(false), 150);
                   }}
                 />
+                <kbd className="pointer-events-none absolute right-8 top-1/2 hidden -translate-y-1/2 rounded border bg-gray-50 px-1 text-[10px] text-gray-400 lg:block dark:bg-neutral-800 dark:border-neutral-700">⌘K</kbd>
                 <button
                   type="submit"
                   disabled={jumpBusy}
@@ -657,6 +682,7 @@ export default function Dashboard() {
               className="flex items-center gap-2 relative"
             >
               <input
+                ref={mobileSearchRef}
                 value={jumpQ}
                 onChange={(e) => setJumpQ(e.target.value)}
                 placeholder={lang === "es" ? "Buscar símbolo…" : "Search symbol…"}
@@ -665,7 +691,7 @@ export default function Dashboard() {
                 aria-label={lang === "es" ? "Buscar símbolo" : "Search symbol"}
                 aria-expanded={jumpDropOpen && jumpResults.length > 0}
                 aria-controls="mobile-symbol-results"
-                className="flex-1 rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-neutral-900 dark:border-neutral-700"
+                className="flex-1 rounded-xl border px-3 py-2 text-base outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-neutral-900 dark:border-neutral-700"
                 autoCapitalize="characters"
                 onFocus={() => {
                   if (jumpBlurRef.current) window.clearTimeout(jumpBlurRef.current);
