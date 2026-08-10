@@ -771,6 +771,8 @@ export default function Dashboard() {
             latestPrices={portfolio.latestPrices}
             weekChanges={portfolio.weekChanges}
             techSignals={portfolio.techSignals}
+            alertRules={alerts.rules}
+            watchlist={watchlist}
             lang={lang}
             setViewMode={data.setViewMode}
             onOpen={data.handleOpen}

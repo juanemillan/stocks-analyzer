@@ -5,6 +5,7 @@ import { InfoBox } from "@/components/ui/InfoBox";
 import { bucketColor, bucketDisplay } from "@/lib/stockUtils";
 import { SymbolLogo } from "@/components/ui/SymbolLogo";
 import type { Holding } from "@/lib/stockUtils";
+import type { AlertRule } from "@/hooks/useAlerts";
 
 interface OverviewTabProps {
   rows: RankRow[];
@@ -15,6 +16,8 @@ interface OverviewTabProps {
   latestPrices: Record<string, { price: number; date: string }>;
   weekChanges: Record<string, number>;
   techSignals: Record<string, boolean>;
+  alertRules: AlertRule[];
+  watchlist: Set<string>;
   lang: Lang;
   setViewMode: (v: import("@/app/types").ViewMode) => void;
   onOpen: (row: RankRow) => void;
@@ -37,6 +40,8 @@ export function OverviewTab({
   latestPrices,
   weekChanges,
   techSignals,
+  alertRules,
+  watchlist,
   lang,
   setViewMode,
   onOpen,
@@ -65,6 +70,17 @@ export function OverviewTab({
   });
   const opportunity = rows.find((row) => row.final_score != null && row.final_score >= 0.7 && !activeHoldings.some((holding) => holding.symbol === row.symbol));
   const opportunityScore = opportunity?.final_score;
+  const trackedSymbols = new Set([...activeHoldings.map((holding) => holding.symbol), ...watchlist]);
+  const firedAlert = alertRules
+    .filter((rule) => rule.triggered_at)
+    .sort((a, b) => new Date(b.triggered_at!).getTime() - new Date(a.triggered_at!).getTime())[0];
+  const biggestWeeklyMove = activeHoldings
+    .map((holding) => ({ symbol: holding.symbol, change: weekChanges[holding.symbol] }))
+    .filter((item): item is { symbol: string; change: number } => item.change != null && Math.abs(item.change) >= 5)
+    .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))[0];
+  const scoreMove = rows
+    .filter((row) => trackedSymbols.has(row.symbol) && row.score_delta != null)
+    .sort((a, b) => Math.abs(b.score_delta ?? 0) - Math.abs(a.score_delta ?? 0))[0];
 
   return (
     <div className="animate-fadeIn">
@@ -102,6 +118,21 @@ export function OverviewTab({
             <span>🔎</span><span className="flex-1"><b>{opportunity.symbol}</b> · {lang === "es" ? "Alta convicción y no está en tu cartera." : "High conviction and not in your portfolio."}</span><span className="font-mono text-emerald-700 dark:text-emerald-300">{opportunityScore.toFixed(2)}</span>
           </button>
         )}
+        <div className="mt-3 rounded-xl border border-indigo-100 bg-white/70 p-3 dark:border-indigo-900/60 dark:bg-neutral-900/60">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-indigo-900 dark:text-indigo-200">{lang === "es" ? "Actividad reciente" : "Recent activity"}</p>
+          <div className="space-y-2 text-sm">
+            {firedAlert && (
+              <div className="flex items-start gap-2"><span aria-hidden="true">🔔</span><span><b>{firedAlert.symbol}</b> · {lang === "es" ? "una alerta se activó" : "an alert was triggered"} <span className="text-xs text-gray-500">({new Date(firedAlert.triggered_at!).toLocaleDateString(lang === "es" ? "es-ES" : "en-US")})</span></span></div>
+            )}
+            {biggestWeeklyMove && (
+              <div className="flex items-start gap-2"><span aria-hidden="true">⚡</span><span><b>{biggestWeeklyMove.symbol}</b> · {lang === "es" ? "movimiento en 7 sesiones:" : "move in 7 sessions:"} <span className={biggestWeeklyMove.change >= 0 ? "font-semibold text-emerald-700 dark:text-emerald-300" : "font-semibold text-red-700 dark:text-red-300"}>{biggestWeeklyMove.change >= 0 ? "+" : ""}{biggestWeeklyMove.change.toFixed(1)}%</span></span></div>
+            )}
+            {scoreMove && scoreMove.score_delta != null && (
+              <button onClick={() => onOpen(scoreMove)} className="flex w-full items-start gap-2 text-left hover:underline"><span aria-hidden="true">📊</span><span><b>{scoreMove.symbol}</b> · {lang === "es" ? "cambio de score:" : "score change:"} <span className={scoreMove.score_delta >= 0 ? "font-semibold text-emerald-700 dark:text-emerald-300" : "font-semibold text-red-700 dark:text-red-300"}>{scoreMove.score_delta >= 0 ? "+" : ""}{scoreMove.score_delta.toFixed(3)}</span></span></button>
+            )}
+            {!firedAlert && !biggestWeeklyMove && !scoreMove && <p className="text-gray-500 dark:text-gray-400">{lang === "es" ? "Sin señales relevantes por ahora. Agrega activos a tu cartera o favoritos para personalizar este resumen." : "No material signals yet. Add holdings or favorites to personalize this summary."}</p>}
+          </div>
+        </div>
       </section>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
