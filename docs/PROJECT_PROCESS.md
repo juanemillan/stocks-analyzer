@@ -1,5 +1,11 @@
 # Proceso del proyecto Bullia
 
+## Pendiente: validar push en movil real
+
+- Tras desplegar, inicia sesion en un movil, abre Perfil, activa notificaciones y pulsa **Enviar prueba**.
+- Android: Chrome permite notificaciones web directamente. iPhone: requiere iOS 16.4+ y Bullia instalada en la pantalla de inicio.
+- Si aparece `push_not_configured`, configura en Vercel `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` y `VAPID_SUBJECT`, y redeploya.
+
 ## 1. Arquitectura y flujo de datos
 
 ```text
@@ -153,7 +159,7 @@ GitHub ejecuta typecheck y pruebas para cambios del dashboard, además de contro
 - El diff contiene solo archivos relacionados con el cambio.
 - No hay `.env`, claves, dumps ni credenciales.
 - `git diff --check` no reporta whitespace.
-- TypeScript, pruebas, lint y build pasan con Node 20.
+- TypeScript, pruebas, lint y build pasan con Node 22.
 - Python compila y el estado del pipeline responde con Python 3.11.
 - Las migraciones nuevas se probaron y se despliegan antes que sus consumidores.
 - Las rutas API privadas validan al usuario dentro del handler.

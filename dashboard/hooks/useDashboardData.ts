@@ -10,7 +10,7 @@ import {
   getAssetValuation,
   getFinnhubData,
 } from "@/app/actions";
-import { cacheGet, cacheSet } from "@/lib/dailyCache";
+import { cacheGet, cacheNeedsRefresh, cacheSet } from "@/lib/dailyCache";
 import { RANGE_OPTIONS } from "@/lib/stockUtils";
 import type {
   ViewMode,
@@ -87,7 +87,10 @@ export function useDashboardData() {
     const KEY = "bullia_ranking";
     if (!force) {
       const cached = cacheGet<RankRow[]>(KEY);
-      if (cached) { setRows(cached); return; }
+      if (cached) {
+        setRows(cached);
+        if (!cacheNeedsRefresh(KEY, 30 * 60_000)) return;
+      }
     }
     setLoading(true);
     setError(null);
@@ -106,7 +109,10 @@ export function useDashboardData() {
     const KEY = "bullia_turnarounds";
     if (!force) {
       const cached = cacheGet<TurnRow[]>(KEY);
-      if (cached) { setTurnRows(cached); return; }
+      if (cached) {
+        setTurnRows(cached);
+        if (!cacheNeedsRefresh(KEY, 30 * 60_000)) return;
+      }
     }
     setLoading(true);
     setError(null);
@@ -125,7 +131,10 @@ export function useDashboardData() {
     const KEY = "bullia_accumulation";
     if (!force) {
       const cached = cacheGet<AccumRow[]>(KEY);
-      if (cached) { setAccumRows(cached); return; }
+      if (cached) {
+        setAccumRows(cached);
+        if (!cacheNeedsRefresh(KEY, 30 * 60_000)) return;
+      }
     }
     setLoading(true);
     setError(null);
@@ -144,7 +153,10 @@ export function useDashboardData() {
     const KEY = `bullia_compounders_${h}`;
     if (!force) {
       const cached = cacheGet<CompoundRow[]>(KEY);
-      if (cached) { setCompoundRows(cached); return; }
+      if (cached) {
+        setCompoundRows(cached);
+        if (!cacheNeedsRefresh(KEY, 30 * 60_000)) return;
+      }
     }
     setLoading(true);
     setError(null);
@@ -163,7 +175,10 @@ export function useDashboardData() {
     const KEY = "bullia_value_quality";
     if (!force) {
       const cached = cacheGet<ValueQualityRow[]>(KEY);
-      if (cached?.length) { setValueRows(cached); return; }
+      if (cached?.length) {
+        setValueRows(cached);
+        if (!cacheNeedsRefresh(KEY, 30 * 60_000)) return;
+      }
     }
     setLoading(true);
     setError(null);
@@ -218,8 +233,18 @@ export function useDashboardData() {
 
   useEffect(() => {
     if (!detailOpen || !selected?.symbol) { setValuationData(null); return; }
+    const cacheKey = `valuation_${selected.symbol}`;
+    const cached = cacheGet<AssetValuation | null>(cacheKey, 24 * 60 * 60_000);
+    if (cached) {
+      setValuationData(cached);
+      return;
+    }
     getAssetValuation(selected.symbol)
-      .then((data) => setValuationData(data as AssetValuation | null))
+      .then((data) => {
+        const valuation = data as AssetValuation | null;
+        setValuationData(valuation);
+        cacheSet(cacheKey, valuation);
+      })
       .catch(() => setValuationData(null));
   }, [detailOpen, selected?.symbol]);
 

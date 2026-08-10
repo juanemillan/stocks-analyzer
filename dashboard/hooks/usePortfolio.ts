@@ -50,12 +50,14 @@ export function usePortfolio() {
   const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
 
   const holdingsEverLoaded = useRef(false);
+  const analyticsEverLoaded = useRef(false);
 
   const dataDate = Object.values(latestPrices).map((v) => v.date).sort().at(-1) ?? null;
 
-  async function loadHoldings(force = false) {
-    // Skip if already loaded unless explicitly forced (e.g. after a sync)
-    if (!force && holdingsEverLoaded.current) return;
+  async function loadHoldings(force = false, includeAnalytics = true) {
+    // The dashboard only needs holdings and latest prices. Expensive correlation
+    // history is deferred until the user opens the portfolio.
+    if (!force && holdingsEverLoaded.current && (!includeAnalytics || analyticsEverLoaded.current)) return;
     holdingsEverLoaded.current = true;
     setHoldingsLoading(true);
     const supabase = createClient();
@@ -84,7 +86,7 @@ export function usePortfolio() {
     if (list.length) {
       const prices = await getLatestPrices(list.map((h) => h.symbol));
       setLatestPrices(prices);
-      if (list.length >= 2) {
+      if (includeAnalytics && list.length >= 2) {
         const priceMap = await getPricesMulti(list.map((h) => h.symbol), 90);
         setCorrelationData(computeCorrelation(priceMap));
         // Compute 7-day % change per symbol from the same price data
@@ -106,12 +108,15 @@ export function usePortfolio() {
           signals[sym] = (rsi != null && rsi > 70) || (dist != null && dist > 15);
         }
         setTechSignals(signals);
-      } else {
+        analyticsEverLoaded.current = true;
+      } else if (includeAnalytics) {
         setCorrelationData(null);
+        analyticsEverLoaded.current = true;
       }
     } else {
       setLatestPrices({});
       setCorrelationData(null);
+      analyticsEverLoaded.current = true;
     }
     setHoldingsLoading(false);
   }

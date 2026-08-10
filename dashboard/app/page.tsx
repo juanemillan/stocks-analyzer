@@ -52,7 +52,7 @@ export default function Dashboard() {
   const portfolio = usePortfolio();
   const auth = useAuth();
   const isAdmin = !!process.env.NEXT_PUBLIC_ADMIN_EMAIL && auth.userEmail === process.env.NEXT_PUBLIC_ADMIN_EMAIL;
-  const { watchlist, toggle: toggleWatchlist, bulkAdd: bulkAddWatchlist, userId: watchlistUserId } = useWatchlist();
+  const { watchlist, details: watchlistDetails, toggle: toggleWatchlist, bulkAdd: bulkAddWatchlist, saveDetails: saveWatchlistDetails, userId: watchlistUserId } = useWatchlist();
   const chat = useChat(lang);
   const alerts = useAlerts();
 
@@ -104,6 +104,8 @@ export default function Dashboard() {
   const [jumpDropOpen, setJumpDropOpen] = useState(false);
   const [jumpResults, setJumpResults] = useState<any[]>([]);
   const jumpBlurRef = React.useRef<number | null>(null);
+  const desktopSearchRef = React.useRef<HTMLInputElement>(null);
+  const mobileSearchRef = React.useRef<HTMLInputElement>(null);
   async function jumpToSymbol(raw: string) {
     const q = raw.trim().toUpperCase();
     if (!q) return;
@@ -152,6 +154,27 @@ export default function Dashboard() {
     }, 120);
     return () => window.clearTimeout(t);
   }, [jumpQ, data.rows]);
+
+  // Familiar shortcut on desktop; on mobile it opens and focuses the search row.
+  React.useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        if (window.innerWidth < 768) {
+          setJumpMobileOpen(true);
+          requestAnimationFrame(() => mobileSearchRef.current?.focus());
+        } else {
+          desktopSearchRef.current?.focus();
+        }
+      }
+      if (event.key === "Escape") {
+        setJumpDropOpen(false);
+        setJumpMobileOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   // Build context string for the AI — refreshed whenever holdings, prices or ranking change
   const chatContext = React.useMemo(() => {
@@ -323,11 +346,14 @@ export default function Dashboard() {
     if (data.viewMode && data.viewMode !== "profile" && data.viewMode !== "favorites") prevViewMode.current = data.viewMode;
   }, [data.viewMode]);
 
-  // Load portfolio when portfolio tab is active; also ensure ranking rows are
-  // loaded (needed for the Add Holding symbol search dropdown)
+  // Load the lightweight portfolio snapshot on Dashboard. Historical correlation
+  // data is deferred until the user opens the full portfolio.
   useEffect(() => {
+    if (data.viewMode === "overview") {
+      portfolio.loadHoldings(false, false);
+    }
     if (data.viewMode === "portfolio") {
-      portfolio.loadHoldings();
+      portfolio.loadHoldings(false, true);
       if (data.rows.length === 0) data.loadRanking();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -466,6 +492,7 @@ export default function Dashboard() {
                 className="relative"
               >
                 <input
+                  ref={desktopSearchRef}
                   value={jumpQ}
                   onChange={(e) => setJumpQ(e.target.value)}
                   placeholder={lang === "es" ? "Buscar símbolo…" : "Search symbol…"}
@@ -474,7 +501,7 @@ export default function Dashboard() {
                   aria-label={lang === "es" ? "Buscar símbolo" : "Search symbol"}
                   aria-expanded={jumpDropOpen && jumpResults.length > 0}
                   aria-controls="desktop-symbol-results"
-                  className="w-44 lg:w-56 rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-neutral-900 dark:border-neutral-700"
+                  className="w-44 lg:w-56 rounded-xl border px-3 py-2 pr-16 text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-neutral-900 dark:border-neutral-700"
                   onFocus={() => {
                     if (jumpBlurRef.current) window.clearTimeout(jumpBlurRef.current);
                     setJumpDropOpen(true);
@@ -483,6 +510,7 @@ export default function Dashboard() {
                     jumpBlurRef.current = window.setTimeout(() => setJumpDropOpen(false), 150);
                   }}
                 />
+                <kbd className="pointer-events-none absolute right-8 top-1/2 hidden -translate-y-1/2 rounded border bg-gray-50 px-1 text-[10px] text-gray-400 lg:block dark:bg-neutral-800 dark:border-neutral-700">⌘K</kbd>
                 <button
                   type="submit"
                   disabled={jumpBusy}
@@ -654,6 +682,7 @@ export default function Dashboard() {
               className="flex items-center gap-2 relative"
             >
               <input
+                ref={mobileSearchRef}
                 value={jumpQ}
                 onChange={(e) => setJumpQ(e.target.value)}
                 placeholder={lang === "es" ? "Buscar símbolo…" : "Search symbol…"}
@@ -662,7 +691,7 @@ export default function Dashboard() {
                 aria-label={lang === "es" ? "Buscar símbolo" : "Search symbol"}
                 aria-expanded={jumpDropOpen && jumpResults.length > 0}
                 aria-controls="mobile-symbol-results"
-                className="flex-1 rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-neutral-900 dark:border-neutral-700"
+                className="flex-1 rounded-xl border px-3 py-2 text-base outline-none focus:ring-2 focus:ring-emerald-500 dark:bg-neutral-900 dark:border-neutral-700"
                 autoCapitalize="characters"
                 onFocus={() => {
                   if (jumpBlurRef.current) window.clearTimeout(jumpBlurRef.current);
@@ -738,6 +767,12 @@ export default function Dashboard() {
             turnRows={data.turnRows}
             filteredCompounders={data.filteredCompounders}
             cmpHorizon={data.cmpHorizon}
+            holdings={portfolio.holdings}
+            latestPrices={portfolio.latestPrices}
+            weekChanges={portfolio.weekChanges}
+            techSignals={portfolio.techSignals}
+            alertRules={alerts.rules}
+            watchlist={watchlist}
             lang={lang}
             setViewMode={data.setViewMode}
             onOpen={data.handleOpen}
@@ -887,6 +922,8 @@ export default function Dashboard() {
           <FavoritesTab
             rows={data.rows}
             watchlist={watchlist}
+            details={watchlistDetails}
+            onSaveDetails={saveWatchlistDetails}
             onToggleFavorite={toggleWatchlist}
             onOpen={data.handleOpen}
             onBrowseRanking={() => data.setViewMode("ranking")}

@@ -20,7 +20,7 @@ function BellIcon({ filled }: { filled?: boolean }) {
 }
 
 export function PushNotificationToggle() {
-  const { state, loading, errorMsg, subscribe, unsubscribe } = usePushNotifications();
+  const { state, loading, errorMsg, testStatus, subscribe, unsubscribe, sendTest } = usePushNotifications();
 
   if (state === "unsupported") return null;
 
@@ -52,24 +52,33 @@ export function PushNotificationToggle() {
   const isSubscribed = state === "subscribed";
 
   return (
-    <button
-      onClick={isSubscribed ? unsubscribe : subscribe}
-      disabled={loading}
-      title={isSubscribed ? "Disable push notifications" : "Enable push notifications"}
-      className={[
-        "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors",
-        isSubscribed
-          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25"
-          : "bg-muted text-muted-foreground hover:bg-muted/80",
-        loading ? "opacity-50 cursor-not-allowed" : "",
-      ].join(" ")}
-    >
-      <BellIcon filled={isSubscribed} />
-      {loading
-        ? "..."
-        : isSubscribed
-        ? "Notif. activas"
-        : "Activar notificaciones"}
-    </button>
+    <div className="flex flex-wrap items-center gap-2">
+      <button
+        onClick={isSubscribed ? unsubscribe : subscribe}
+        disabled={loading}
+        title={isSubscribed ? "Desactivar notificaciones" : "Activar notificaciones"}
+        className={[
+          "flex min-h-10 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors",
+          isSubscribed
+            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25"
+            : "bg-muted text-muted-foreground hover:bg-muted/80",
+          loading ? "opacity-50 cursor-not-allowed" : "",
+        ].join(" ")}
+      >
+        <BellIcon filled={isSubscribed} />
+        {loading ? "..." : isSubscribed ? "Notif. activas" : "Activar notificaciones"}
+      </button>
+      {isSubscribed && (
+        <button
+          onClick={sendTest}
+          disabled={testStatus === "sending"}
+          className="min-h-10 rounded-xl border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+        >
+          {testStatus === "sending" ? "Enviando…" : "Enviar prueba"}
+        </button>
+      )}
+      {testStatus === "sent" && <span className="w-full text-xs text-emerald-700 dark:text-emerald-300">Prueba enviada. Revisa la notificación de este dispositivo.</span>}
+      {testStatus === "error" && errorMsg && <span className="w-full text-xs text-red-500">{errorMsg}</span>}
+    </div>
   );
 }
