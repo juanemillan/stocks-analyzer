@@ -11,6 +11,8 @@ jobs:
     name: Check portfolio P&L thresholds
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      PGSSLROOTCERT: ${{ runner.temp }}/cockroach-ca.crt
 
     steps:
       - uses: actions/checkout@v4
@@ -22,6 +24,13 @@ jobs:
 
       - name: Install dependencies
         run: pip install psycopg2-binary supabase requests python-dotenv pywebpush
+
+      - name: Configure CockroachDB TLS
+        env:
+          COCKROACH_CA_CERT: ${{ secrets.COCKROACH_CA_CERT }}
+        run: |
+          test -n "$COCKROACH_CA_CERT" || { echo "Missing COCKROACH_CA_CERT secret" >&2; exit 1; }
+          printf '%s' "$COCKROACH_CA_CERT" > "$PGSSLROOTCERT"
 
       - name: Snapshot portfolio values
         env:

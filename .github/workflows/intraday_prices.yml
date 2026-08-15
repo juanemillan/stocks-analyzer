@@ -15,6 +15,7 @@ jobs:
 
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PGSSLROOTCERT: ${{ runner.temp }}/cockroach-ca.crt
 
     steps:
       - name: Checkout repo
@@ -28,6 +29,13 @@ jobs:
 
       - name: Install dependencies
         run: pip install psycopg2-binary yfinance python-dotenv numpy pandas
+
+      - name: Configure CockroachDB TLS
+        env:
+          COCKROACH_CA_CERT: ${{ secrets.COCKROACH_CA_CERT }}
+        run: |
+          test -n "$COCKROACH_CA_CERT" || { echo "Missing COCKROACH_CA_CERT secret" >&2; exit 1; }
+          printf '%s' "$COCKROACH_CA_CERT" > "$PGSSLROOTCERT"
 
       - name: Fetch intraday prices (with retries)
         working-directory: data_pipeline
