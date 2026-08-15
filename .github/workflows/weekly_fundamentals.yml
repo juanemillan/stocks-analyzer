@@ -20,6 +20,14 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+      - name: Configure CockroachDB TLS
+        env:
+          COCKROACH_CA_CERT: ${{ secrets.COCKROACH_CA_CERT }}
+        run: |
+          test -n "$COCKROACH_CA_CERT" || { echo "Missing COCKROACH_CA_CERT secret" >&2; exit 1; }
+          cert_path="$RUNNER_TEMP/cockroach-ca.crt"
+          printf '%s' "$COCKROACH_CA_CERT" > "$cert_path"
+          echo "PGSSLROOTCERT=$cert_path" >> "$GITHUB_ENV"
       - run: pip install -r requirements.txt
       - name: Refresh asset fundamentals and valuation view
         working-directory: data_pipeline
