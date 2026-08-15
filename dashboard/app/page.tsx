@@ -879,13 +879,7 @@ export default function Dashboard() {
             correlationData={portfolio.correlationData}
             weekChanges={portfolio.weekChanges}
             techSignals={portfolio.techSignals}
-            onShowConnectRacional={() => portfolio.setShowConnectRacional(true)}
-            canSyncRacional={false}
             onShowRequestAsset={() => setShowRequestAsset(true)}
-            racionalSyncing={portfolio.racionalSyncing}
-            racionalSyncError={portfolio.racionalSyncError}
-            racionalSyncInfo={portfolio.racionalSyncInfo}
-            lastRacionalSync={portfolio.lastRacionalSync}
             onUpdateHolding={portfolio.updateHolding}
             watchlist={watchlist}
             onToggleWatchlist={toggleWatchlist}
