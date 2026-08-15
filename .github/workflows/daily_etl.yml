@@ -14,7 +14,6 @@ jobs:
 
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      PGSSLROOTCERT: ${{ runner.temp }}/cockroach-ca.crt
 
     steps:
       - name: Checkout repo
@@ -34,7 +33,9 @@ jobs:
           COCKROACH_CA_CERT: ${{ secrets.COCKROACH_CA_CERT }}
         run: |
           test -n "$COCKROACH_CA_CERT" || { echo "Missing COCKROACH_CA_CERT secret" >&2; exit 1; }
-          printf '%s' "$COCKROACH_CA_CERT" > "$PGSSLROOTCERT"
+          cert_path="$RUNNER_TEMP/cockroach-ca.crt"
+          printf '%s' "$COCKROACH_CA_CERT" > "$cert_path"
+          echo "PGSSLROOTCERT=$cert_path" >> "$GITHUB_ENV"
 
       - name: Update prices (incremental)
         working-directory: data_pipeline
