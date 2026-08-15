@@ -84,8 +84,13 @@ export function usePortfolio() {
     const list = (data ?? []) as Holding[];
     setHoldings(list);
     if (list.length) {
-      const prices = await getLatestPrices(list.map((h) => h.symbol));
-      setLatestPrices(prices);
+      try {
+        const prices = await getLatestPrices(list.map((h) => h.symbol));
+        setLatestPrices(prices);
+      } catch (error) {
+        console.error("[portfolio] latest prices unavailable", error);
+        setLatestPrices({});
+      }
       if (includeAnalytics && list.length >= 2) {
         const priceMap = await getPricesMulti(list.map((h) => h.symbol), 90);
         setCorrelationData(computeCorrelation(priceMap));

@@ -188,13 +188,23 @@ export async function getCompounders(horizon: '1Y' | '3Y' | '5Y') {
 export async function getLatestPrices(symbols: string[]): Promise<Record<string, { price: number; date: string }>> {
     await requireUser();
     if (!symbols.length) return {};
-    const { rows } = await pool.query(
-        `SELECT DISTINCT ON (symbol) symbol, date::text AS date, close
-         FROM prices_daily
-         WHERE symbol = ANY($1::text[])
-         ORDER BY symbol, date DESC`,
-        [symbols]
+    const query = () => pool.query(
+      `SELECT DISTINCT ON (symbol) symbol, date::text AS date, close
+       FROM prices_daily
+       WHERE symbol = ANY($1::text[])
+       ORDER BY symbol, date DESC`,
+      [symbols]
     );
+    let response;
+    try {
+      response = await query();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!/timeout|connect|ECONN/i.test(message)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 750));
+      response = await query();
+    }
+    const { rows } = response;
     const result: Record<string, { price: number; date: string }> = {};
     for (const row of rows) {
         result[row.symbol] = { price: Number(row.close), date: row.date };
