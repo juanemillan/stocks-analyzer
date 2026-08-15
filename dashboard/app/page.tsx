@@ -880,7 +880,7 @@ export default function Dashboard() {
             weekChanges={portfolio.weekChanges}
             techSignals={portfolio.techSignals}
             onShowConnectRacional={() => portfolio.setShowConnectRacional(true)}
-            canSyncRacional={isAdmin}
+            canSyncRacional={false}
             onShowRequestAsset={() => setShowRequestAsset(true)}
             racionalSyncing={portfolio.racionalSyncing}
             racionalSyncError={portfolio.racionalSyncError}
