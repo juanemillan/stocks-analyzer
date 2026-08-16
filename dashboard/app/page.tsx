@@ -473,6 +473,8 @@ export default function Dashboard() {
         alertRules={data.selected ? alerts.forSymbol(data.selected.symbol) : []}
         onUpsertAlert={alerts.upsert}
         onRemoveAlert={alerts.remove}
+        watchPlan={data.selected ? watchlistDetails[data.selected.symbol] : undefined}
+        onSaveWatchPlan={saveWatchlistDetails}
       />
 
       {/* Header */}

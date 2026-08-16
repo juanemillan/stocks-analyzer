@@ -24,6 +24,7 @@ import { t } from "@/app/i18n";
 import type { RankRow, PriceRow, Lang, FinnhubData, AssetValuation } from "@/app/types";
 import { AlertsModal } from "@/components/modals/AlertsModal";
 import type { AlertRule, AlertType } from "@/hooks/useAlerts";
+import type { WatchlistDetails } from "@/hooks/useWatchlist";
 import { ScoreSparkline } from "@/components/detail/ScoreSparkline";
 import { getScoreHistory } from "@/app/actions";
 import type { ScoreHistoryPoint } from "@/app/actions";
@@ -43,6 +44,8 @@ type Props = {
   alertRules?: AlertRule[];
   onUpsertAlert?: (symbol: string, type: AlertType, threshold: number) => Promise<void>;
   onRemoveAlert?: (ruleId: string) => Promise<void>;
+  watchPlan?: WatchlistDetails;
+  onSaveWatchPlan?: (symbol: string, values: WatchlistDetails) => Promise<void>;
 };
 
 export function StockDetailPanel({
@@ -60,6 +63,8 @@ export function StockDetailPanel({
   alertRules = [],
   onUpsertAlert,
   onRemoveAlert,
+  watchPlan,
+  onSaveWatchPlan,
 }: Props) {
   // ESC key closes modal
   useEffect(() => {
@@ -610,6 +615,28 @@ export function StockDetailPanel({
                   </div>
                 )}
               </div>
+
+              {onSaveWatchPlan && (
+                <div className="bg-white border rounded-2xl p-4 dark:bg-neutral-900 dark:border-neutral-700">
+                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">{lang === "es" ? "Plan de inversión" : "Investment plan"}</div>
+                  <p className="mb-3 text-xs text-gray-500">{lang === "es" ? "Guardar este plan también añade el activo a Favoritos." : "Saving this plan also adds the asset to Favorites."}</p>
+                  <form key={selected.symbol} className="space-y-2" onSubmit={(event) => {
+                    event.preventDefault(); const form = new FormData(event.currentTarget);
+                    onSaveWatchPlan(selected.symbol, {
+                      thesis: String(form.get("thesis") || ""),
+                      target_price: form.get("target_price") ? Number(form.get("target_price")) : null,
+                      invalidation: String(form.get("invalidation") || ""),
+                      review_date: String(form.get("review_date") || "") || null,
+                      status: String(form.get("status")) as WatchlistDetails["status"],
+                    });
+                  }}>
+                    <textarea name="thesis" defaultValue={watchPlan?.thesis ?? ""} maxLength={1000} rows={3} placeholder={lang === "es" ? "Tesis: por qué lo comprarías o seguirías" : "Thesis: why you would buy or follow it"} className="w-full rounded-xl border bg-transparent p-2 text-sm dark:border-neutral-700" />
+                    <textarea name="invalidation" defaultValue={watchPlan?.invalidation ?? ""} maxLength={500} rows={2} placeholder={lang === "es" ? "Invalidación: qué te haría cambiar de opinión" : "Invalidation: what would change your mind"} className="w-full rounded-xl border bg-transparent p-2 text-sm dark:border-neutral-700" />
+                    <div className="grid grid-cols-2 gap-2"><input name="target_price" type="number" step="0.01" defaultValue={watchPlan?.target_price ?? ""} placeholder={lang === "es" ? "Precio objetivo" : "Target price"} className="min-w-0 rounded-xl border bg-transparent p-2 text-sm dark:border-neutral-700" /><input name="review_date" type="date" defaultValue={watchPlan?.review_date ?? ""} className="min-w-0 rounded-xl border bg-transparent p-2 text-sm dark:border-neutral-700" /></div>
+                    <div className="flex gap-2"><select name="status" defaultValue={watchPlan?.status ?? "watching"} className="min-w-0 flex-1 rounded-xl border bg-transparent p-2 text-sm dark:border-neutral-700"><option value="watching">{lang === "es" ? "Observando" : "Watching"}</option><option value="researching">{lang === "es" ? "Investigando" : "Researching"}</option><option value="ready">{lang === "es" ? "Lista para revisar" : "Ready to review"}</option><option value="passed">{lang === "es" ? "Descartada" : "Passed"}</option></select><button type="submit" className="rounded-xl bg-emerald-600 px-3 text-sm font-semibold text-white hover:bg-emerald-700">{lang === "es" ? "Guardar" : "Save"}</button></div>
+                  </form>
+                </div>
+              )}
 
               {/* Momentum & technicals */}
               <div className="bg-white border rounded-2xl p-4 dark:bg-neutral-900 dark:border-neutral-700">

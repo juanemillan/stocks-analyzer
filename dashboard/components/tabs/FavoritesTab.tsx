@@ -166,15 +166,16 @@ export function FavoritesTab({
         <h3 className="mb-2 text-sm font-semibold">{lang === "es" ? "Plan de seguimiento" : "Watch plan"}</h3>
         <div className="grid gap-3 md:grid-cols-2">
           {favorites.map((r) => {
-            const detail = details[r.symbol] ?? { thesis: null, target_price: null, review_date: null, status: "watching" as const };
+            const detail = details[r.symbol] ?? { thesis: null, target_price: null, invalidation: null, review_date: null, status: "watching" as const };
             return (
               <details key={r.symbol} className="rounded-2xl border bg-white p-4 shadow-sm dark:bg-neutral-900 dark:border-neutral-700">
                 <summary className="cursor-pointer list-none flex items-center gap-2"><SymbolLogo symbol={r.symbol} size={24} /><span className="font-semibold">{r.symbol}</span><span className="ml-auto text-xs text-gray-500">{detail.status}</span></summary>
                 <form className="mt-3 space-y-3" onSubmit={(event) => {
                   event.preventDefault(); const form = new FormData(event.currentTarget);
-                  onSaveDetails(r.symbol, { thesis: String(form.get("thesis") || ""), target_price: form.get("target_price") ? Number(form.get("target_price")) : null, review_date: String(form.get("review_date") || "") || null, status: String(form.get("status")) as WatchlistDetails["status"] });
+                  onSaveDetails(r.symbol, { thesis: String(form.get("thesis") || ""), target_price: form.get("target_price") ? Number(form.get("target_price")) : null, invalidation: String(form.get("invalidation") || ""), review_date: String(form.get("review_date") || "") || null, status: String(form.get("status")) as WatchlistDetails["status"] });
                 }}>
                   <textarea name="thesis" defaultValue={detail.thesis ?? ""} maxLength={1000} rows={3} placeholder={lang === "es" ? "Tu tesis: por qué lo sigues" : "Your thesis: why you follow it"} className="w-full rounded-xl border bg-transparent p-2 text-sm dark:border-neutral-700" />
+                  <textarea name="invalidation" defaultValue={detail.invalidation ?? ""} maxLength={500} rows={2} placeholder={lang === "es" ? "Invalidación: qué te haría cambiar de opinión" : "Invalidation: what would change your mind"} className="w-full rounded-xl border bg-transparent p-2 text-sm dark:border-neutral-700" />
                   <div className="grid grid-cols-2 gap-2"><input name="target_price" type="number" step="0.01" defaultValue={detail.target_price ?? ""} placeholder={lang === "es" ? "Precio objetivo" : "Target price"} className="min-w-0 rounded-xl border bg-transparent p-2 text-sm dark:border-neutral-700" /><input name="review_date" type="date" defaultValue={detail.review_date ?? ""} className="min-w-0 rounded-xl border bg-transparent p-2 text-sm dark:border-neutral-700" /></div>
                   <div className="flex gap-2"><select name="status" defaultValue={detail.status} className="flex-1 rounded-xl border bg-transparent p-2 text-sm dark:border-neutral-700"><option value="watching">{lang === "es" ? "Observando" : "Watching"}</option><option value="researching">{lang === "es" ? "Investigando" : "Researching"}</option><option value="ready">{lang === "es" ? "Lista para revisar" : "Ready to review"}</option><option value="passed">{lang === "es" ? "Descartada" : "Passed"}</option></select><button type="submit" className="rounded-xl bg-emerald-600 px-3 text-sm font-semibold text-white hover:bg-emerald-700">{lang === "es" ? "Guardar" : "Save"}</button></div>
                 </form>
