@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { createClient } from "@/lib/supabase/server";
+import { responseOutputText } from "@/lib/openaiResponse";
 
 const MAX_REQUESTS_PER_MINUTE = 4;
 const windows = new Map<string, { startedAt: number; count: number }>();
@@ -58,8 +59,7 @@ export async function POST(req: NextRequest) {
       if (response.status === 429) return NextResponse.json({ error: "agent_rate_limited" }, { status: 429 });
       return NextResponse.json({ error: "agent_unavailable" }, { status: 503 });
     }
-    const data = await response.json() as { output_text?: unknown };
-    const analysis = typeof data.output_text === "string" ? data.output_text.trim() : "";
+    const analysis = responseOutputText(await response.json());
     if (!analysis) return NextResponse.json({ error: "agent_unavailable" }, { status: 503 });
     return NextResponse.json({ analysis });
   } catch (error) {
