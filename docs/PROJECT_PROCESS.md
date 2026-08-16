@@ -44,6 +44,7 @@ El código de scoring y mercado vive en `data_pipeline/`; los datos privados de 
 - `dashboard/hooks/`: estado, carga de datos, autenticación, portfolio, alertas y chat.
 - `dashboard/app/actions.ts`: operaciones de servidor.
 - `dashboard/app/api/`: integraciones HTTP y endpoints internos.
+- `docs/AI_AGENTS.md`: agentes actuales, límites, datos requeridos y hoja de ruta.
 - `dashboard/proxy.ts`: refresco de sesión y protección de páginas. Las rutas API se autentican individualmente cuando manejan datos privados.
 
 ### Supabase
@@ -67,6 +68,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 OPENROUTER_API_KEY=
+OPENAI_API_KEY=
 FINNHUB_API_KEY=
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=

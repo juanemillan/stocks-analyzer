@@ -82,6 +82,35 @@ export function StockDetailPanel({
 
   // Alerts modal
   const [showAlerts, setShowAlerts] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [aiAnalysisSymbol, setAiAnalysisSymbol] = useState<string | null>(null);
+  const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
+  const [aiAnalysisError, setAiAnalysisError] = useState<string | null>(null);
+
+  async function runAiAnalysis() {
+    if (!selected || aiAnalysisLoading) return;
+    setAiAnalysisLoading(true);
+    setAiAnalysisError(null);
+    const context = JSON.stringify({
+      company: { symbol: selected.symbol, name: selected.name, sector: selected.sector, industry: selected.industry },
+      score: { final: selected.final_score, bucket: selected.bucket, momentum_1m: selected.mom_1m, momentum_3m: selected.mom_3m, rs_spy: selected.rs_spy, liquidity: selected.liq_score },
+      valuation: valuationData,
+      plan: watchPlan,
+      latest_news: finnhubData?.news.slice(0, 3).map(({ headline, source, datetime }) => ({ headline, source, date: new Date(datetime * 1000).toISOString().slice(0, 10) })) ?? [],
+    });
+    try {
+      const response = await fetch("/api/analysis/asset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ symbol: selected.symbol, context, lang }) });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || typeof result.analysis !== "string") throw new Error(typeof result.error === "string" ? result.error : "analysis_failed");
+      setAiAnalysis(result.analysis);
+      setAiAnalysisSymbol(selected.symbol);
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      setAiAnalysisError(code === "agent_rate_limited" ? (lang === "es" ? "Límite temporal del servicio. Espera un minuto e intenta nuevamente." : "Temporary service limit. Wait a minute and try again.") : code === "agent_not_configured" || code === "agent_configuration" ? (lang === "es" ? "La IA no está configurada correctamente en este despliegue." : "AI is not configured correctly for this deployment.") : (lang === "es" ? "El análisis no está disponible ahora. Intenta nuevamente." : "Analysis is unavailable right now. Please try again."));
+    } finally {
+      setAiAnalysisLoading(false);
+    }
+  }
 
   // Score history
   const [scoreHistory, setScoreHistory] = useState<ScoreHistoryPoint[]>([]);
@@ -635,6 +664,9 @@ export function StockDetailPanel({
                     <div className="grid grid-cols-2 gap-2"><input name="target_price" type="number" step="0.01" defaultValue={watchPlan?.target_price ?? ""} placeholder={lang === "es" ? "Precio objetivo" : "Target price"} className="min-w-0 rounded-xl border bg-transparent p-2 text-sm dark:border-neutral-700" /><input name="review_date" type="date" defaultValue={watchPlan?.review_date ?? ""} className="min-w-0 rounded-xl border bg-transparent p-2 text-sm dark:border-neutral-700" /></div>
                     <div className="flex gap-2"><select name="status" defaultValue={watchPlan?.status ?? "watching"} className="min-w-0 flex-1 rounded-xl border bg-transparent p-2 text-sm dark:border-neutral-700"><option value="watching">{lang === "es" ? "Observando" : "Watching"}</option><option value="researching">{lang === "es" ? "Investigando" : "Researching"}</option><option value="ready">{lang === "es" ? "Lista para revisar" : "Ready to review"}</option><option value="passed">{lang === "es" ? "Descartada" : "Passed"}</option></select><button type="submit" className="rounded-xl bg-emerald-600 px-3 text-sm font-semibold text-white hover:bg-emerald-700">{lang === "es" ? "Guardar" : "Save"}</button></div>
                   </form>
+                  <button type="button" onClick={runAiAnalysis} disabled={aiAnalysisLoading} className="mt-3 w-full rounded-xl border border-violet-300 px-3 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-50 disabled:opacity-60 dark:border-violet-800 dark:text-violet-300 dark:hover:bg-violet-950/40">{aiAnalysisLoading ? (lang === "es" ? "Analizando…" : "Analyzing…") : (lang === "es" ? "Analizar con IA" : "Analyze with AI")}</button>
+                  {aiAnalysisError && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{aiAnalysisError}</p>}
+                  {aiAnalysisSymbol === selected.symbol && aiAnalysis && <div className="mt-3 whitespace-pre-line rounded-xl bg-violet-50 p-3 text-sm leading-relaxed text-violet-950 dark:bg-violet-950/30 dark:text-violet-100">{aiAnalysis}</div>}
                 </div>
               )}
 
