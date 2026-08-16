@@ -34,9 +34,17 @@ export function FavoritesTab({
   lang,
 }: FavoritesTabProps) {
   const [copied, setCopied] = useState(false);
+  const [compareSymbols, setCompareSymbols] = useState<string[]>([]);
   const favorites = rows
     .filter((r) => watchlist.has(r.symbol))
     .sort((a, b) => (b.final_score ?? 0) - (a.final_score ?? 0));
+  const compared = favorites.filter((row) => compareSymbols.includes(row.symbol));
+
+  function toggleCompare(symbol: string) {
+    setCompareSymbols((current) => current.includes(symbol)
+      ? current.filter((item) => item !== symbol)
+      : current.length < 3 ? [...current, symbol] : current);
+  }
 
   if (favorites.length === 0) {
     return (
@@ -71,6 +79,7 @@ export function FavoritesTab({
         </svg>
         <h2 className="text-base font-semibold">Favorites</h2>
         <span className="text-sm text-gray-500">({favorites.length})</span>
+        <span className="text-xs text-gray-500">{lang === "es" ? `Comparar: ${compared.length}/3` : `Compare: ${compared.length}/3`}</span>
         <div className="ml-auto">
           <button
             onClick={() => {
@@ -98,7 +107,7 @@ export function FavoritesTab({
           <table className="min-w-[760px] w-full text-left text-sm">
             <thead className="bg-gray-100 text-gray-700">
               <tr>
-                <th className="w-8 px-2 py-2"></th>
+                <th className="w-16 px-2 py-2"></th>
                 <th className="px-3 py-2">Symbol</th>
                 <th className="px-3 py-2">Name</th>
                 <th className="px-3 py-2">Type</th>
@@ -121,15 +130,25 @@ export function FavoritesTab({
                   onClick={() => onOpen(r)}
                 >
                   <td className="w-8 px-2 py-2 text-center">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onToggleFavorite(r.symbol); }}
-                      className="flex items-center justify-center transition-transform hover:scale-125"
-                      title="Remove from favorites"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-rose-500">
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                      </svg>
-                    </button>
+                    <div className="flex items-center justify-center gap-1">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onToggleFavorite(r.symbol); }}
+                        className="flex items-center justify-center transition-transform hover:scale-125"
+                        title="Remove from favorites"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-rose-500">
+                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                        </svg>
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleCompare(r.symbol); }}
+                        aria-pressed={compareSymbols.includes(r.symbol)}
+                        title={lang === "es" ? "Seleccionar para comparar" : "Select to compare"}
+                        className={`flex h-5 w-5 items-center justify-center rounded border text-[11px] transition-colors ${compareSymbols.includes(r.symbol) ? "border-emerald-600 bg-emerald-600 text-white" : "border-gray-300 text-gray-400 hover:border-emerald-500 dark:border-neutral-600"}`}
+                      >
+                        {compareSymbols.includes(r.symbol) ? "✓" : "+"}
+                      </button>
+                    </div>
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-2">
@@ -161,6 +180,32 @@ export function FavoritesTab({
           </table>
         </div>
       </section>
+
+      {compared.length >= 2 && (
+        <section className="mt-4 overflow-hidden rounded-2xl border bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
+          <div className="flex items-center justify-between gap-3 border-b px-4 py-3 dark:border-neutral-700">
+            <div><h3 className="text-sm font-semibold">{lang === "es" ? "Comparación" : "Comparison"}</h3><p className="text-xs text-gray-500">{lang === "es" ? "Revisa calidad, momentum y tu plan antes de decidir." : "Review quality, momentum and your plan before deciding."}</p></div>
+            <button onClick={() => setCompareSymbols([])} className="text-xs text-gray-500 hover:text-gray-900 dark:hover:text-white">{lang === "es" ? "Limpiar" : "Clear"}</button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-[540px] w-full text-left text-sm">
+              <thead className="bg-gray-50 dark:bg-neutral-800"><tr><th className="px-4 py-3 text-xs font-medium text-gray-500">{lang === "es" ? "Métrica" : "Metric"}</th>{compared.map((row) => <th key={row.symbol} className="px-4 py-3"><button onClick={() => onOpen(row)} className="font-semibold hover:underline">{row.symbol}</button></th>)}</tr></thead>
+              <tbody className="divide-y dark:divide-neutral-800">
+                {[
+                  [lang === "es" ? "Sector" : "Sector", (row: RankRow) => row.sector ?? "—"],
+                  ["Score", (row: RankRow) => row.final_score?.toFixed(3) ?? "—"],
+                  ["Momentum 1m", (row: RankRow) => row.mom_1m != null ? `${(row.mom_1m * 100).toFixed(1)}%` : "—"],
+                  ["Momentum 3m", (row: RankRow) => row.mom_3m != null ? `${(row.mom_3m * 100).toFixed(1)}%` : "—"],
+                  ["RS vs SPY", (row: RankRow) => row.rs_spy != null ? `${(row.rs_spy * 100).toFixed(1)}%` : "—"],
+                  [lang === "es" ? "Liquidez" : "Liquidity", (row: RankRow) => row.liq_score?.toFixed(2) ?? "—"],
+                  [lang === "es" ? "Objetivo" : "Target", (row: RankRow) => details[row.symbol]?.target_price != null ? `$${details[row.symbol].target_price}` : "—"],
+                  [lang === "es" ? "Estado" : "Status", (row: RankRow) => details[row.symbol]?.status ?? "watching"],
+                ].map(([label, value]) => <tr key={String(label)}><th className="px-4 py-2 text-xs font-medium text-gray-500">{String(label)}</th>{compared.map((row) => <td key={row.symbol} className="px-4 py-2 tabular-nums">{(value as (row: RankRow) => string)(row)}</td>)}</tr>)}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <section className="mt-4">
         <h3 className="mb-2 text-sm font-semibold">{lang === "es" ? "Plan de seguimiento" : "Watch plan"}</h3>
