@@ -74,6 +74,25 @@ def quick_status():
     conn.close()
 
 
+def record_run(job: str):
+    """Store the latest successful pipeline run for the dashboard."""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS pipeline_runs (
+            job STRING PRIMARY KEY,
+            completed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """)
+    cur.execute("""
+        INSERT INTO pipeline_runs (job) VALUES (%s)
+        ON CONFLICT (job) DO UPDATE SET completed_at = now()
+    """, (job,))
+    cur.close()
+    conn.close()
+    print(f"âœ… EjecuciÃ³n exitosa registrada: {job}")
+
+
 def add_asset(symbol: str, name: str | None, asset_type: str):
     """Inserts an asset manually and fetches its full price history."""
     import yfinance as yf
@@ -155,6 +174,7 @@ def main():
     parser.add_argument("--update", action="store_true", help="Actualizar precios recientes (incremental)")
     parser.add_argument("--scores", action="store_true", help="Recalcular scores diarios/avanzados")
     parser.add_argument("--status", action="store_true", help="Ver estado actual de la base de datos")
+    parser.add_argument("--record-run", metavar="JOB", help="Registrar una ejecuciÃ³n exitosa del pipeline")
     parser.add_argument("--views", action="store_true", help="Aplicar/actualizar vistas SQL (02_views.sql)")
     parser.add_argument("--add-asset", metavar="SYMBOL", help="Añadir activo manualmente y descargar su historial")
     parser.add_argument("--name", metavar="NAME", help="Nombre del activo (opcional, usar con --add-asset)")
@@ -185,6 +205,9 @@ def main():
 
     elif args.status:
         quick_status()
+
+    elif args.record_run:
+        record_run(args.record_run)
 
     elif args.views:
         print("🗂️  Aplicando vistas SQL...")

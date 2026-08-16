@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   getRanking,
+  getMarketPipelineStatus,
   getTurnarounds,
   getCompounders,
   getPrices,
@@ -43,6 +44,7 @@ export function useDashboardData() {
 
   // Ranking
   const [rows, setRows] = useState<RankRow[]>([]);
+  const [marketPipelineUpdatedAt, setMarketPipelineUpdatedAt] = useState<string | null>(null);
   const [q, setQ] = useState(() => lsGet("bullia_filter_q", ""));
   const [bucket, setBucket] = useState<string>(() => lsGet("bullia_filter_bucket", ""));
   const [atype, setAtype] = useState<string>(() => lsGet("bullia_filter_atype", ""));
@@ -271,7 +273,10 @@ export function useDashboardData() {
 
   // Load data when tab changes ("portfolio" handled by page.tsx)
   useEffect(() => {
-    if (viewMode === "overview") { loadRanking(); loadTurnarounds(); loadCompounders(cmpHorizon); }
+    if (viewMode === "overview") {
+      loadRanking(); loadTurnarounds(); loadCompounders(cmpHorizon);
+      getMarketPipelineStatus().then(setMarketPipelineUpdatedAt).catch(() => setMarketPipelineUpdatedAt(null));
+    }
     if (viewMode === "ranking") loadRanking();
     if (viewMode === "turnarounds") loadTurnarounds();
     if (viewMode === "accumulation") loadAccumulation();
@@ -392,7 +397,7 @@ export function useDashboardData() {
 
   return {
     viewMode, setViewMode,
-    rows, turnRows, accumRows, compoundRows, valueRows,
+    rows, turnRows, accumRows, compoundRows, valueRows, marketPipelineUpdatedAt,
     q, setQ, bucket, setBucket, atype, setAtype, minScore, setMinScore,
     sortKey, setSortKey, sortDir, setSortDir,
     pageSize, setPageSize, page, setPage,

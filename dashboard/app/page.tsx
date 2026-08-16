@@ -764,6 +764,7 @@ export default function Dashboard() {
         {data.viewMode === "overview" && (
           <OverviewTab
             rows={data.rows}
+            marketPipelineUpdatedAt={data.marketPipelineUpdatedAt}
             turnRows={data.turnRows}
             filteredCompounders={data.filteredCompounders}
             cmpHorizon={data.cmpHorizon}

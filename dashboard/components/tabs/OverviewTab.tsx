@@ -10,6 +10,7 @@ import type { WatchlistDetails } from "@/hooks/useWatchlist";
 
 interface OverviewTabProps {
   rows: RankRow[];
+  marketPipelineUpdatedAt: string | null;
   turnRows: TurnRow[];
   filteredCompounders: CompoundRow[];
   cmpHorizon: "1Y" | "3Y" | "5Y";
@@ -35,6 +36,7 @@ interface OverviewTabProps {
 
 export function OverviewTab({
   rows,
+  marketPipelineUpdatedAt,
   turnRows,
   filteredCompounders,
   cmpHorizon,
@@ -99,6 +101,7 @@ export function OverviewTab({
             ? `${lang === "es" ? "Datos al" : "Data as of"} ${new Date(`${marketDate}T12:00:00`).toLocaleDateString(lang === "es" ? "es-ES" : "en-US", { dateStyle: "long" })}`
             : (lang === "es" ? "Cargando datos de mercado…" : "Loading market data…")}
         </p>
+        {marketPipelineUpdatedAt && <p className="mt-0.5 text-xs text-gray-400">{lang === "es" ? "ETL exitoso:" : "Successful ETL:"} {new Date(marketPipelineUpdatedAt).toLocaleString(lang === "es" ? "es-CL" : "en-US", { dateStyle: "medium", timeStyle: "short" })}</p>}
       </div>
 
       {marketDataStale && (

@@ -115,6 +115,27 @@ export async function getRanking() {
     return getCachedRanking();
 }
 
+const getCachedMarketPipelineStatus = unstable_cache(
+    async (): Promise<string | null> => {
+        try {
+            const { rows } = await pool.query<{ completed_at: string }>(
+                "SELECT completed_at::text FROM pipeline_runs WHERE job = 'daily-etl'",
+            );
+            return rows[0]?.completed_at ?? null;
+        } catch (error) {
+            console.warn("[pipeline-status] unavailable", error);
+            return null;
+        }
+    },
+    ["market-pipeline-status"],
+    { revalidate: 300 },
+);
+
+export async function getMarketPipelineStatus(): Promise<string | null> {
+    await requireUser();
+    return getCachedMarketPipelineStatus();
+}
+
 const getCachedTurnarounds = unstable_cache(
     async () => {
         const { rows } = await pool.query(
