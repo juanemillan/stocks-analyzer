@@ -9,6 +9,7 @@ import { CorrelationPanel } from "@/components/portfolio/CorrelationPanel";
 import type { CorrelationResult } from "@/lib/correlation";
 import { computeDiversificationScore } from "@/lib/correlation";
 import { PortfolioPerformanceChart } from "@/components/portfolio/PortfolioPerformanceChart";
+import { PortfolioDiagnosis } from "@/components/portfolio/PortfolioDiagnosis";
 import type { PortfolioSnapshot } from "@/app/actions";
 
 const INITIAL_VISIBLE = 8;
@@ -284,6 +285,10 @@ export function PortfolioTab({
             )}
           </div>
         </div>
+      )}
+
+      {!holdingsLoading && holdings.length > 0 && (
+        <PortfolioDiagnosis holdings={holdings} latestPrices={latestPrices} rows={rows} correlationData={correlationData} lang={lang} />
       )}
 
       {holdingsLoading ? (
