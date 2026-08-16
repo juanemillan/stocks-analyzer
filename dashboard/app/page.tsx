@@ -104,6 +104,7 @@ export default function Dashboard() {
   const [jumpDropOpen, setJumpDropOpen] = useState(false);
   const [jumpResults, setJumpResults] = useState<any[]>([]);
   const jumpBlurRef = React.useRef<number | null>(null);
+  const jumpSearchAbortRef = React.useRef<AbortController | null>(null);
   const desktopSearchRef = React.useRef<HTMLInputElement>(null);
   const mobileSearchRef = React.useRef<HTMLInputElement>(null);
   async function jumpToSymbol(raw: string) {
@@ -140,11 +141,15 @@ export default function Dashboard() {
     setJumpResults(local as any[]);
 
     // Remote suggestions (debounced) for anything beyond loaded list.
+    // Cancel the previous request so slow responses cannot queue or overwrite newer input.
+    jumpSearchAbortRef.current?.abort();
+    const controller = new AbortController();
+    jumpSearchAbortRef.current = controller;
     const t = window.setTimeout(() => {
-      fetch(`/api/assets/search?q=${encodeURIComponent(q)}`)
+      fetch(`/api/assets/search?q=${encodeURIComponent(q)}`, { signal: controller.signal })
         .then((r) => r.json())
         .then((j) => {
-          if (!j?.ok || !Array.isArray(j.results)) return;
+          if (controller.signal.aborted || !j?.ok || !Array.isArray(j.results)) return;
           // Merge by symbol; keep local order first.
           const seen = new Set(local.map((x) => x.symbol));
           const merged = [...local, ...j.results.filter((x: any) => !seen.has(x.symbol))].slice(0, 8);
@@ -152,7 +157,7 @@ export default function Dashboard() {
         })
         .catch(() => {});
     }, 120);
-    return () => window.clearTimeout(t);
+    return () => { window.clearTimeout(t); controller.abort(); };
   }, [jumpQ, data.rows]);
 
   // Familiar shortcut on desktop; on mobile it opens and focuses the search row.

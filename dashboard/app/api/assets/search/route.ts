@@ -22,20 +22,20 @@ export async function GET(req: Request) {
   const q = qRaw.trim();
   if (q.length < 1) return NextResponse.json({ ok: true, results: [] });
 
-  // Use ILIKE for name search; prefer symbol prefix matches.
+  // Search the small assets table, not v_assets_rank: that view calculates
+  // ranking history and makes an autocomplete request unnecessarily expensive.
   const sym = q.replace(/[^A-Za-z0-9.\-]/g, "").toUpperCase();
-  const like = `%${q}%`;
+  if (!sym) return NextResponse.json({ ok: true, results: [] });
+  const symbolEnd = `${sym}\uffff`;
 
   const { rows } = await pool.query(
-    `SELECT symbol, name, asset_type, racional_url, date, final_score, bucket, mom_1w, mom_1m, mom_3m, mom_6m, mom_1y,
-            rs_spy, tech_trend, liq_score, prev_score, score_delta
-     FROM v_assets_rank
-     WHERE symbol ILIKE $1 OR name ILIKE $2
-     ORDER BY
-       CASE WHEN symbol ILIKE $3 THEN 0 ELSE 1 END,
-       final_score DESC NULLS LAST
+    `SELECT symbol, name, asset_type, racional_url
+     FROM assets
+     WHERE is_active = true
+       AND (symbol >= $1 AND symbol < $2 OR name ILIKE $3)
+     ORDER BY CASE WHEN symbol >= $1 AND symbol < $2 THEN 0 ELSE 1 END, symbol
      LIMIT 8`,
-    [like, like, `${sym}%`]
+    [sym, symbolEnd, `${q}%`]
   );
 
   return NextResponse.json({ ok: true, results: rows.map((r) => parseRow(r)) });
