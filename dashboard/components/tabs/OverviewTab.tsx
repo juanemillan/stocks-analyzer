@@ -52,6 +52,7 @@ export function OverviewTab({
   onAskFollowUp,
 }: OverviewTabProps) {
   const marketDate = rows.find((row) => row.date)?.date;
+  const marketDataStale = marketDate != null && Date.now() - new Date(`${marketDate}T12:00:00`).getTime() > 4 * 24 * 60 * 60_000;
   const activeHoldings = holdings.filter((holding) => !holding.sold_at);
   const portfolioStats = activeHoldings.reduce(
     (acc, holding) => {
@@ -99,6 +100,12 @@ export function OverviewTab({
             : (lang === "es" ? "Cargando datos de mercado…" : "Loading market data…")}
         </p>
       </div>
+
+      {marketDataStale && (
+        <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+          {lang === "es" ? "Los datos de mercado tienen más de cuatro días. Algunas señales pueden estar atrasadas." : "Market data is more than four days old. Some signals may be delayed."}
+        </div>
+      )}
 
       <section className="mb-4 rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-white p-4 shadow-sm dark:border-indigo-900/70 dark:from-indigo-950/40 dark:to-neutral-900">
         <div className="mb-3 flex items-center justify-between gap-3">
