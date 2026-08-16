@@ -19,24 +19,20 @@ type SortDir = "asc" | "desc";
 interface PortfolioTabProps {
   holdings: Holding[];
   holdingsLoading: boolean;
+  loadError: string | null;
   latestPrices: Record<string, { price: number; date: string }>;
   dataDate: string | null;
   rows: RankRow[];
   lang: Lang;
   onShowAddHolding: () => void;
+  onRetryLoad: () => void;
   onRemoveHolding: (id: string) => void;
   onOpen: (row: RankRow) => void;
   onOpenFromSymbol: (symbol: string) => void;
   correlationData: CorrelationResult | null;
   weekChanges: Record<string, number>;
   techSignals: Record<string, boolean>;
-  onShowConnectRacional: () => void;
-  canSyncRacional: boolean;
   onShowRequestAsset: () => void;
-  racionalSyncing: boolean;
-  racionalSyncError: string | null;
-  racionalSyncInfo?: string | null;
-  lastRacionalSync: Date | null;
   onUpdateHolding: (id: string, shares: number, avg_cost: number | null) => Promise<void>;
   watchlist: Set<string>;
   onToggleWatchlist: (symbol: string) => void;
@@ -46,24 +42,20 @@ interface PortfolioTabProps {
 export function PortfolioTab({
   holdings,
   holdingsLoading,
+  loadError,
   latestPrices,
   dataDate,
   rows,
   lang,
   onShowAddHolding,
+  onRetryLoad,
   onRemoveHolding,
   onOpen,
   onOpenFromSymbol,
   correlationData,
   weekChanges,
   techSignals,
-  onShowConnectRacional,
-  canSyncRacional,
   onShowRequestAsset,
-  racionalSyncing,
-  racionalSyncError,
-  racionalSyncInfo,
-  lastRacionalSync,
   onUpdateHolding,
   watchlist,
   onToggleWatchlist,
@@ -72,7 +64,6 @@ export function PortfolioTab({
   const [showAll, setShowAll] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("symbol");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
-  const [actionsOpen, setActionsOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editShares, setEditShares] = useState("");
@@ -200,7 +191,7 @@ export function PortfolioTab({
       </InfoBox>
       <div className="mb-4">
         {/* Title row */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-bold">{t("tabPortfolio", lang)}</h2>
             {/* Card / Table toggle */}
@@ -221,124 +212,34 @@ export function PortfolioTab({
               </button>
             </div>
           </div>
-          {/* Mobile: single toggle button */}
-          <button
-            onClick={() => setActionsOpen((v) => !v)}
-            className="md:hidden flex items-center gap-1.5 rounded-2xl px-3 py-2 text-sm font-medium border border-gray-200 dark:border-neutral-700 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
-          >
-            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" className="text-gray-500">
-              <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.381z" clipRule="evenodd"/>
-            </svg>
-            {t("portActions", lang)}
-            <svg width="11" height="11" viewBox="0 0 20 20" fill="currentColor" className={`transition-transform duration-200 text-gray-400 ${actionsOpen ? "rotate-180" : ""}`}>
-              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"/>
-            </svg>
-          </button>
-
-          {/* Desktop: all 3 buttons inline */}
-          <div className="hidden md:flex items-center gap-2">
-            {/* Request asset */}
+          <div className="flex shrink-0 items-center gap-2">
             <button
               onClick={onShowRequestAsset}
-              title="Solicitar que se agregue un activo"
-              className="flex items-center gap-1.5 rounded-2xl px-3 py-2 text-sm font-medium border border-gray-200 dark:border-neutral-700 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
+              title={lang === "es" ? "Solicitar que se agregue un activo" : "Request an asset"}
+              aria-label={t("portRequestAsset", lang)}
+              className="flex min-w-[84px] items-center justify-center gap-1 rounded-xl border border-gray-200 px-2.5 py-2 text-xs font-medium transition-colors hover:bg-gray-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
               </svg>
-              {t("portRequestAsset", lang)}
+              {lang === "es" ? "Solicitar" : "Request"}
             </button>
-            {canSyncRacional && <button
-              onClick={onShowConnectRacional}
-              disabled={racionalSyncing}
-              title={lastRacionalSync ? `Ãšltimo sync: ${lastRacionalSync.toLocaleTimeString()}` : "Importar desde Racional"}
-              className="flex items-center gap-1.5 rounded-2xl px-3 py-3 text-sm font-semibold text-black bg-[#18DAAE] hover:bg-[#13ab87] active:scale-95 disabled:opacity-60 transition-all duration-150"
-            >
-              {racionalSyncing ? (
-                <svg className="w-3.5 h-3.5 animate-spin flex-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                </svg>
-              )}
-              <img
-                src="https://app.racional.cl/assets/img/racional-black.svg"
-                alt="Racional"
-                className="h-3.5 w-auto"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-              />
-              <span className="sr-only">Racional</span>
-            </button>}
             <button
               onClick={onShowAddHolding}
-              className="rounded-xl px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm transition-colors duration-150"
+              aria-label={t("portAddHolding", lang)}
+              className="min-w-[84px] rounded-xl bg-emerald-500 px-2.5 py-2 text-xs font-medium text-white transition-colors duration-150 hover:bg-emerald-600"
             >
-              {t("portAddHolding", lang)}
+              {lang === "es" ? "Añadir" : "Add"}
             </button>
-          </div>
-        </div>
-
-        {/* Mobile: collapsible action buttons */}
-        <div className={`grid transition-all duration-300 ease-in-out md:hidden ${actionsOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
-          <div className="overflow-hidden">
-            <div className={`grid ${canSyncRacional ? "grid-cols-3" : "grid-cols-2"} gap-2 pt-3`}>
-              {canSyncRacional && <button
-                onClick={() => { setActionsOpen(false); onShowAddHolding(); }}
-                className="flex items-center justify-center gap-1 rounded-2xl px-2 py-3 text-xs font-medium bg-emerald-500 hover:bg-emerald-600 text-white transition-colors duration-150"
-              >
-                {t("portAddHolding", lang)}
-              </button>}
-              <button
-                onClick={() => { setActionsOpen(false); onShowConnectRacional(); }}
-                disabled={racionalSyncing}
-                className="flex items-center justify-center gap-1 rounded-2xl px-2 py-3 text-xs font-semibold text-black bg-[#18DAAE] hover:bg-[#13ab87] active:scale-95 disabled:opacity-60 transition-all duration-150"
-              >
-                {racionalSyncing ? (
-                  <svg className="w-4 h-4 animate-spin flex-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                  </svg>
-                )}
-                <img
-                  src="https://app.racional.cl/assets/img/racional-black.svg"
-                  alt="Racional"
-                  className="h-3 w-auto"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                />
-              </button>
-              <button
-                onClick={() => { setActionsOpen(false); onShowRequestAsset(); }}
-                className="flex items-center justify-center gap-1 rounded-2xl px-2 py-3 text-xs font-medium border border-gray-200 dark:border-neutral-700 hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 flex-none" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                </svg>
-                {t("portRequestAsset", lang)}
-              </button>
-            </div>
           </div>
         </div>
       </div>
 
-      {racionalSyncInfo && (
-        <p className="mb-3 text-xs text-blue-700 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-300 rounded-lg px-3 py-2">
-          {racionalSyncInfo}
-        </p>
-      )}
-
-      {racionalSyncError && (
-        <p className="mb-3 text-xs text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
-          {racionalSyncError}
-        </p>
+      {loadError && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+          <span>{loadError}</span>
+          <button onClick={onRetryLoad} className="shrink-0 rounded-lg border border-current px-2 py-1 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/30">{lang === "es" ? "Reintentar" : "Retry"}</button>
+        </div>
       )}
 
       {/* ── Portfolio performance chart ── */}

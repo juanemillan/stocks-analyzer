@@ -104,6 +104,7 @@ export default function Dashboard() {
   const [jumpDropOpen, setJumpDropOpen] = useState(false);
   const [jumpResults, setJumpResults] = useState<any[]>([]);
   const jumpBlurRef = React.useRef<number | null>(null);
+  const jumpSearchAbortRef = React.useRef<AbortController | null>(null);
   const desktopSearchRef = React.useRef<HTMLInputElement>(null);
   const mobileSearchRef = React.useRef<HTMLInputElement>(null);
   async function jumpToSymbol(raw: string) {
@@ -140,11 +141,15 @@ export default function Dashboard() {
     setJumpResults(local as any[]);
 
     // Remote suggestions (debounced) for anything beyond loaded list.
+    // Cancel the previous request so slow responses cannot queue or overwrite newer input.
+    jumpSearchAbortRef.current?.abort();
+    const controller = new AbortController();
+    jumpSearchAbortRef.current = controller;
     const t = window.setTimeout(() => {
-      fetch(`/api/assets/search?q=${encodeURIComponent(q)}`)
+      fetch(`/api/assets/search?q=${encodeURIComponent(q)}`, { signal: controller.signal })
         .then((r) => r.json())
         .then((j) => {
-          if (!j?.ok || !Array.isArray(j.results)) return;
+          if (controller.signal.aborted || !j?.ok || !Array.isArray(j.results)) return;
           // Merge by symbol; keep local order first.
           const seen = new Set(local.map((x) => x.symbol));
           const merged = [...local, ...j.results.filter((x: any) => !seen.has(x.symbol))].slice(0, 8);
@@ -152,7 +157,7 @@ export default function Dashboard() {
         })
         .catch(() => {});
     }, 120);
-    return () => window.clearTimeout(t);
+    return () => { window.clearTimeout(t); controller.abort(); };
   }, [jumpQ, data.rows]);
 
   // Familiar shortcut on desktop; on mobile it opens and focuses the search row.
@@ -468,6 +473,8 @@ export default function Dashboard() {
         alertRules={data.selected ? alerts.forSymbol(data.selected.symbol) : []}
         onUpsertAlert={alerts.upsert}
         onRemoveAlert={alerts.remove}
+        watchPlan={data.selected ? watchlistDetails[data.selected.symbol] : undefined}
+        onSaveWatchPlan={saveWatchlistDetails}
       />
 
       {/* Header */}
@@ -750,7 +757,7 @@ export default function Dashboard() {
       <main className="max-w-[1400px] mx-auto px-4 py-6 pb-[164px] md:pb-6" style={{ paddingBottom: "calc(164px + env(safe-area-inset-bottom))" }}>
         {data.error && (
           <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
-            <span>Error: {data.error}</span>
+            <span>{data.error}</span>
             <button
               onClick={handleReload}
               className="shrink-0 rounded-lg border border-current px-2.5 py-1 text-xs font-semibold hover:bg-red-100 dark:hover:bg-red-900/30"
@@ -764,6 +771,7 @@ export default function Dashboard() {
         {data.viewMode === "overview" && (
           <OverviewTab
             rows={data.rows}
+            marketPipelineUpdatedAt={data.marketPipelineUpdatedAt}
             turnRows={data.turnRows}
             filteredCompounders={data.filteredCompounders}
             cmpHorizon={data.cmpHorizon}
@@ -868,24 +876,20 @@ export default function Dashboard() {
           <PortfolioTab
             holdings={portfolio.holdings}
             holdingsLoading={portfolio.holdingsLoading}
+            loadError={portfolio.loadError}
             latestPrices={portfolio.latestPrices}
             dataDate={portfolio.dataDate}
             rows={data.rows}
             lang={lang}
             onShowAddHolding={() => { portfolio.setShowAddHolding(true); portfolio.setHoldingError(null); }}
+            onRetryLoad={() => portfolio.loadHoldings(true)}
             onRemoveHolding={portfolio.removeHolding}
             onOpen={data.handleOpen}
             onOpenFromSymbol={data.openFromSymbol}
             correlationData={portfolio.correlationData}
             weekChanges={portfolio.weekChanges}
             techSignals={portfolio.techSignals}
-            onShowConnectRacional={() => portfolio.setShowConnectRacional(true)}
-            canSyncRacional={false}
             onShowRequestAsset={() => setShowRequestAsset(true)}
-            racionalSyncing={portfolio.racionalSyncing}
-            racionalSyncError={portfolio.racionalSyncError}
-            racionalSyncInfo={portfolio.racionalSyncInfo}
-            lastRacionalSync={portfolio.lastRacionalSync}
             onUpdateHolding={portfolio.updateHolding}
             watchlist={watchlist}
             onToggleWatchlist={toggleWatchlist}

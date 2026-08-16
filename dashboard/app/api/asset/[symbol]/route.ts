@@ -27,11 +27,14 @@ export async function GET(
   }
 
   const { rows } = await pool.query(
-    `SELECT symbol, name, asset_type, racional_url, logo_url, website, sector, industry, country,
-            date, final_score, bucket, mom_1w, mom_1m, mom_3m, mom_6m, mom_1y,
-            rs_spy, tech_trend, liq_score, prev_score, score_delta
-     FROM v_assets_rank
-     WHERE symbol = $1
+    `WITH latest_score AS (SELECT MAX(date) AS date FROM scores_daily)
+     SELECT a.symbol, a.name, a.asset_type, a.racional_url, a.logo_url, a.website, a.sector, a.industry, a.country,
+            COALESCE(s.date, current_date)::text AS date, s.final_score, s.bucket, s.mom_1w, s.mom_1m, s.mom_3m, s.mom_6m, s.mom_1y,
+            s.rs_spy, s.tech_trend, s.liq_score
+     FROM assets a
+     LEFT JOIN latest_score ls ON true
+     LEFT JOIN scores_daily s ON s.symbol = a.symbol AND s.date = ls.date
+     WHERE a.symbol = $1 AND a.is_active = true
      LIMIT 1`,
     [safe]
   );

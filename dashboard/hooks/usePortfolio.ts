@@ -31,6 +31,7 @@ function computeSMA20Distance(prices: { close: number }[]): number | null {
 export function usePortfolio() {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [holdingsLoading, setHoldingsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showAddHolding, setShowAddHolding] = useState(false);
   const [newSymbol, setNewSymbol] = useState("");
   const [newShares, setNewShares] = useState("");
@@ -60,6 +61,7 @@ export function usePortfolio() {
     if (!force && holdingsEverLoaded.current && (!includeAnalytics || analyticsEverLoaded.current)) return;
     holdingsEverLoaded.current = true;
     setHoldingsLoading(true);
+    setLoadError(null);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (user?.id) {
@@ -84,11 +86,18 @@ export function usePortfolio() {
     const list = (data ?? []) as Holding[];
     setHoldings(list);
     if (list.length) {
-      const prices = await getLatestPrices(list.map((h) => h.symbol));
-      setLatestPrices(prices);
+      try {
+        const prices = await getLatestPrices(list.map((h) => h.symbol));
+        setLatestPrices(prices);
+      } catch (error) {
+        console.error("[portfolio] latest prices unavailable", error);
+        setLatestPrices({});
+        setLoadError("No se pudieron cargar los precios de la cartera. Intenta nuevamente.");
+      }
       if (includeAnalytics && list.length >= 2) {
-        const priceMap = await getPricesMulti(list.map((h) => h.symbol), 90);
-        setCorrelationData(computeCorrelation(priceMap));
+        try {
+          const priceMap = await getPricesMulti(list.map((h) => h.symbol), 90);
+          setCorrelationData(computeCorrelation(priceMap));
         // Compute 7-day % change per symbol from the same price data
         const changes: Record<string, number> = {};
         for (const [sym, prices] of Object.entries(priceMap)) {
@@ -107,8 +116,15 @@ export function usePortfolio() {
           const dist = computeSMA20Distance(priceData);
           signals[sym] = (rsi != null && rsi > 70) || (dist != null && dist > 15);
         }
-        setTechSignals(signals);
-        analyticsEverLoaded.current = true;
+          setTechSignals(signals);
+          analyticsEverLoaded.current = true;
+        } catch (error) {
+          console.error("[portfolio] analytics unavailable", error);
+          setCorrelationData(null);
+          setWeekChanges({});
+          setTechSignals({});
+          setLoadError("La cartera cargó, pero sus analíticas no están disponibles. Intenta nuevamente.");
+        }
       } else if (includeAnalytics) {
         setCorrelationData(null);
         analyticsEverLoaded.current = true;
@@ -207,7 +223,7 @@ export function usePortfolio() {
   }
 
   return {
-    holdings, holdingsLoading,
+    holdings, holdingsLoading, loadError,
     latestPrices, dataDate,
     correlationData, weekChanges, techSignals,
     showConnectRacional, setShowConnectRacional,

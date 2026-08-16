@@ -115,6 +115,27 @@ export async function getRanking() {
     return getCachedRanking();
 }
 
+const getCachedMarketPipelineStatus = unstable_cache(
+    async (): Promise<string | null> => {
+        try {
+            const { rows } = await pool.query<{ completed_at: string }>(
+                "SELECT completed_at::text FROM pipeline_runs WHERE job = 'daily-etl'",
+            );
+            return rows[0]?.completed_at ?? null;
+        } catch (error) {
+            console.warn("[pipeline-status] unavailable", error);
+            return null;
+        }
+    },
+    ["market-pipeline-status"],
+    { revalidate: 300 },
+);
+
+export async function getMarketPipelineStatus(): Promise<string | null> {
+    await requireUser();
+    return getCachedMarketPipelineStatus();
+}
+
 const getCachedTurnarounds = unstable_cache(
     async () => {
         const { rows } = await pool.query(
@@ -188,13 +209,23 @@ export async function getCompounders(horizon: '1Y' | '3Y' | '5Y') {
 export async function getLatestPrices(symbols: string[]): Promise<Record<string, { price: number; date: string }>> {
     await requireUser();
     if (!symbols.length) return {};
-    const { rows } = await pool.query(
-        `SELECT DISTINCT ON (symbol) symbol, date::text AS date, close
-         FROM prices_daily
-         WHERE symbol = ANY($1::text[])
-         ORDER BY symbol, date DESC`,
-        [symbols]
+    const query = () => pool.query(
+      `SELECT DISTINCT ON (symbol) symbol, date::text AS date, close
+       FROM prices_daily
+       WHERE symbol = ANY($1::text[])
+       ORDER BY symbol, date DESC`,
+      [symbols]
     );
+    let response;
+    try {
+      response = await query();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!/timeout|connect|ECONN/i.test(message)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 750));
+      response = await query();
+    }
+    const { rows } = response;
     const result: Record<string, { price: number; date: string }> = {};
     for (const row of rows) {
         result[row.symbol] = { price: Number(row.close), date: row.date };

@@ -45,6 +45,10 @@ jobs:
         working-directory: data_pipeline
         run: python main.py --scores
 
+      - name: Record successful market update
+        working-directory: data_pipeline
+        run: python main.py --record-run daily-etl
+
       - name: Pipeline status
         working-directory: data_pipeline
         run: python main.py --status

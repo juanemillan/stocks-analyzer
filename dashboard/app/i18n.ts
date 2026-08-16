@@ -82,7 +82,6 @@ export const LABELS = {
   portPnLPct:        { es: "P&L %",             en: "P&L %" },
   portPnL:           { es: "P&L $",             en: "P&L $" },
   portRequestAsset:  { es: "Solicitar activo",  en: "Request asset" },
-  portActions:       { es: "Acciones",          en: "Actions" },
   portShowAll:       { es: "Ver todos",         en: "Show all" },
   portCollapse:      { es: "Ver menos",         en: "Collapse" },
   portSortBy:        { es: "Ordenar",           en: "Sort" },
