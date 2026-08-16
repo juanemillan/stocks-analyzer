@@ -750,7 +750,7 @@ export default function Dashboard() {
       <main className="max-w-[1400px] mx-auto px-4 py-6 pb-[164px] md:pb-6" style={{ paddingBottom: "calc(164px + env(safe-area-inset-bottom))" }}>
         {data.error && (
           <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
-            <span>Error: {data.error}</span>
+            <span>{data.error}</span>
             <button
               onClick={handleReload}
               className="shrink-0 rounded-lg border border-current px-2.5 py-1 text-xs font-semibold hover:bg-red-100 dark:hover:bg-red-900/30"

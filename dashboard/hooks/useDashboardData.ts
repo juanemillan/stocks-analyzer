@@ -11,6 +11,7 @@ import {
   getFinnhubData,
 } from "@/app/actions";
 import { cacheGet, cacheNeedsRefresh, cacheSet } from "@/lib/dailyCache";
+import { dashboardLoadError } from "@/lib/userError";
 import { RANGE_OPTIONS } from "@/lib/stockUtils";
 import type {
   ViewMode,
@@ -98,8 +99,8 @@ export function useDashboardData() {
       const list = (await getRanking()) as RankRow[];
       setRows(list);
       cacheSet(KEY, list);
-    } catch (e: any) {
-      setError(e.message || String(e));
+    } catch (e) {
+      setError(dashboardLoadError(e));
     } finally {
       setLoading(false);
     }
@@ -120,8 +121,8 @@ export function useDashboardData() {
       const list = (await getTurnarounds()) as TurnRow[];
       setTurnRows(list);
       cacheSet(KEY, list);
-    } catch (e: any) {
-      setError(e.message || String(e));
+    } catch (e) {
+      setError(dashboardLoadError(e));
     } finally {
       setLoading(false);
     }
@@ -142,8 +143,8 @@ export function useDashboardData() {
       const list = (await getAccumulationZone()) as AccumRow[];
       setAccumRows(list);
       cacheSet(KEY, list);
-    } catch (e: any) {
-      setError(e.message || String(e));
+    } catch (e) {
+      setError(dashboardLoadError(e));
     } finally {
       setLoading(false);
     }
@@ -164,8 +165,8 @@ export function useDashboardData() {
       const list = (await getCompounders(h)) as CompoundRow[];
       setCompoundRows(list);
       cacheSet(KEY, list);
-    } catch (e: any) {
-      setError(e.message || String(e));
+    } catch (e) {
+      setError(dashboardLoadError(e));
     } finally {
       setLoading(false);
     }
@@ -186,8 +187,8 @@ export function useDashboardData() {
       const list = (await getValueQuality()) as ValueQualityRow[];
       setValueRows(list);
       if (list.length) cacheSet(KEY, list);
-    } catch (e: any) {
-      setError(e.message || String(e));
+    } catch (e) {
+      setError(dashboardLoadError(e));
     } finally {
       setLoading(false);
     }
@@ -211,8 +212,8 @@ export function useDashboardData() {
         : (await getPrices(sym, days)) as PriceRow[];
       setPrices(data);
       cacheSet(key, data);
-    } catch (e: any) {
-      setError(e.message || String(e));
+    } catch (e) {
+      setError(dashboardLoadError(e));
     } finally {
       setPricesLoading(false);
     }
