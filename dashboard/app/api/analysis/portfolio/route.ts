@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   else window.count += 1;
 
   const key = process.env.OPENAI_API_KEY;
-  if (!key) return NextResponse.json({ error: "agent_unavailable" }, { status: 503 });
+  if (!key) return NextResponse.json({ error: "agent_not_configured" }, { status: 503 });
 
   let body: { context?: unknown; lang?: unknown };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "invalid_request" }, { status: 400 }); }
@@ -46,6 +46,8 @@ export async function POST(req: NextRequest) {
     });
     if (!response.ok) {
       console.warn("[portfolio-analysis] OpenAI", response.status);
+      if (response.status === 401 || response.status === 403) return NextResponse.json({ error: "agent_configuration" }, { status: 503 });
+      if (response.status === 429) return NextResponse.json({ error: "agent_rate_limited" }, { status: 429 });
       return NextResponse.json({ error: "agent_unavailable" }, { status: 503 });
     }
     const data = await response.json() as { output_text?: unknown };

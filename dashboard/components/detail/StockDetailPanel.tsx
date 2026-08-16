@@ -101,11 +101,12 @@ export function StockDetailPanel({
     try {
       const response = await fetch("/api/analysis/asset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ symbol: selected.symbol, context, lang }) });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok || typeof result.analysis !== "string") throw new Error("analysis_failed");
+      if (!response.ok || typeof result.analysis !== "string") throw new Error(typeof result.error === "string" ? result.error : "analysis_failed");
       setAiAnalysis(result.analysis);
       setAiAnalysisSymbol(selected.symbol);
-    } catch {
-      setAiAnalysisError(lang === "es" ? "El análisis no está disponible ahora. Intenta nuevamente." : "Analysis is unavailable right now. Please try again.");
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      setAiAnalysisError(code === "agent_rate_limited" ? (lang === "es" ? "Límite temporal del servicio. Espera un minuto e intenta nuevamente." : "Temporary service limit. Wait a minute and try again.") : code === "agent_not_configured" || code === "agent_configuration" ? (lang === "es" ? "La IA no está configurada correctamente en este despliegue." : "AI is not configured correctly for this deployment.") : (lang === "es" ? "El análisis no está disponible ahora. Intenta nuevamente." : "Analysis is unavailable right now. Please try again."));
     } finally {
       setAiAnalysisLoading(false);
     }
