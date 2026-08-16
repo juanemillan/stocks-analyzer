@@ -19,11 +19,13 @@ type SortDir = "asc" | "desc";
 interface PortfolioTabProps {
   holdings: Holding[];
   holdingsLoading: boolean;
+  loadError: string | null;
   latestPrices: Record<string, { price: number; date: string }>;
   dataDate: string | null;
   rows: RankRow[];
   lang: Lang;
   onShowAddHolding: () => void;
+  onRetryLoad: () => void;
   onRemoveHolding: (id: string) => void;
   onOpen: (row: RankRow) => void;
   onOpenFromSymbol: (symbol: string) => void;
@@ -40,11 +42,13 @@ interface PortfolioTabProps {
 export function PortfolioTab({
   holdings,
   holdingsLoading,
+  loadError,
   latestPrices,
   dataDate,
   rows,
   lang,
   onShowAddHolding,
+  onRetryLoad,
   onRemoveHolding,
   onOpen,
   onOpenFromSymbol,
@@ -268,6 +272,13 @@ export function PortfolioTab({
           </div>
         </div>
       </div>
+
+      {loadError && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+          <span>{loadError}</span>
+          <button onClick={onRetryLoad} className="shrink-0 rounded-lg border border-current px-2 py-1 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/30">{lang === "es" ? "Reintentar" : "Retry"}</button>
+        </div>
+      )}
 
       {/* ── Portfolio performance chart ── */}
       {snapshots.length > 1 && (

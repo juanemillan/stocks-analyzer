@@ -868,11 +868,13 @@ export default function Dashboard() {
           <PortfolioTab
             holdings={portfolio.holdings}
             holdingsLoading={portfolio.holdingsLoading}
+            loadError={portfolio.loadError}
             latestPrices={portfolio.latestPrices}
             dataDate={portfolio.dataDate}
             rows={data.rows}
             lang={lang}
             onShowAddHolding={() => { portfolio.setShowAddHolding(true); portfolio.setHoldingError(null); }}
+            onRetryLoad={() => portfolio.loadHoldings(true)}
             onRemoveHolding={portfolio.removeHolding}
             onOpen={data.handleOpen}
             onOpenFromSymbol={data.openFromSymbol}
