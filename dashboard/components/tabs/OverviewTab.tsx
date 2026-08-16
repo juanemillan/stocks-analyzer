@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useState } from "react";
 import { t } from "@/app/i18n";
 import type { Lang, RankRow, TurnRow, CompoundRow } from "@/app/types";
 import { InfoBox } from "@/components/ui/InfoBox";
@@ -53,8 +54,10 @@ export function OverviewTab({
   onOpenFromSymbol,
   onAskFollowUp,
 }: OverviewTabProps) {
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => { setNow(Date.now()); }, []);
   const marketDate = rows.find((row) => row.date)?.date;
-  const marketDataStale = marketDate != null && Date.now() - new Date(`${marketDate}T12:00:00`).getTime() > 4 * 24 * 60 * 60_000;
+  const marketDataStale = now != null && marketDate != null && now - new Date(`${marketDate}T12:00:00`).getTime() > 4 * 24 * 60 * 60_000;
   const activeHoldings = holdings.filter((holding) => !holding.sold_at);
   const portfolioStats = activeHoldings.reduce(
     (acc, holding) => {
