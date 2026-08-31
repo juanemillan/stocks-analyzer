@@ -371,7 +371,7 @@ export async function getPricesMulti(
     if (!symbols.length) return {};
     const since = new Date();
     since.setDate(since.getDate() - days);
-    const { rows } = await pool.query(
+    const query = () => pool.query(
         `SELECT symbol, date::text AS date, close
          FROM prices_daily
          WHERE symbol = ANY($1::text[])
@@ -379,6 +379,16 @@ export async function getPricesMulti(
          ORDER BY symbol, date ASC`,
         [symbols, since.toISOString().slice(0, 10)]
     );
+    let response;
+    try {
+        response = await query();
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (!/timeout|connect|ECONN/i.test(message)) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 750));
+        response = await query();
+    }
+    const { rows } = response;
     const result: Record<string, { date: string; close: number }[]> = {};
     for (const row of rows) {
         if (!result[row.symbol]) result[row.symbol] = [];
