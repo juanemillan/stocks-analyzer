@@ -27,7 +27,10 @@ import type { AlertRule, AlertType } from "@/hooks/useAlerts";
 import type { WatchlistDetails } from "@/hooks/useWatchlist";
 import { ScoreSparkline } from "@/components/detail/ScoreSparkline";
 import { getScoreHistory } from "@/app/actions";
+import { getPricesMulti } from "@/app/actions";
 import type { ScoreHistoryPoint } from "@/app/actions";
+import { buildHistoricalOutlook } from "@/lib/historicalOutlook";
+import { HistoricalOutlook } from "@/components/detail/HistoricalOutlook";
 
 type Props = {
   open: boolean;
@@ -86,6 +89,17 @@ export function StockDetailPanel({
   const [aiAnalysisSymbol, setAiAnalysisSymbol] = useState<string | null>(null);
   const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
   const [aiAnalysisError, setAiAnalysisError] = useState<string | null>(null);
+  const [outlook, setOutlook] = useState<ReturnType<typeof buildHistoricalOutlook>>(null);
+  const [outlookLoading, setOutlookLoading] = useState(false);
+
+  useEffect(() => {
+    if (!selected?.symbol) { setOutlook(null); return; }
+    setOutlookLoading(true);
+    getPricesMulti([selected.symbol, "SPY"], 365 * 5)
+      .then((series) => setOutlook(buildHistoricalOutlook(series[selected.symbol] ?? [], series.SPY ?? [])))
+      .catch(() => setOutlook(null))
+      .finally(() => setOutlookLoading(false));
+  }, [selected?.symbol]);
 
   async function runAiAnalysis() {
     if (!selected || aiAnalysisLoading) return;
@@ -671,6 +685,8 @@ export function StockDetailPanel({
               )}
 
               {/* Momentum & technicals */}
+              <HistoricalOutlook outlook={outlook} loading={outlookLoading} lang={lang} />
+
               <div className="bg-white border rounded-2xl p-4 dark:bg-neutral-900 dark:border-neutral-700">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t("momentum", lang)}</div>
