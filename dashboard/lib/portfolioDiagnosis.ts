@@ -7,7 +7,8 @@ export type PortfolioDiagnosis = {
   totalValue: number;
   topPosition: { symbol: string; weight: number } | null;
   sectors: { name: string; weight: number; symbols: string[] }[];
-  highCorrelationGroups: { symbols: string[]; correlation: number }[];
+  highCorrelationPairs: { symbols: [string, string]; correlation: number }[];
+  positions: { symbol: string; weight: number | null; sector: string | null; score: number | null }[];
   scoreBuckets: Record<"high" | "watch" | "low" | "unknown", string[]>;
 };
 
@@ -44,7 +45,16 @@ export function buildPortfolioDiagnosis(
     totalValue,
     topPosition: top && totalValue > 0 ? { symbol: top.symbol, weight: top.value / totalValue } : null,
     sectors: [...sectors.entries()].map(([name, sector]) => ({ name, symbols: sector.symbols, weight: totalValue > 0 ? sector.value / totalValue : 0 })).sort((a, b) => b.weight - a.weight),
-    highCorrelationGroups: (correlationData?.groups ?? []).map((group) => ({ symbols: group.symbols, correlation: group.avgCorrelation })),
+    highCorrelationPairs: correlationData ? correlationData.symbols.flatMap((symbol, index) =>
+      correlationData.symbols.slice(index + 1).flatMap((other) => {
+        const correlation = correlationData.matrix[symbol]?.[other];
+        return correlation != null && correlation >= 0.7 ? [{ symbols: [symbol, other] as [string, string], correlation }] : [];
+      }),
+    ).sort((a, b) => b.correlation - a.correlation) : [],
+    positions: values.map((holding) => {
+      const row = bySymbol.get(holding.symbol);
+      return { symbol: holding.symbol, weight: totalValue > 0 && holding.value > 0 ? holding.value / totalValue : null, sector: row?.sector ?? null, score: row?.final_score ?? null };
+    }).sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0)),
     scoreBuckets,
   };
 }

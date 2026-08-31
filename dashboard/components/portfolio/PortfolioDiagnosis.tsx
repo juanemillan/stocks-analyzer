@@ -40,9 +40,9 @@ export function PortfolioDiagnosis({ holdings, latestPrices, rows, correlationDa
         <Metric label={lang === "es" ? "Posiciones" : "Holdings"} value={String(diagnosis.activeCount)} />
         <Metric label={lang === "es" ? "Mayor posición" : "Largest position"} value={diagnosis.topPosition ? `${diagnosis.topPosition.symbol} ${(diagnosis.topPosition.weight * 100).toFixed(0)}%` : "—"} />
         <Metric label={lang === "es" ? "Mayor sector" : "Largest sector"} value={topSector ? `${topSector.name} ${(topSector.weight * 100).toFixed(0)}%` : "—"} />
-        <Metric label={lang === "es" ? "Relaciones altas" : "High relationships"} value={String(diagnosis.highCorrelationGroups.length)} />
+        <Metric label={lang === "es" ? "Pares correlacionados" : "Correlated pairs"} value={String(diagnosis.highCorrelationPairs.length)} />
       </div>
-      {diagnosis.highCorrelationGroups.length > 0 && <p className="mt-3 text-xs text-violet-900 dark:text-violet-200">{lang === "es" ? "Se mueven de forma parecida: " : "Moving similarly: "}{diagnosis.highCorrelationGroups.slice(0, 2).map((group) => `${group.symbols.join(" + ")} (${group.correlation.toFixed(2)})`).join(" · ")}</p>}
+      {diagnosis.highCorrelationPairs.length > 0 && <p className="mt-3 text-xs text-violet-900 dark:text-violet-200">{lang === "es" ? "Pares que se mueven de forma parecida: " : "Pairs moving similarly: "}{diagnosis.highCorrelationPairs.slice(0, 2).map((pair) => `${pair.symbols.join(" + ")} (${pair.correlation.toFixed(2)})`).join(" · ")}</p>}
       {diagnosis.scoreBuckets.low.length > 0 && <p className="mt-1 text-xs text-violet-900 dark:text-violet-200">{lang === "es" ? "Score bajo: " : "Low score: "}{diagnosis.scoreBuckets.low.join(", ")}</p>}
       {error && <p className="mt-3 text-xs text-red-600 dark:text-red-400">{error}</p>}
       {analysis && <div className="mt-3 whitespace-pre-line rounded-xl bg-white/70 p-3 text-sm leading-relaxed text-violet-950 dark:bg-neutral-900/70 dark:text-violet-100">{analysis}</div>}
