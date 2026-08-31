@@ -91,13 +91,15 @@ export function StockDetailPanel({
   const [aiAnalysisError, setAiAnalysisError] = useState<string | null>(null);
   const [outlook, setOutlook] = useState<ReturnType<typeof buildHistoricalOutlook>>(null);
   const [outlookLoading, setOutlookLoading] = useState(false);
+  const [outlookFailed, setOutlookFailed] = useState(false);
 
   useEffect(() => {
-    if (!selected?.symbol) { setOutlook(null); return; }
+    if (!selected?.symbol) { setOutlook(null); setOutlookFailed(false); return; }
     setOutlookLoading(true);
+    setOutlookFailed(false);
     getPricesMulti([selected.symbol, "SPY"], 365 * 5)
       .then((series) => setOutlook(buildHistoricalOutlook(series[selected.symbol] ?? [], series.SPY ?? [])))
-      .catch(() => setOutlook(null))
+      .catch(() => { setOutlook(null); setOutlookFailed(true); })
       .finally(() => setOutlookLoading(false));
   }, [selected?.symbol]);
 
@@ -685,7 +687,7 @@ export function StockDetailPanel({
               )}
 
               {/* Momentum & technicals */}
-              <HistoricalOutlook outlook={outlook} loading={outlookLoading} lang={lang} />
+              <HistoricalOutlook outlook={outlook} loading={outlookLoading} failed={outlookFailed} lang={lang} />
 
               <div className="bg-white border rounded-2xl p-4 dark:bg-neutral-900 dark:border-neutral-700">
                 <div className="flex items-center justify-between mb-3">
